@@ -1,21 +1,49 @@
-# Next.js template
+# Chessbench
 
-This is a Next.js template with shadcn/ui.
+Chessbench is a benchmark workspace for evaluating model chess puzzle solving.
 
-## Adding components
+## Datasets
 
-To add components to your app, run the following command:
+The first benchmark dataset is `lichess-puzzles-v1`, built from the public
+Lichess puzzle database.
+
+- Tracked benchmark items:
+  `data/benchmarks/lichess-puzzles-v1/items.jsonl`
+- Benchmark manifest:
+  `data/benchmarks/lichess-puzzles-v1/manifest.json`
+- Raw source download, ignored by git:
+  `data/raw/lichess/lichess_db_puzzle.csv.zst`
+
+The benchmark contains 500 puzzles, sampled deterministically as 100 puzzles
+from each rating band: `<1200`, `1200-1599`, `1600-1999`, `2000-2399`, and
+`2400+`.
+
+Each item also carries granular benchmark strata:
+
+- exact Lichess rating plus a 100-point `ratingBucket`
+- solution move counts in plies, player moves, and opponent replies
+- full Lichess `themes`, a derived `primaryTheme`, and broad `themeGroups`
+
+The same strata are available as JSON indexes under
+`data/benchmarks/lichess-puzzles-v1/indexes`.
+
+## Dataset Commands
 
 ```bash
-npx shadcn@latest add button
+bun run datasets:lichess:download
+bun run datasets:lichess:prepare
 ```
 
-This will place the ui components in the `components` directory.
+The preparation step validates trigger and solution moves with `chess.js`,
+filters unstable or low-signal rows, excludes `mateIn1` puzzles to avoid
+alternate checkmate ambiguity, and writes the benchmark JSONL plus manifest.
 
-## Using components
+## Scoring
 
-To use the components in your app, import them as follows:
+Use `scoreLichessPuzzleAnswer` from
+`lib/benchmarks/lichess-puzzles.ts`.
 
-```tsx
-import { Button } from "@/components/ui/button";
-```
+The primary metric is `solved_rate`: an answer is solved when its extracted UCI
+move sequence exactly matches either the full forcing line or the player-only
+move line. Secondary metrics include first move accuracy, full-line prefix
+score, and player-move prefix score.
