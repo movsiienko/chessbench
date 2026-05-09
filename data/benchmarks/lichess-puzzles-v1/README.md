@@ -52,7 +52,6 @@ Each line in `items.jsonl` is one benchmark item:
 {
   id: string
   benchmark: "lichess-puzzles-v1"
-  prompt: string
   position: {
     triggerFen: string
     triggerMove: string
@@ -92,6 +91,9 @@ Each line in `items.jsonl` is one benchmark item:
 position. `expected.playerUciMoves` keeps only the moves made by the side to
 move.
 
+Prompt text is not stored in the dataset. Benchmark runners build prompts at
+runtime from `position.fen` and record the prompt template used in result rows.
+
 Granular fields:
 
 - `metadata.rating` is the exact Lichess puzzle rating.
@@ -123,7 +125,9 @@ The `indexes` directory contains item-id indexes for common benchmark slices:
 
 ## Scoring
 
-Models should answer with UCI moves separated by spaces only.
+The local runner asks for one UCI move at a time. If the model gives the correct
+move and the puzzle continues, the runner reveals the expected opponent reply in
+the same conversation and asks for the next move.
 
 The scorer extracts UCI tokens and reports:
 

@@ -393,7 +393,7 @@ const manifest = {
       byTheme: "indexes/by-theme.json",
     },
     promptContract:
-      "The model receives a FEN and must return UCI moves separated by spaces only.",
+      "Runners build prompts at execution time from position.fen. The local runner asks for one strict UCI move at a time, reveals expected opponent replies after correct moves, and stops on the first wrong or invalid move.",
     expectedAnswer:
       "expected.uciLine contains the full forcing line after the Lichess setup move; expected.playerUciMoves contains only the side-to-move moves.",
   },
@@ -670,12 +670,6 @@ function buildItem(
   return {
     id: `lichess:${row.PuzzleId}`,
     benchmark: benchmarkId,
-    prompt: [
-      "You are solving a chess tactic.",
-      `Position FEN: ${fen}`,
-      "Find the forcing line for the side to move.",
-      "Reply with UCI moves separated by spaces only.",
-    ].join("\n"),
     position: {
       triggerFen: row.FEN,
       triggerMove,

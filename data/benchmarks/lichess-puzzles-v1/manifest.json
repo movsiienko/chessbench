@@ -38,7 +38,7 @@
       "byPrimaryTheme": "indexes/by-primary-theme.json",
       "byTheme": "indexes/by-theme.json"
     },
-    "promptContract": "The model receives a FEN and must return UCI moves separated by spaces only.",
+    "promptContract": "Runners build prompts at execution time from position.fen. The local runner asks for one strict UCI move at a time, reveals expected opponent replies after correct moves, and stops on the first wrong or invalid move.",
     "expectedAnswer": "expected.uciLine contains the full forcing line after the Lichess setup move; expected.playerUciMoves contains only the side-to-move moves."
   },
   "selection": {
@@ -49,9 +49,7 @@
       "minPopularity": 80,
       "minPlays": 300,
       "maxRatingDeviation": 110,
-      "excludedThemes": [
-        "mateIn1"
-      ],
+      "excludedThemes": ["mateIn1"],
       "legalLineValidation": "Every trigger and solution move is applied with chess.js."
     },
     "ratingBands": [
@@ -103,34 +101,22 @@
     "metrics": [
       {
         "id": "solved",
-        "range": [
-          0,
-          1
-        ],
+        "range": [0, 1],
         "description": "1 when the submitted line exactly matches expected.uciLine or expected.playerUciMoves."
       },
       {
         "id": "firstMoveCorrect",
-        "range": [
-          0,
-          1
-        ],
+        "range": [0, 1],
         "description": "1 when the first submitted UCI move matches the first player move."
       },
       {
         "id": "fullLinePrefixScore",
-        "range": [
-          0,
-          1
-        ],
+        "range": [0, 1],
         "description": "Correct leading plies divided by expected.uciLine length."
       },
       {
         "id": "playerMovePrefixScore",
-        "range": [
-          0,
-          1
-        ],
+        "range": [0, 1],
         "description": "Correct leading player moves divided by expected.playerUciMoves length."
       }
     ],
