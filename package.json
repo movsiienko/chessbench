@@ -10,11 +10,15 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "benchmark:local": "bun scripts/run-benchmark.ts",
+    "benchmark:cheap": "bun scripts/run-benchmark.ts --model google/gemini-3.1-flash-lite-preview --model openai/gpt-5-nano",
     "datasets:lichess:download": "bun scripts/download-lichess-puzzles.ts",
     "datasets:lichess:prepare": "bun scripts/prepare-lichess-puzzles.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
+    "ai": "^6.0.177",
     "chess.js": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

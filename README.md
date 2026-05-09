@@ -47,3 +47,31 @@ The primary metric is `solved_rate`: an answer is solved when its extracted UCI
 move sequence exactly matches either the full forcing line or the player-only
 move line. Secondary metrics include first move accuracy, full-line prefix
 score, and player-move prefix score.
+
+## Local Benchmark Runs
+
+Run local model benchmarks with AI SDK Gateway model IDs:
+
+```bash
+bun run benchmark:local -- --model openai/gpt-5-nano
+```
+
+The runner requires at least one `--model`. By default it evaluates a
+deterministic 10-puzzle sample spread across rating bands. Use `--limit 50` for
+a larger sample, or `--all` for the full 500-puzzle benchmark.
+
+The local runner asks for one strict UCI move at a time. On a correct move, it
+reveals only the expected opponent move and asks for the next move in the same
+conversation. It stops a puzzle on the first wrong move, invalid format, or
+provider error.
+
+Every invocation writes a local CSV archive under ignored
+`data/results/local/lichess-puzzles-v1/`. To also write tracked canonical
+per-model snapshots, pass a canonical name:
+
+```bash
+bun run benchmark:local -- --model openai/gpt-5-nano --canonical sample
+```
+
+Canonical files are written as
+`data/results/canonical/lichess-puzzles-v1/<model-id>-sample.csv`.
