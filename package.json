@@ -9,10 +9,13 @@
     "start": "next start",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "datasets:lichess:download": "bun scripts/download-lichess-puzzles.ts",
+    "datasets:lichess:prepare": "bun scripts/prepare-lichess-puzzles.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
+    "chess.js": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.8.0",
