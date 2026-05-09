@@ -1,5 +1,3 @@
-# dependencies
-/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -37,6 +35,7 @@ next-env.d.ts
 
 # raw benchmark sources
 data/raw/
-
 # local benchmark run archive
 data/results/local/
+.env
+node_modules/
