@@ -575,14 +575,18 @@ function makeTranscript(
 }
 
 function solutionsFor(puzzle: PuzzleItem): SolutionAttempt[] {
+  const firstMove = puzzle.solution[0]
+
+  if (!firstMove) {
+    return []
+  }
+
   return MODELS.map((model, index) => {
     const score = scoreById(model.id)
     const correct =
       score.accuracy * (1900 / Math.max(1100, puzzle.rating)) >
       0.55 + index * 0.005
-    const playedMove = correct
-      ? puzzle.solution[0]
-      : mutateMove(puzzle.solution[0], index)
+    const playedMove = correct ? firstMove : mutateMove(firstMove, index)
 
     return {
       model: model.id,
@@ -664,6 +668,8 @@ function moveArrow(uci: string): DrawShape | null {
     },
   }
 }
+
+const EMPTY_DRAW_SHAPES: DrawShape[] = []
 
 function useMounted() {
   return React.useSyncExternalStore(
@@ -1134,10 +1140,13 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
 }
 
 function EloLineChart() {
-  const rounds = ELO_HISTORY.gpt5.map((_, index) => {
+  const maxRounds = Math.max(
+    ...MODELS.map((model) => ELO_HISTORY[model.id]?.length ?? 0)
+  )
+  const rounds = Array.from({ length: maxRounds }, (_, index) => {
     const row: Record<string, string | number> = { round: `R${index + 1}` }
     for (const model of MODELS) {
-      row[model.id] = ELO_HISTORY[model.id][index]
+      row[model.id] = ELO_HISTORY[model.id]?.[index] ?? 0
     }
     return row
   })
@@ -2102,7 +2111,7 @@ function ChessBoard({
   interactive = true,
   onMove,
   lastMove,
-  autoShapes = [],
+  autoShapes = EMPTY_DRAW_SHAPES,
   small = false,
 }: {
   fen: string
@@ -2120,6 +2129,11 @@ function ChessBoard({
 }) {
   const boardRef = React.useRef<HTMLDivElement>(null)
   const apiRef = React.useRef<ChessgroundApi | null>(null)
+  const onMoveRef = React.useRef(onMove)
+
+  React.useEffect(() => {
+    onMoveRef.current = onMove
+  }, [onMove])
 
   React.useEffect(() => {
     const element = boardRef.current
@@ -2176,7 +2190,7 @@ function ChessBoard({
                 return
               }
 
-              onMove?.({
+              onMoveRef.current?.({
                 from: orig,
                 to: dest,
                 san: move.san,
@@ -2215,7 +2229,7 @@ function ChessBoard({
       apiRef.current = null
       element.innerHTML = ""
     }
-  }, [autoShapes, fen, interactive, lastMove, onMove, small])
+  }, [autoShapes, fen, interactive, lastMove, small])
 
   return (
     <div

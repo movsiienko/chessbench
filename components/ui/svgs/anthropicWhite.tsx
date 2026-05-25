@@ -3,7 +3,7 @@ import type { SVGProps } from "react"
 const AnthropicWhite = (props: SVGProps<SVGSVGElement>) => (
   <svg
     {...props}
-    fill="#ffff"
+    fill="#fff"
     fillRule="evenodd"
     style={{ flex: "none", lineHeight: "1" }}
     viewBox="0 0 24 24"
