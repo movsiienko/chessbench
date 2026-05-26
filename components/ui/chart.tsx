@@ -27,6 +27,22 @@ type ChartContextProps = {
   config: ChartConfig
 }
 
+function isSafeChartColor(color: string) {
+  const trimmed = color.trim()
+
+  if (!trimmed || /[;{}<>]/.test(trimmed)) {
+    return false
+  }
+
+  return /^(#[0-9a-f]{3,8}|rgba?\(|hsla?\(|oklch\(|oklab\(|color-mix\(|var\(--[\w-]+\)|[a-z]+$)/i.test(
+    trimmed
+  )
+}
+
+function isSafeChartKey(key: string) {
+  return /^[\w-]+$/.test(key)
+}
+
 const ChartContext = React.createContext<ChartContextProps | null>(null)
 
 function useChart() {
@@ -102,7 +118,9 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    return color && isSafeChartKey(key) && isSafeChartColor(color)
+      ? `  --color-${key}: ${color.trim()};`
+      : null
   })
   .join("\n")}
 }
@@ -221,16 +239,13 @@ function ChartTooltipContent({
                     ) : (
                       !hideIndicator && (
                         <div
-                          className={cn(
-                            "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
-                            {
-                              "h-2.5 w-2.5": indicator === "dot",
-                              "w-1": indicator === "line",
-                              "w-0 border-[1.5px] border-dashed bg-transparent":
-                                indicator === "dashed",
-                              "my-0.5": nestLabel && indicator === "dashed",
-                            }
-                          )}
+                          className={cn("shrink-0 rounded-[2px]", {
+                            "h-2.5 w-2.5": indicator === "dot",
+                            "w-1": indicator === "line",
+                            "w-0 border-[1.5px] border-dashed bg-transparent":
+                              indicator === "dashed",
+                            "my-0.5": nestLabel && indicator === "dashed",
+                          })}
                           style={
                             {
                               "--color-bg": indicatorColor,
@@ -301,6 +316,12 @@ function ChartLegendContent({
         .map((item, index) => {
           const key = `${nameKey ?? item.dataKey ?? "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
+          const fallbackLabel =
+            typeof item.dataKey === "string" || typeof item.dataKey === "number"
+              ? item.dataKey
+              : item.value != null
+                ? String(item.value)
+                : undefined
 
           return (
             <div
@@ -319,7 +340,7 @@ function ChartLegendContent({
                   }}
                 />
               )}
-              {itemConfig?.label}
+              {itemConfig?.label ?? fallbackLabel}
             </div>
           )
         })}

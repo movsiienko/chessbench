@@ -544,6 +544,22 @@ function prettyMove(uci: string) {
   return `${uci.slice(0, 2)} -> ${uci.slice(2, 4)}${uci.length > 4 ? `=${uci[4]?.toUpperCase()}` : ""}`
 }
 
+function readableMove(uci: string) {
+  if (!uci) {
+    return ""
+  }
+
+  const from = uci.slice(0, 2)
+  const to = uci.slice(2, 4)
+  const promotion = uci[4] ? `, promote to ${uci[4].toUpperCase()}` : ""
+
+  if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) {
+    return uci
+  }
+
+  return `${from} to ${to}${promotion}`
+}
+
 function makeTranscript(
   model: (typeof MODELS)[number],
   puzzle: PuzzleItem,
@@ -699,18 +715,30 @@ export function ChessBenchDashboard() {
             </Badge>
             <span className="truncate">ChessBench</span>
           </div>
-          <TabsList className="ml-2">
-            <TabsTrigger value="leaderboard">
+          <TabsList
+            variant="line"
+            className="ml-4 h-10 gap-4 border-l border-border pl-4"
+          >
+            <TabsTrigger
+              value="leaderboard"
+              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
+            >
               <Trophy data-icon="inline-start" />
-              Leaderboard
+              <span className="hidden sm:inline">Leaderboard</span>
             </TabsTrigger>
-            <TabsTrigger value="problems">
+            <TabsTrigger
+              value="problems"
+              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
+            >
               <Puzzle data-icon="inline-start" />
-              Problems
+              <span className="hidden sm:inline">Problems</span>
             </TabsTrigger>
-            <TabsTrigger value="docs">
+            <TabsTrigger
+              value="docs"
+              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
+            >
               <BookOpen data-icon="inline-start" />
-              Docs
+              <span className="hidden sm:inline">Docs</span>
             </TabsTrigger>
           </TabsList>
           <Button
@@ -1404,9 +1432,7 @@ function ProblemsView() {
     if (filtered.length === 0) {
       return
     }
-    const index =
-      (filtered.length * 7 + selectedThemes.length * 3 + ratingRange[0]) %
-      filtered.length
+    const index = Math.floor(Math.random() * filtered.length)
     setActiveId(filtered[index].id)
   }
 
@@ -1748,6 +1774,7 @@ function ProblemFocus({
     ok: boolean
     played: string
     expected: string
+    san: string
   } | null>(null)
 
   const attempts = React.useMemo(() => solutionsFor(puzzle), [puzzle])
@@ -1764,17 +1791,23 @@ function ProblemFocus({
   const handleMove = (move: {
     from: string
     to: string
+    san: string
     fen: string
     promotion?: string
   }) => {
     const played = `${move.from}${move.to}${move.promotion ?? ""}`
     const expected = puzzle.solution[0]
+    if (!expected) {
+      return
+    }
+
     setBoardFen(move.fen)
     setLastMove({ from: move.from, to: move.to })
     setFeedback({
-      ok: expected.startsWith(played) || played.startsWith(expected),
+      ok: puzzle.solution.includes(played),
       played,
       expected,
+      san: move.san,
     })
   }
 
@@ -1866,32 +1899,38 @@ function ProblemFocus({
             <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
               {boardFen}
             </span>
-            <Badge
-              variant={feedback?.ok ? "outline" : "destructive"}
+            <div
               aria-live="polite"
               title={
                 feedback
-                  ? `played ${feedback.played} - expected ${feedback.expected}`
+                  ? `played ${readableMove(feedback.played)}; expected ${readableMove(feedback.expected)}`
                   : undefined
               }
+              data-result={feedback?.ok ? "success" : "miss"}
               className={cn(
-                "order-3 min-h-8 w-full justify-start rounded-md px-3 font-mono text-xs sm:order-none sm:w-[15.75rem]",
-                feedback?.ok &&
-                  "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300",
+                "cb-move-line order-3 sm:order-none sm:w-[15.75rem]",
                 !feedback && "invisible"
               )}
             >
-              {feedback?.ok ? (
-                <Check data-icon="inline-start" />
-              ) : (
-                <X data-icon="inline-start" />
-              )}
-              {feedback
-                ? feedback.ok
-                  ? `Correct ${feedback.played}`
-                  : `Expected ${feedback.expected}`
-                : "Move pending"}
-            </Badge>
+              <span>
+                {feedback ? (
+                  feedback.ok ? (
+                    <>
+                      Move accepted:{" "}
+                      <strong>
+                        {feedback.san || readableMove(feedback.played)}
+                      </strong>
+                    </>
+                  ) : (
+                    <>
+                      Try <strong>{readableMove(feedback.expected)}</strong>
+                    </>
+                  )
+                ) : (
+                  "Move pending"
+                )}
+              </span>
+            </div>
             <Button
               size="sm"
               variant="ghost"
@@ -1938,14 +1977,14 @@ function ProblemFocus({
               </div>
             </CardAction>
           </CardHeader>
-          <CardContent>
+          <CardContent className="cb-model-attempts">
             <Accordion className="border-t">
               {attempts.map((attempt) => {
                 const model = modelById(attempt.model)
                 return (
                   <AccordionItem key={attempt.model} value={attempt.model}>
                     <AccordionTrigger className="hover:no-underline">
-                      <div className="grid w-full grid-cols-[24px_minmax(0,1.35fr)_minmax(80px,0.8fr)_minmax(96px,0.8fr)] items-center gap-3 pr-3">
+                      <div className="cb-attempt-row w-full">
                         <span
                           className={cn(
                             "grid size-6 place-items-center rounded-full",
@@ -1960,14 +1999,12 @@ function ProblemFocus({
                             <X className="size-3.5" />
                           )}
                         </span>
-                        <span className="min-w-0">
-                          <span className="flex items-center gap-2">
-                            <ModelDot model={attempt.model} />
-                            <span className="truncate font-semibold">
-                              {model.name}
-                            </span>
+                        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                          <ModelDot model={attempt.model} />
+                          <span className="truncate font-semibold">
+                            {model.name}
                           </span>
-                          <span className="ml-6 block truncate font-mono text-xs text-muted-foreground">
+                          <span className="cb-provider-pill truncate">
                             {model.vendor}
                           </span>
                         </span>
