@@ -778,54 +778,23 @@ function LeaderboardView() {
 
   return (
     <div className="space-y-8">
-      <section className="grid gap-8 border-b pb-8 lg:grid-cols-[1.35fr_0.8fr] lg:items-end">
-        <div className="space-y-5">
-          <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-            ChessBench - Round {ELO_HISTORY.gpt5.length} - {META.lastUpdated}
-          </div>
-          <div className="max-w-3xl space-y-4">
-            <h1 className="max-w-[12ch] text-5xl leading-none font-semibold tracking-tight sm:text-6xl">
-              How well can LLMs play chess?
-            </h1>
-            <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              An open benchmark grading {MODELS.length} frontier models on{" "}
-              {META.puzzleCount.toLocaleString()} lichess-derived puzzles across
-              tactics, endgames, openings, and middlegame strategy. Numbers
-              shown here are mocked for demonstration.
-            </p>
-          </div>
-          <div className="grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-5">
-            <HeroStat label="Models" value={MODELS.length.toString()} />
-            <HeroStat
-              label="Puzzles"
-              value={`${(META.puzzleCount / 1000).toFixed(1)}k`}
-            />
-            <HeroStat label="Themes" value={CATEGORIES.length.toString()} />
-            <HeroStat
-              label="Evaluations"
-              value={`${Math.round(META.evaluations / 1000)}k`}
-            />
-            <HeroStat label="Spread" value={`${spread}pp`} />
-          </div>
+      <section className="grid gap-2.5 border-b pb-4">
+        <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+          Round {ELO_HISTORY.gpt5.length} · {META.lastUpdated}
         </div>
-        <Card className="border-amber-500/20 bg-[var(--chess-amber-soft)]/35">
-          <CardHeader>
-            <CardDescription>Current leader</CardDescription>
-            <CardTitle className="flex items-center gap-3 text-2xl">
-              <ModelDot model={leader.model} className="size-5" />
-              {leaderModel.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-4">
-            <Metric label="Accuracy" value={pct(leader.accuracy)} />
-            <Metric label="Elo" value={leader.elo.toString()} mono />
-            <Metric
-              label="Delta vs #2"
-              value={`+${((leader.accuracy - sorted[1].accuracy) * 100).toFixed(1)}pp`}
-              mono
-            />
-          </CardContent>
-        </Card>
+        <h1 className="max-w-sm text-4xl leading-none font-semibold tracking-normal sm:text-5xl">
+          Model chess benchmark.
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-sm text-muted-foreground">
+          <span>{MODELS.length} models</span>
+          <span aria-hidden="true">·</span>
+          <span>{META.puzzleCount.toLocaleString()} lichess puzzles</span>
+          <span aria-hidden="true">·</span>
+          <span className="inline-flex items-center gap-2 text-foreground">
+            <ModelDot model={leader.model} />
+            {leaderModel.name} leads at {pct(leader.accuracy)}
+          </span>
+        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-4">
