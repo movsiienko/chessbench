@@ -1,0 +1,29 @@
+{
+  "id": "06280fdb",
+  "phase": "completed",
+  "pageUrl": "/",
+  "sourceFile": "components/chessbench-dashboard.tsx",
+  "expectedVariants": 4,
+  "arrivedVariants": 4,
+  "visibleVariant": 1,
+  "paramValues": {
+    "density": "tight",
+    "proof": "on"
+  },
+  "pendingEventSeq": null,
+  "pendingEvent": null,
+  "deliveryLease": null,
+  "checkpointRevision": 12,
+  "activeOwner": "67c97a27",
+  "sourceMarkers": {},
+  "fallbackMode": null,
+  "annotationArtifacts": [],
+  "diagnostics": [
+    {
+      "error": "carbonize_cleanup_required",
+      "file": "components/chessbench-dashboard.tsx",
+      "message": "Accepted variant still has carbonize markers that must be folded into source CSS."
+    }
+  ],
+  "updatedAt": "2026-05-26T15:41:18.606Z"
+}
