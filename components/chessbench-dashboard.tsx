@@ -110,6 +110,7 @@ import {
   PUZZLES as REAL_PUZZLES,
   SCOREBOARD as REAL_SCOREBOARD,
   type DashboardCategoryId,
+  type DashboardLabId,
   type DashboardModelId,
   type DashboardPuzzleItem,
   type DashboardSolutionAttempt,
@@ -126,28 +127,6 @@ const MODELS = REAL_MODELS
 
 type LabSvgRoute = string | { light: string; dark: string }
 type LabSvgSource = "svgl" | "models.dev"
-
-const MODELS_DEV_LAB_IDS = [
-  "alibaba",
-  "anthropic",
-  "cohere",
-  "deepseek",
-  "google",
-  "meta",
-  "minimax",
-  "mistral",
-  "moonshotai",
-  "nvidia",
-  "openai",
-  "perplexity",
-  "stepfun",
-  "tencent",
-  "xai",
-  "xiaomi",
-  "zhipuai",
-] as const
-
-type ModelsDevLabId = (typeof MODELS_DEV_LAB_IDS)[number]
 
 function modelsDevLabSvg(lab: string) {
   return `https://models.dev/logos/labs/${lab}.svg`
@@ -252,20 +231,9 @@ const LAB_SVGS = {
     source: "models.dev",
   },
 } as const satisfies Record<
-  ModelsDevLabId,
+  DashboardLabId,
   { label: string; route: LabSvgRoute; source: LabSvgSource }
 >
-
-type LabLogoKey = keyof typeof LAB_SVGS
-
-const MODEL_LAB_LOGO = {
-  gpt5: "openai",
-  claude45: "anthropic",
-  gem25: "google",
-  ds35: "deepseek",
-  grok4: "xai",
-  qwen3: "alibaba",
-} as const satisfies Record<ModelId, LabLogoKey>
 
 const CATEGORIES = REAL_CATEGORIES
 
@@ -2025,7 +1993,7 @@ function ModelDot({
   model: ModelId
   className?: string
 }) {
-  const lab = MODEL_LAB_LOGO[model]
+  const lab = modelById(model).lab
 
   return (
     <span
@@ -2040,7 +2008,7 @@ function ModelDot({
   )
 }
 
-function LabSvg({ lab }: { lab: LabLogoKey }) {
+function LabSvg({ lab }: { lab: DashboardLabId }) {
   const svg = LAB_SVGS[lab]
 
   if (typeof svg.route === "string") {

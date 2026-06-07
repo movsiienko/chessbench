@@ -82,10 +82,14 @@ Canonical files are written as
 
 Dashboard model chips use lab SVG routes for the model authors listed by
 [models.dev labs](https://models.dev/labs/). `LAB_SVGS` in
-`components/chessbench-dashboard.tsx` is proactively populated for the current
-models.dev lab ids: `alibaba`, `anthropic`, `cohere`, `deepseek`, `google`,
-`meta`, `minimax`, `mistral`, `moonshotai`, `nvidia`, `openai`, `perplexity`,
-`stepfun`, `tencent`, `xai`, `xiaomi`, and `zhipuai`.
+`components/chessbench-dashboard.tsx` is keyed by the generated
+`DashboardLabId` union from `lib/benchmarks/dashboard-data.ts`.
+
+`scripts/build-dashboard-data.ts` derives `DashboardModel.lab` from
+`https://models.dev/models.json`. It first looks for a matching canonical
+model key such as `openai/gpt-5.5`; when a benchmark model id is a
+Gateway-specific variant, it validates the provider prefix against the
+models.dev lab prefix set and uses that lab id.
 
 Logo source rules:
 
@@ -94,9 +98,9 @@ Logo source rules:
 2. Preserve SVGL's light/dark `route` object when one is returned.
 3. If SVGL does not have the lab, use models.dev's documented lab route:
    `https://models.dev/logos/labs/<lab>.svg`.
-4. Map every new `DashboardModelId` in `MODEL_LAB_LOGO`. The mapping uses
-   `satisfies Record<ModelId, LabLogoKey>`, so `bun run typecheck` fails when
-   dashboard data contains a model without an explicit lab SVG.
+4. Keep `LAB_SVGS` complete for every generated `DashboardLabId`. The mapping
+   uses `satisfies Record<DashboardLabId, ...>`, so `bun run typecheck` fails
+   when models.dev introduces a lab id without an explicit logo route.
 
 Current mappings: `gpt5` -> OpenAI, `claude45` -> Anthropic, `gem25` ->
 Google, `ds35` -> DeepSeek, `grok4` -> xAI, and `qwen3` -> Alibaba.
