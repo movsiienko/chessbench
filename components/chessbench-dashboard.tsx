@@ -124,15 +124,48 @@ type SolutionAttempt = DashboardSolutionAttempt
 
 const MODELS = REAL_MODELS
 
-type ProviderSvgRoute = string | { light: string; dark: string }
+type LabSvgRoute = string | { light: string; dark: string }
+type LabSvgSource = "svgl" | "models.dev"
 
-const PROVIDER_SVGS = {
+const MODELS_DEV_LAB_IDS = [
+  "alibaba",
+  "anthropic",
+  "cohere",
+  "deepseek",
+  "google",
+  "meta",
+  "minimax",
+  "mistral",
+  "moonshotai",
+  "nvidia",
+  "openai",
+  "perplexity",
+  "stepfun",
+  "tencent",
+  "xai",
+  "xiaomi",
+  "zhipuai",
+] as const
+
+type ModelsDevLabId = (typeof MODELS_DEV_LAB_IDS)[number]
+
+function modelsDevLabSvg(lab: string) {
+  return `https://models.dev/logos/labs/${lab}.svg`
+}
+
+const LAB_SVGS = {
+  alibaba: {
+    label: "Alibaba",
+    route: modelsDevLabSvg("alibaba"),
+    source: "models.dev",
+  },
   openai: {
     label: "OpenAI",
     route: {
       light: "https://svgl.app/library/openai.svg",
       dark: "https://svgl.app/library/openai_dark.svg",
     },
+    source: "svgl",
   },
   anthropic: {
     label: "Anthropic",
@@ -140,14 +173,65 @@ const PROVIDER_SVGS = {
       light: "https://svgl.app/library/anthropic_black.svg",
       dark: "https://svgl.app/library/anthropic_white.svg",
     },
+    source: "svgl",
+  },
+  cohere: {
+    label: "Cohere",
+    route: "https://svgl.app/library/cohere.svg",
+    source: "svgl",
   },
   google: {
     label: "Google",
     route: "https://svgl.app/library/google.svg",
+    source: "svgl",
   },
   deepseek: {
     label: "DeepSeek",
     route: "https://svgl.app/library/deepseek.svg",
+    source: "svgl",
+  },
+  meta: {
+    label: "Meta",
+    route: "https://svgl.app/library/meta.svg",
+    source: "svgl",
+  },
+  minimax: {
+    label: "MiniMax",
+    route: modelsDevLabSvg("minimax"),
+    source: "models.dev",
+  },
+  mistral: {
+    label: "Mistral",
+    route: "https://svgl.app/library/mistral-ai_logo.svg",
+    source: "svgl",
+  },
+  moonshotai: {
+    label: "Moonshot AI",
+    route: modelsDevLabSvg("moonshotai"),
+    source: "models.dev",
+  },
+  nvidia: {
+    label: "Nvidia",
+    route: {
+      light: "https://svgl.app/library/nvidia-icon-light.svg",
+      dark: "https://svgl.app/library/nvidia-icon-dark.svg",
+    },
+    source: "svgl",
+  },
+  perplexity: {
+    label: "Perplexity",
+    route: "https://svgl.app/library/perplexity.svg",
+    source: "svgl",
+  },
+  stepfun: {
+    label: "StepFun",
+    route: modelsDevLabSvg("stepfun"),
+    source: "models.dev",
+  },
+  tencent: {
+    label: "Tencent",
+    route: modelsDevLabSvg("tencent"),
+    source: "models.dev",
   },
   xai: {
     label: "xAI",
@@ -155,26 +239,33 @@ const PROVIDER_SVGS = {
       light: "https://svgl.app/library/xai_light.svg",
       dark: "https://svgl.app/library/xai_dark.svg",
     },
+    source: "svgl",
   },
-  qwen: {
-    label: "Qwen",
-    route: {
-      light: "https://svgl.app/library/qwen_light.svg",
-      dark: "https://svgl.app/library/qwen_dark.svg",
-    },
+  xiaomi: {
+    label: "Xiaomi",
+    route: modelsDevLabSvg("xiaomi"),
+    source: "models.dev",
   },
-} as const satisfies Record<string, { label: string; route: ProviderSvgRoute }>
+  zhipuai: {
+    label: "Zhipu AI",
+    route: modelsDevLabSvg("zhipuai"),
+    source: "models.dev",
+  },
+} as const satisfies Record<
+  ModelsDevLabId,
+  { label: string; route: LabSvgRoute; source: LabSvgSource }
+>
 
-type ProviderLogoKey = keyof typeof PROVIDER_SVGS
+type LabLogoKey = keyof typeof LAB_SVGS
 
-const MODEL_PROVIDER_LOGO = {
+const MODEL_LAB_LOGO = {
   gpt5: "openai",
   claude45: "anthropic",
   gem25: "google",
   ds35: "deepseek",
   grok4: "xai",
-  qwen3: "qwen",
-} as const satisfies Record<ModelId, ProviderLogoKey>
+  qwen3: "alibaba",
+} as const satisfies Record<ModelId, LabLogoKey>
 
 const CATEGORIES = REAL_CATEGORIES
 
@@ -1934,7 +2025,7 @@ function ModelDot({
   model: ModelId
   className?: string
 }) {
-  const provider = MODEL_PROVIDER_LOGO[model]
+  const lab = MODEL_LAB_LOGO[model]
 
   return (
     <span
@@ -1944,27 +2035,32 @@ function ModelDot({
       )}
       aria-hidden="true"
     >
-      <ProviderSvg provider={provider} />
+      <LabSvg lab={lab} />
     </span>
   )
 }
 
-function ProviderSvg({ provider }: { provider: ProviderLogoKey }) {
-  const svg = PROVIDER_SVGS[provider]
+function LabSvg({ lab }: { lab: LabLogoKey }) {
+  const svg = LAB_SVGS[lab]
 
   if (typeof svg.route === "string") {
-    return <ProviderSvgImage src={svg.route} />
+    return (
+      <LabSvgImage
+        src={svg.route}
+        className={svg.source === "models.dev" ? "dark:invert" : undefined}
+      />
+    )
   }
 
   return (
     <>
-      <ProviderSvgImage src={svg.route.light} className="dark:hidden" />
-      <ProviderSvgImage src={svg.route.dark} className="hidden dark:block" />
+      <LabSvgImage src={svg.route.light} className="dark:hidden" />
+      <LabSvgImage src={svg.route.dark} className="hidden dark:block" />
     </>
   )
 }
 
-function ProviderSvgImage({
+function LabSvgImage({
   src,
   className,
 }: {
