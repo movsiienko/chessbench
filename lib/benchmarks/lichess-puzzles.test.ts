@@ -51,13 +51,16 @@ describe("lichess puzzle runtime prompt contract", () => {
     const benchmarkItem = item("one", "under-1200")
 
     assert.equal("prompt" in benchmarkItem, false)
-    assert.equal(LICHESS_PUZZLE_PROMPT_TEMPLATE_ID, "uci-next-move-v1")
+    assert.equal(LICHESS_PUZZLE_PROMPT_TEMPLATE_ID, "uci-or-san-single-move-v3")
     assert.equal(
       buildLichessPuzzleInitialPrompt(benchmarkItem),
       [
         "Position FEN: 8/8/8/8/8/8/8/8 w - - 0 1",
         "Find the best move for the side to move.",
-        "Reply with UCI move notation only.",
+        "Output contract:",
+        "Return exactly one legal chess move for the side to move.",
+        "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+        "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
       ].join("\n")
     )
   })

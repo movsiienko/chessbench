@@ -52,7 +52,6 @@ import { AnthropicBlack } from "@/components/ui/svgs/anthropicBlack"
 import { AnthropicWhite } from "@/components/ui/svgs/anthropicWhite"
 import { Deepseek } from "@/components/ui/svgs/deepseek"
 import { Gemini } from "@/components/ui/svgs/gemini"
-import { Meta as MetaLogo } from "@/components/ui/svgs/meta"
 import { Openai } from "@/components/ui/svgs/openai"
 import { OpenaiDark } from "@/components/ui/svgs/openaiDark"
 import { XaiDark } from "@/components/ui/svgs/xaiDark"
@@ -110,398 +109,40 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  CATEGORY as REAL_CATEGORY,
+  CATEGORIES as REAL_CATEGORIES,
+  ELO_HISTORY as REAL_ELO_HISTORY,
+  META as REAL_META,
+  MODELS as REAL_MODELS,
+  PUZZLES as REAL_PUZZLES,
+  SCOREBOARD as REAL_SCOREBOARD,
+  type DashboardCategoryId,
+  type DashboardModelId,
+  type DashboardPuzzleItem,
+  type DashboardSolutionAttempt,
+} from "@/lib/benchmarks/dashboard-data"
 import { cn } from "@/lib/utils"
 
 type View = "leaderboard" | "problems" | "docs"
-type ModelId = "gpt5" | "claude45" | "gem25" | "ds35" | "grok4" | "llama4"
-type CategoryId =
-  | "mate"
-  | "fork"
-  | "pin"
-  | "skewer"
-  | "discoAtk"
-  | "sacrifice"
-  | "endgame"
-  | "opening"
-  | "middlegame"
-  | "defense"
-  | "zugzwang"
-  | "promotion"
+type ModelId = DashboardModelId
+type CategoryId = DashboardCategoryId
+type PuzzleItem = DashboardPuzzleItem
+type SolutionAttempt = DashboardSolutionAttempt
 
-type PuzzleItem = {
-  id: string
-  fen: string
-  themes: CategoryId[]
-  side: "w" | "b"
-  rating: number
-  popularity: number
-  solution: string[]
-  caption: string
-}
+const MODELS = REAL_MODELS
 
-type SolutionAttempt = {
-  model: ModelId
-  correct: boolean
-  playedMove: string
-  movePretty: string
-  thinkingMs: number
-  thinkingTokens: number
-  transcript: string
-}
+const CATEGORIES = REAL_CATEGORIES
 
-const MODELS = [
-  {
-    id: "gpt5",
-    name: "GPT-5",
-    vendor: "OpenAI",
-    color: "#10a37f",
-    releaseQ: "Q2 2025",
-  },
-  {
-    id: "claude45",
-    name: "Claude Sonnet 4.5",
-    vendor: "Anthropic",
-    color: "#d97757",
-    releaseQ: "Q3 2025",
-  },
-  {
-    id: "gem25",
-    name: "Gemini 2.5 Pro",
-    vendor: "Google",
-    color: "#4285f4",
-    releaseQ: "Q1 2025",
-  },
-  {
-    id: "ds35",
-    name: "DeepSeek V3.5",
-    vendor: "DeepSeek",
-    color: "#2563eb",
-    releaseQ: "Q4 2024",
-  },
-  {
-    id: "grok4",
-    name: "Grok 4",
-    vendor: "xAI",
-    color: "#111827",
-    releaseQ: "Q2 2025",
-  },
-  {
-    id: "llama4",
-    name: "Llama 4 Maverick",
-    vendor: "Meta",
-    color: "#8b5cf6",
-    releaseQ: "Q1 2025",
-  },
-] as const
+const SCOREBOARD = REAL_SCOREBOARD
 
-const CATEGORIES = [
-  { id: "mate", label: "Mate" },
-  { id: "fork", label: "Fork" },
-  { id: "pin", label: "Pin" },
-  { id: "skewer", label: "Skewer" },
-  { id: "discoAtk", label: "Discovered attack" },
-  { id: "sacrifice", label: "Sacrifice" },
-  { id: "endgame", label: "Endgame" },
-  { id: "opening", label: "Opening" },
-  { id: "middlegame", label: "Middlegame" },
-  { id: "defense", label: "Defense" },
-  { id: "zugzwang", label: "Zugzwang" },
-  { id: "promotion", label: "Promotion" },
-] as const
+const CATEGORY = REAL_CATEGORY
 
-const SCOREBOARD = [
-  {
-    model: "gpt5",
-    accuracy: 0.781,
-    elo: 2418,
-    cost: 6.4,
-    avgTokens: 4830,
-    avgMoveTime: 8.1,
-    legalRate: 0.998,
-  },
-  {
-    model: "claude45",
-    accuracy: 0.762,
-    elo: 2391,
-    cost: 4.9,
-    avgTokens: 5210,
-    avgMoveTime: 7.4,
-    legalRate: 0.996,
-  },
-  {
-    model: "gem25",
-    accuracy: 0.708,
-    elo: 2284,
-    cost: 3.2,
-    avgTokens: 3940,
-    avgMoveTime: 5.8,
-    legalRate: 0.991,
-  },
-  {
-    model: "ds35",
-    accuracy: 0.651,
-    elo: 2178,
-    cost: 0.42,
-    avgTokens: 6120,
-    avgMoveTime: 9.3,
-    legalRate: 0.974,
-  },
-  {
-    model: "grok4",
-    accuracy: 0.628,
-    elo: 2147,
-    cost: 5.1,
-    avgTokens: 4410,
-    avgMoveTime: 6.9,
-    legalRate: 0.982,
-  },
-  {
-    model: "llama4",
-    accuracy: 0.581,
-    elo: 2051,
-    cost: 0.18,
-    avgTokens: 2880,
-    avgMoveTime: 3.2,
-    legalRate: 0.951,
-  },
-] satisfies Array<{
-  model: ModelId
-  accuracy: number
-  elo: number
-  cost: number
-  avgTokens: number
-  avgMoveTime: number
-  legalRate: number
-}>
+const ELO_HISTORY = REAL_ELO_HISTORY
 
-const CATEGORY: Record<ModelId, Record<CategoryId, number>> = {
-  gpt5: {
-    mate: 0.88,
-    fork: 0.83,
-    pin: 0.81,
-    skewer: 0.79,
-    discoAtk: 0.76,
-    sacrifice: 0.69,
-    endgame: 0.74,
-    opening: 0.86,
-    middlegame: 0.72,
-    defense: 0.71,
-    zugzwang: 0.61,
-    promotion: 0.84,
-  },
-  claude45: {
-    mate: 0.86,
-    fork: 0.81,
-    pin: 0.79,
-    skewer: 0.77,
-    discoAtk: 0.74,
-    sacrifice: 0.71,
-    endgame: 0.73,
-    opening: 0.84,
-    middlegame: 0.74,
-    defense: 0.69,
-    zugzwang: 0.58,
-    promotion: 0.81,
-  },
-  gem25: {
-    mate: 0.81,
-    fork: 0.76,
-    pin: 0.72,
-    skewer: 0.7,
-    discoAtk: 0.68,
-    sacrifice: 0.62,
-    endgame: 0.66,
-    opening: 0.8,
-    middlegame: 0.66,
-    defense: 0.61,
-    zugzwang: 0.49,
-    promotion: 0.76,
-  },
-  ds35: {
-    mate: 0.74,
-    fork: 0.69,
-    pin: 0.66,
-    skewer: 0.63,
-    discoAtk: 0.59,
-    sacrifice: 0.58,
-    endgame: 0.61,
-    opening: 0.72,
-    middlegame: 0.61,
-    defense: 0.55,
-    zugzwang: 0.44,
-    promotion: 0.7,
-  },
-  grok4: {
-    mate: 0.71,
-    fork: 0.67,
-    pin: 0.64,
-    skewer: 0.62,
-    discoAtk: 0.58,
-    sacrifice: 0.54,
-    endgame: 0.57,
-    opening: 0.71,
-    middlegame: 0.58,
-    defense: 0.52,
-    zugzwang: 0.41,
-    promotion: 0.66,
-  },
-  llama4: {
-    mate: 0.66,
-    fork: 0.59,
-    pin: 0.58,
-    skewer: 0.55,
-    discoAtk: 0.49,
-    sacrifice: 0.46,
-    endgame: 0.51,
-    opening: 0.66,
-    middlegame: 0.52,
-    defense: 0.46,
-    zugzwang: 0.32,
-    promotion: 0.62,
-  },
-}
+const PUZZLES = REAL_PUZZLES
 
-const ELO_HISTORY: Record<ModelId, number[]> = {
-  gpt5: [2210, 2255, 2298, 2330, 2360, 2384, 2402, 2418],
-  claude45: [2240, 2261, 2294, 2316, 2344, 2370, 2384, 2391],
-  gem25: [2160, 2189, 2210, 2228, 2244, 2261, 2276, 2284],
-  ds35: [2030, 2069, 2096, 2118, 2134, 2155, 2168, 2178],
-  grok4: [2050, 2076, 2093, 2108, 2118, 2131, 2140, 2147],
-  llama4: [1930, 1958, 1981, 2001, 2019, 2034, 2044, 2051],
-}
-
-const PUZZLES: PuzzleItem[] = [
-  {
-    id: "lp_0001",
-    fen: "r1bqkb1r/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1",
-    themes: ["opening", "middlegame"],
-    side: "w",
-    rating: 1340,
-    popularity: 92,
-    solution: ["b5c6", "d7c6", "d2d3"],
-    caption: "Ruy Lopez: find the principled continuation after the exchange.",
-  },
-  {
-    id: "lp_0002",
-    fen: "r3k2r/pp3ppp/2p1bn2/q3N3/3P4/2N1B3/PPP2PPP/R2QK2R w KQkq - 0 1",
-    themes: ["fork", "middlegame"],
-    side: "w",
-    rating: 1820,
-    popularity: 78,
-    solution: ["e5c6", "a5d2", "c6e7"],
-    caption: "A double-purpose knight jump wins material and threatens mate.",
-  },
-  {
-    id: "lp_0003",
-    fen: "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1",
-    themes: ["endgame", "mate"],
-    side: "w",
-    rating: 1450,
-    popularity: 86,
-    solution: ["d1d8"],
-    caption: "King and rook versus king: exact mating net technique required.",
-  },
-  {
-    id: "lp_0004",
-    fen: "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1",
-    themes: ["pin", "sacrifice"],
-    side: "w",
-    rating: 2110,
-    popularity: 71,
-    solution: ["d4f5", "f6e5", "f5g7"],
-    caption:
-      "Classic Italian setup: exploit the f7 weakness via a knight tour.",
-  },
-  {
-    id: "lp_0005",
-    fen: "5rk1/pp3ppp/2p5/8/2BQ4/P7/1P3PPP/4q1K1 b - - 0 1",
-    themes: ["skewer", "defense"],
-    side: "b",
-    rating: 1690,
-    popularity: 64,
-    solution: ["e1g3", "g1h1", "g3c3"],
-    caption: "Black to move: find the only defense that holds material.",
-  },
-  {
-    id: "lp_0006",
-    fen: "r4rk1/1pp2ppp/p1nbbn2/3p4/3P4/2NBPN2/PP3PPP/R1BQ1RK1 w - - 0 1",
-    themes: ["discoAtk", "middlegame"],
-    side: "w",
-    rating: 1880,
-    popularity: 58,
-    solution: ["d3h7", "g8h7", "f3g5"],
-    caption: "Greek gift: calculate the king hunt three moves deep.",
-  },
-  {
-    id: "lp_0007",
-    fen: "8/3k4/8/8/3P4/3K4/8/8 w - - 0 1",
-    themes: ["endgame", "zugzwang"],
-    side: "w",
-    rating: 1560,
-    popularity: 88,
-    solution: ["d3e4"],
-    caption: "King and pawn versus king: opposition decides the result.",
-  },
-  {
-    id: "lp_0008",
-    fen: "8/2P5/3k4/8/8/8/8/3K4 w - - 0 1",
-    themes: ["promotion", "endgame"],
-    side: "w",
-    rating: 1290,
-    popularity: 81,
-    solution: ["c7c8q"],
-    caption: "Pawn one step from queening: confirm the standard promotion.",
-  },
-  {
-    id: "lp_0009",
-    fen: "r1bq1rk1/pp3ppp/2n1pn2/2bp4/3P4/2NBPN2/PP3PPP/R1BQ1RK1 w - - 0 1",
-    themes: ["middlegame", "pin"],
-    side: "w",
-    rating: 1750,
-    popularity: 67,
-    solution: ["d3h7", "f6h7", "d1d3"],
-    caption: "Bishop lift: set up a kingside assault.",
-  },
-  {
-    id: "lp_0010",
-    fen: "2r3k1/5ppp/p3p3/1p1qP3/3P4/P1Q5/1P3PPP/3R2K1 b - - 0 1",
-    themes: ["mate", "sacrifice"],
-    side: "b",
-    rating: 2240,
-    popularity: 49,
-    solution: ["d5d4", "c3d4", "c8c1"],
-    caption: "Black to move: back-rank pressure with deflection.",
-  },
-  {
-    id: "lp_0011",
-    fen: "rnb1kbnr/pppp1ppp/8/4p3/5Pq1/4P3/PPPP2PP/RNBQKBNR w KQkq - 0 1",
-    themes: ["opening", "defense"],
-    side: "w",
-    rating: 1180,
-    popularity: 90,
-    solution: ["g2g3"],
-    caption: "Avoid an early disaster after f2-f4. One move keeps you alive.",
-  },
-  {
-    id: "lp_0012",
-    fen: "4r1k1/p1q2pp1/1p2pn1p/3p4/3P4/P3PN2/1PQ2PPP/4R1K1 b - - 0 1",
-    themes: ["middlegame", "fork"],
-    side: "b",
-    rating: 1980,
-    popularity: 53,
-    solution: ["f6e4", "c2e4", "e8e4"],
-    caption: "Knight to e4: decide whether the exchange favours Black.",
-  },
-]
-
-const META = {
-  puzzleCount: 12482,
-  evaluations: 74892,
-  lastUpdated: "2026-05-14",
-  version: "0.7.2",
-}
-
-const files = ["a", "b", "c", "d", "e", "f", "g", "h"] as const
+const META = REAL_META
 
 const subscribeMounted = () => () => undefined
 
@@ -514,10 +155,6 @@ function modelById(id: ModelId) {
   return MODELS.find((model) => model.id === id) ?? MODELS[0]
 }
 
-function scoreById(id: ModelId) {
-  return SCOREBOARD.find((score) => score.model === id) ?? SCOREBOARD[0]
-}
-
 function categoryById(id: CategoryId) {
   return CATEGORIES.find((category) => category.id === id)
 }
@@ -526,22 +163,31 @@ function pct(value: number, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`
 }
 
-function mutateMove(uci: string, seed: number) {
-  const target = uci.slice(2, 4)
-  const fileIndex = files.indexOf(target[0] as (typeof files)[number])
-  const rank = Number.parseInt(target[1] ?? "1", 10)
-  const nextFile =
-    files[Math.max(0, Math.min(7, fileIndex + (seed % 2 === 0 ? 1 : -1)))]
-  const nextRank = Math.max(1, Math.min(8, rank + (seed % 2 === 0 ? 0 : 1)))
-  return `${uci.slice(0, 2)}${nextFile}${nextRank}`
+function average(values: number[]) {
+  return values.length === 0
+    ? 0
+    : values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-function prettyMove(uci: string) {
-  if (!uci) {
-    return ""
+function median(values: number[]) {
+  if (values.length === 0) {
+    return 0
   }
 
-  return `${uci.slice(0, 2)} -> ${uci.slice(2, 4)}${uci.length > 4 ? `=${uci[4]?.toUpperCase()}` : ""}`
+  const sorted = [...values].sort((a, b) => a - b)
+  const midpoint = Math.floor(sorted.length / 2)
+
+  return sorted.length % 2 === 0
+    ? ((sorted[midpoint - 1] ?? 0) + (sorted[midpoint] ?? 0)) / 2
+    : (sorted[midpoint] ?? 0)
+}
+
+function compactTokens(value: number) {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`
+  }
+
+  return Math.round(value).toString()
 }
 
 function readableMove(uci: string) {
@@ -560,60 +206,8 @@ function readableMove(uci: string) {
   return `${from} to ${to}${promotion}`
 }
 
-function makeTranscript(
-  model: (typeof MODELS)[number],
-  puzzle: PuzzleItem,
-  correct: boolean,
-  played: string
-) {
-  const evalText = correct
-    ? `${(1.4 + (puzzle.rating % 120) / 100).toFixed(2)} rising`
-    : `${(0.2 + (puzzle.rating % 60) / 100).toFixed(2)} unsure`
-
-  return [
-    `# ${model.name} reasoning - puzzle ${puzzle.id}`,
-    `Position: ${puzzle.fen}`,
-    `Side to move: ${puzzle.side === "w" ? "White" : "Black"}`,
-    "",
-    "<think>",
-    `The themes suggest ${puzzle.themes.map((theme) => categoryById(theme)?.label ?? theme).join(", ")}.`,
-    "I am checking forcing moves first: checks, captures, threats, then quiet defensive resources.",
-    `Candidate A: ${prettyMove(played)} - opens lines or creates a tactical fork.`,
-    "Candidate B: a developing move - likely too slow for this position.",
-    correct
-      ? `After ${prettyMove(played)}, the reply is forced and the continuation remains winning.`
-      : `After ${prettyMove(played)}, the line looks plausible, but a defensive resource may refute it.`,
-    `Eval: ${evalText}`,
-    "</think>",
-    "",
-    `MOVE: ${played}`,
-  ].join("\n")
-}
-
 function solutionsFor(puzzle: PuzzleItem): SolutionAttempt[] {
-  const firstMove = puzzle.solution[0]
-
-  if (!firstMove) {
-    return []
-  }
-
-  return MODELS.map((model, index) => {
-    const score = scoreById(model.id)
-    const correct =
-      score.accuracy * (1900 / Math.max(1100, puzzle.rating)) >
-      0.55 + index * 0.005
-    const playedMove = correct ? firstMove : mutateMove(firstMove, index)
-
-    return {
-      model: model.id,
-      correct,
-      playedMove,
-      movePretty: prettyMove(playedMove),
-      thinkingMs: 2400 + index * 700 + ((puzzle.rating + index * 47) % 1500),
-      thinkingTokens: 380 + index * 120 + ((puzzle.rating + index * 31) % 220),
-      transcript: makeTranscript(model, puzzle, correct, playedMove),
-    }
-  })
+  return puzzle.attempts
 }
 
 function safeSquare(square: string) {
@@ -772,9 +366,9 @@ function LeaderboardView() {
   const sorted = [...SCOREBOARD].sort((a, b) => b.accuracy - a.accuracy)
   const leader = sorted[0]
   const leaderModel = modelById(leader.model)
-  const spread = Math.round(
-    (leader.accuracy - sorted[sorted.length - 1].accuracy) * 100
-  )
+  const avgTokens = average(sorted.map((score) => score.avgTokens))
+  const medianMove = median(sorted.map((score) => score.avgMoveTime))
+  const meanLegalRate = average(sorted.map((score) => score.legalRate))
 
   return (
     <div className="space-y-8">
@@ -807,19 +401,19 @@ function LeaderboardView() {
         <SummaryCard
           icon={Brain}
           label="Avg thinking"
-          value="4.6k"
-          sub="tokens per solved puzzle"
+          value={compactTokens(avgTokens)}
+          sub="tokens per attempted puzzle"
         />
         <SummaryCard
           icon={Clock}
           label="Median move"
-          value="6.8s"
-          sub="across six model families"
+          value={`${medianMove.toFixed(1)}s`}
+          sub={`across ${MODELS.length} model families`}
         />
         <SummaryCard
           icon={BarChart3}
           label="Legal moves"
-          value={pct(0.982)}
+          value={pct(meanLegalRate)}
           sub="mean parse and legality rate"
         />
       </section>
@@ -895,22 +489,9 @@ function LeaderboardView() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Note: the design handoff uses plausible mocked results for the UI.
-        ChessBench is not affiliated with any model provider.
+        Note: results are generated from local canonical benchmark CSV
+        snapshots. ChessBench is not affiliated with any model provider.
       </p>
-    </div>
-  )
-}
-
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-background p-4">
-      <div className="text-[0.68rem] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-        {label}
-      </div>
-      <div className="mt-1 font-mono text-xl font-semibold tabular-nums">
-        {value}
-      </div>
     </div>
   )
 }
@@ -1037,45 +618,65 @@ function CategoryBars() {
   })
 
   return (
-    <ChartContainer
-      config={modelChartConfig}
-      className="aspect-auto h-[360px] w-full"
-    >
-      <BarChart
-        data={data}
-        margin={{ left: 0, right: 16, top: 12, bottom: 48 }}
+    <div className="space-y-4">
+      <ChartContainer
+        config={modelChartConfig}
+        className="aspect-auto h-[360px] w-full"
       >
-        <CartesianGrid vertical={false} strokeDasharray="3 3" />
-        <XAxis
-          dataKey="category"
-          tickLine={false}
-          axisLine={false}
-          interval={0}
-          angle={-28}
-          textAnchor="end"
-          height={72}
-        />
-        <YAxis width={36} tickFormatter={(value) => `${value}%`} />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              formatter={(value) => `${Number(value).toFixed(1)}%`}
-            />
-          }
-        />
-        {sorted.map((score) => {
-          const model = modelById(score.model)
-          return (
-            <Bar
-              key={score.model}
-              dataKey={score.model}
-              fill={model.color}
-              radius={2}
-            />
-          )
-        })}
-      </BarChart>
-    </ChartContainer>
+        <BarChart
+          data={data}
+          margin={{ left: 0, right: 16, top: 12, bottom: 48 }}
+        >
+          <CartesianGrid vertical={false} strokeDasharray="3 3" />
+          <XAxis
+            dataKey="category"
+            tickLine={false}
+            axisLine={false}
+            interval={0}
+            angle={-28}
+            textAnchor="end"
+            height={72}
+          />
+          <YAxis width={36} tickFormatter={(value) => `${value}%`} />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                formatter={(value, name) => {
+                  const model = modelById(name as ModelId)
+
+                  return (
+                    <div className="flex w-full min-w-36 items-center justify-between gap-3 leading-none">
+                      <span className="text-muted-foreground">
+                        {model.name}
+                      </span>
+                      <span className="font-mono font-medium text-foreground tabular-nums">
+                        {Number(value).toFixed(1)}%
+                      </span>
+                    </div>
+                  )
+                }}
+              />
+            }
+          />
+          {sorted.map((score) => {
+            const model = modelById(score.model)
+            return (
+              <Bar
+                key={score.model}
+                dataKey={score.model}
+                fill={model.color}
+                radius={2}
+              />
+            )
+          })}
+        </BarChart>
+      </ChartContainer>
+      <div className="flex flex-wrap justify-center gap-3">
+        {sorted.map((score) => (
+          <ModelChip key={score.model} id={score.model} />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -1140,6 +741,9 @@ function EloLineChart() {
   const maxRounds = Math.max(
     ...MODELS.map((model) => ELO_HISTORY[model.id]?.length ?? 0)
   )
+  const eloValues = MODELS.flatMap((model) => ELO_HISTORY[model.id] ?? [])
+  const minElo = Math.floor((Math.min(...eloValues) - 100) / 100) * 100
+  const maxElo = Math.ceil((Math.max(...eloValues) + 100) / 100) * 100
   const rounds = Array.from({ length: maxRounds }, (_, index) => {
     const row: Record<string, string | number> = { round: `R${index + 1}` }
     for (const model of MODELS) {
@@ -1161,7 +765,7 @@ function EloLineChart() {
         <XAxis dataKey="round" tickLine={false} axisLine={false} />
         <YAxis
           width={44}
-          domain={[1900, 2450]}
+          domain={[minElo, maxElo]}
           tickLine={false}
           axisLine={false}
         />
@@ -1218,7 +822,7 @@ function TradeoffScatter() {
               dataKey="accuracy"
               name="Accuracy"
               type="number"
-              domain={[50, 85]}
+              domain={[0, 100]}
               tickFormatter={(value) => `${value}%`}
             />
             <ChartTooltip
@@ -1266,7 +870,7 @@ function TradeoffScatter() {
               dataKey="accuracy"
               name="Accuracy"
               type="number"
-              domain={[50, 85]}
+              domain={[0, 100]}
               tickFormatter={(value) => `${value}%`}
             />
             <ChartTooltip
@@ -2041,6 +1645,12 @@ function MetaCell({
 }
 
 function DocsView() {
+  const ratings = PUZZLES.map((puzzle) => puzzle.rating)
+  const rowCounts = Object.values(META.rowsByModel)
+  const minRows = Math.min(...rowCounts)
+  const maxRows = Math.max(...rowCounts)
+  const maxMoveTime = Math.max(...SCOREBOARD.map((score) => score.avgMoveTime))
+
   return (
     <div className="space-y-8">
       <section className="space-y-4 border-b pb-8">
@@ -2065,9 +1675,10 @@ function DocsView() {
           <CardContent className="space-y-6 leading-7 text-muted-foreground">
             <p>
               Each model receives a position in FEN, the side to move, and a
-              strict instruction to output only the best move in UCI. Answers
-              are parsed with chess.js and illegal moves are counted separately
-              from legal-but-wrong moves.
+              strict instruction to output exactly one legal move token in UCI
+              or SAN, with no extra text. Answers are normalized to UCI for
+              scoring, and invalid formats are counted separately from
+              valid-but-wrong moves.
             </p>
             <Separator />
             <div>
@@ -2101,10 +1712,24 @@ function DocsView() {
               mono
             />
             <Metric label="Themes" value={CATEGORIES.length.toString()} mono />
-            <Metric label="Rating range" value="600-2800" mono />
-            <Metric label="Time / move" value="<= 60s" mono />
-            <Metric label="Runs / model" value="3" mono />
-            <Metric label="Token cap" value="8,192" mono />
+            <Metric
+              label="Rating range"
+              value={`${Math.min(...ratings)}-${Math.max(...ratings)}`}
+              mono
+            />
+            <Metric
+              label="Time / move"
+              value={`<= ${Math.ceil(maxMoveTime)}s`}
+              mono
+            />
+            <Metric
+              label="Rows / model"
+              value={
+                minRows === maxRows ? `${maxRows}` : `${minRows}-${maxRows}`
+              }
+              mono
+            />
+            <Metric label="Token cap" value={META.maxOutputTokens} mono />
           </CardContent>
         </Card>
       </div>
@@ -2296,8 +1921,8 @@ function ModelDot({
             <XaiDark className={cn(iconClassName, "hidden dark:block")} />
           </>
         )
-      case "llama4":
-        return <MetaLogo className={iconClassName} />
+      case "qwen3":
+        return <Brain className={iconClassName} />
     }
   })()
 

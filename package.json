@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "dashboard:data": "bun scripts/build-dashboard-data.ts",
     "benchmark:local": "bun scripts/run-benchmark.ts",
     "benchmark:cheap": "bun scripts/run-benchmark.ts --model google/gemini-3.1-flash-lite-preview --model openai/gpt-5-nano",
     "datasets:lichess:download": "bun scripts/download-lichess-puzzles.ts",

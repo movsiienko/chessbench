@@ -60,8 +60,10 @@ The runner requires at least one `--model`. By default it evaluates a
 deterministic 10-puzzle sample spread across rating bands. Use `--limit 50` for
 a larger sample, or `--all` for the full 500-puzzle benchmark.
 
-The local runner asks for one strict UCI move at a time. On a correct move, it
-reveals only the expected opponent move and asks for the next move in the same
+The local runner asks for exactly one legal move token at a time in UCI or
+standard algebraic (SAN) notation, with no explanation or extra text. It
+normalizes accepted answers to UCI for scoring. On a correct move, it reveals
+only the expected opponent move and asks for the next move in the same
 conversation. It stops a puzzle on the first wrong move, invalid format, or
 provider error.
 

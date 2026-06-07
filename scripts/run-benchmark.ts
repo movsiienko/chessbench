@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { generateText, type ModelMessage } from "ai"
+import type { ProviderOptions } from "@ai-sdk/provider-utils"
 import {
   selectDefaultLichessPuzzleItems,
   type LichessPuzzleBenchmarkItem,
@@ -17,7 +18,13 @@ type CliOptions = {
   limit: number
   all: boolean
   canonical: string | null
+  reasoningEffort: ReasoningEffort
+  maxOutputTokens: number | null
+  gatewaySystemCredentials: boolean
 }
+
+type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
+type ActiveReasoningEffort = Exclude<ReasoningEffort, "none">
 
 const benchmarkId = "lichess-puzzles-v1"
 const itemsPath = `data/benchmarks/${benchmarkId}/items.jsonl`
@@ -44,26 +51,54 @@ const selectedItems = options.all
   ? items
   : selectDefaultLichessPuzzleItems(items, options.limit)
 const rows: LichessPuzzleAttemptRow[] = []
+const localPath = join(localResultsDir, `${runId}.csv`)
+const totalAttempts = options.models.length * selectedItems.length
+let completedAttempts = 0
 
 for (const model of options.models) {
   for (const item of selectedItems) {
-    rows.push(
-      await runLichessPuzzleAttempt({
-        runId,
+    const row = await runLichessPuzzleAttempt({
+      runId,
+      model,
+      item,
+      generate: generateWithAiSdk,
+    })
+
+    rows.push(row)
+    completedAttempts += 1
+
+    await writeCsv(localPath, rows)
+    await writeCanonicalCsvs(rows)
+
+    console.log(
+      [
+        `[${completedAttempts}/${totalAttempts}]`,
         model,
-        item,
-        generate: generateWithAiSdk,
-      })
+        item.id,
+        row.status,
+        `solved=${row.solved}`,
+        row.costUsd === null ? "" : `cost=${row.costUsd.toFixed(6)}`,
+      ]
+        .filter(Boolean)
+        .join(" ")
     )
   }
 }
 
-const localPath = join(localResultsDir, `${runId}.csv`)
-await writeCsv(localPath, rows)
+console.log(`Wrote ${rows.length} rows to ${localPath}`)
 
-if (options.canonical) {
+async function writeCanonicalCsvs(rows: LichessPuzzleAttemptRow[]) {
+  if (!options.canonical) {
+    return
+  }
+
   for (const model of options.models) {
     const modelRows = rows.filter((row) => row.model === model)
+
+    if (modelRows.length === 0) {
+      continue
+    }
+
     const canonicalPath = join(
       canonicalResultsDir,
       `${sanitizeModelId(model)}-${options.canonical}.csv`
@@ -71,8 +106,6 @@ if (options.canonical) {
     await writeCsv(canonicalPath, modelRows)
   }
 }
-
-console.log(`Wrote ${rows.length} rows to ${localPath}`)
 
 async function generateWithAiSdk({
   model,
@@ -82,19 +115,43 @@ async function generateWithAiSdk({
   messages: BenchmarkMessage[]
 }) {
   const startedAt = performance.now()
+  const providerOptions = providerOptionsFor(model)
   const result = await generateText({
     model,
     messages: messages as ModelMessage[],
+    ...(options.maxOutputTokens === null
+      ? {}
+      : { maxOutputTokens: options.maxOutputTokens }),
+    ...(Object.keys(providerOptions).length === 0 ? {} : { providerOptions }),
   })
+  const gatewayMetadata = asRecord(result.providerMetadata?.gateway)
+  const routing = asRecord(gatewayMetadata?.routing)
+  const usage = result.usage as typeof result.usage & {
+    raw?: unknown
+    reasoningTokens?: number
+  }
+  const reasoningResult = result as typeof result & {
+    reasoningText?: string
+    reasoning?: unknown
+  }
 
   return {
     text: result.text,
+    reasoningText: reasoningResult.reasoningText,
+    reasoning: reasoningResult.reasoning,
     latencyMs: Math.round(performance.now() - startedAt),
     usage: {
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      totalTokens: result.usage.totalTokens,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      totalTokens: usage.totalTokens,
+      reasoningTokens: reasoningTokensFromUsage(usage),
+      raw: usage.raw,
     },
+    costUsd: numberFromUnknown(
+      gatewayMetadata?.gatewayCost ?? gatewayMetadata?.cost
+    ),
+    generationId: stringFromUnknown(gatewayMetadata?.generationId),
+    servedProvider: stringFromUnknown(routing?.finalProvider),
   }
 }
 
@@ -113,6 +170,9 @@ function parseArgs(args: string[]): CliOptions {
   let limit = 10
   let all = false
   let canonical: string | null = null
+  let reasoningEffort: ReasoningEffort = "low"
+  let maxOutputTokens: number | null = null
+  let gatewaySystemCredentials = false
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]
@@ -140,6 +200,29 @@ function parseArgs(args: string[]): CliOptions {
       continue
     }
 
+    if (arg === "--reasoning-effort") {
+      const value = readArgValue(args, index, "--reasoning-effort")
+      if (!isReasoningEffort(value)) {
+        throw new Error(
+          "--reasoning-effort must be one of none, minimal, low, medium, high, or xhigh"
+        )
+      }
+      reasoningEffort = value
+      index += 1
+      continue
+    }
+
+    if (arg === "--max-output-tokens") {
+      maxOutputTokens = Number(readArgValue(args, index, "--max-output-tokens"))
+      index += 1
+      continue
+    }
+
+    if (arg === "--gateway-system-credentials") {
+      gatewaySystemCredentials = true
+      continue
+    }
+
     throw new Error(`Unknown argument: ${arg}`)
   }
 
@@ -147,11 +230,21 @@ function parseArgs(args: string[]): CliOptions {
     throw new Error("--limit must be a positive integer")
   }
 
+  if (
+    maxOutputTokens !== null &&
+    (!Number.isInteger(maxOutputTokens) || maxOutputTokens < 1)
+  ) {
+    throw new Error("--max-output-tokens must be a positive integer")
+  }
+
   return {
     models,
     limit,
     all,
     canonical,
+    reasoningEffort,
+    maxOutputTokens,
+    gatewaySystemCredentials,
   }
 }
 
@@ -198,6 +291,12 @@ function serializeRows(rows: LichessPuzzleAttemptRow[]): string {
     "input_tokens",
     "output_tokens",
     "total_tokens",
+    "reasoning_effort",
+    "max_output_tokens",
+    "reasoning_tokens",
+    "cost_usd",
+    "served_provider",
+    "generation_id",
     "turns_json",
   ]
 
@@ -231,12 +330,222 @@ function serializeRows(rows: LichessPuzzleAttemptRow[]): string {
         row.inputTokens ?? "",
         row.outputTokens ?? "",
         row.totalTokens ?? "",
+        reasoningEffortForModel(row.model),
+        options.maxOutputTokens ?? "",
+        row.reasoningTokens ?? "",
+        row.costUsd ?? "",
+        row.servedProvider,
+        row.generationId,
         JSON.stringify(row.turns),
       ]
         .map((value) => escapeCsv(value))
         .join(",")
     ),
   ].join("\n")
+}
+
+function providerOptionsFor(model: string): ProviderOptions {
+  const providerOptions: ProviderOptions = {}
+  const activeEffort = activeReasoningEffort(options.reasoningEffort)
+
+  if (activeEffort && model.startsWith("openai/")) {
+    providerOptions.openai = { reasoningEffort: activeEffort }
+  }
+
+  if (activeEffort && model.startsWith("anthropic/")) {
+    providerOptions.anthropic = {
+      thinking: {
+        type: "adaptive",
+      },
+      output_config: {
+        effort: reasoningEffortForAnthropic(activeEffort),
+      },
+    }
+  }
+
+  if (activeEffort && model.startsWith("google/")) {
+    providerOptions.google = {
+      thinkingConfig: {
+        thinkingLevel: reasoningEffortForGoogle(activeEffort),
+        includeThoughts: true,
+      },
+    }
+  }
+
+  const xaiReasoningEffort = reasoningEffortForXai(activeEffort)
+  if (xaiReasoningEffort && model.startsWith("xai/")) {
+    providerOptions.xai = { reasoningEffort: xaiReasoningEffort }
+  }
+
+  if (model.startsWith("deepseek/")) {
+    providerOptions.deepseek = providerOptionsForDeepSeek(
+      options.reasoningEffort
+    )
+  }
+
+  if (options.gatewaySystemCredentials) {
+    providerOptions.gateway = {
+      byok: {},
+      tags: [`benchmark:${benchmarkId}`, `run:${runId}`],
+    }
+  }
+
+  return providerOptions
+}
+
+function reasoningEffortForModel(model: string): string {
+  if (model.startsWith("deepseek/")) {
+    return reasoningEffortForDeepSeek(options.reasoningEffort)
+  }
+
+  const activeEffort = activeReasoningEffort(options.reasoningEffort)
+
+  if (!activeEffort) {
+    return ""
+  }
+
+  if (modelIdImpliesThinking(model)) {
+    return "model-thinking"
+  }
+
+  if (model.startsWith("anthropic/")) {
+    return reasoningEffortForAnthropic(activeEffort)
+  }
+
+  if (model.startsWith("google/")) {
+    return reasoningEffortForGoogle(activeEffort)
+  }
+
+  if (model.startsWith("xai/")) {
+    return reasoningEffortForXai(activeEffort) ?? ""
+  }
+
+  if (!model.startsWith("openai/")) {
+    return ""
+  }
+
+  return activeEffort
+}
+
+function activeReasoningEffort(
+  effort: ReasoningEffort
+): ActiveReasoningEffort | null {
+  if (effort === "none") {
+    return null
+  }
+
+  return effort
+}
+
+function reasoningEffortForXai(
+  effort: ActiveReasoningEffort | null
+): "low" | "high" | null {
+  if (!effort) {
+    return null
+  }
+
+  return effort === "high" || effort === "xhigh" ? "high" : "low"
+}
+
+function reasoningEffortForAnthropic(
+  effort: ActiveReasoningEffort
+): "low" | "medium" | "high" | "max" {
+  if (effort === "xhigh") {
+    return "max"
+  }
+
+  if (effort === "high") {
+    return "high"
+  }
+
+  if (effort === "medium") {
+    return "medium"
+  }
+
+  return "low"
+}
+
+function reasoningEffortForGoogle(
+  effort: ActiveReasoningEffort
+): "low" | "medium" | "high" {
+  if (effort === "high" || effort === "xhigh") {
+    return "high"
+  }
+
+  if (effort === "medium") {
+    return "medium"
+  }
+
+  return "low"
+}
+
+function providerOptionsForDeepSeek(effort: ReasoningEffort) {
+  if (effort === "none") {
+    return { thinking: { type: "disabled" } }
+  }
+
+  return {
+    thinking: { type: "enabled" },
+    reasoning_effort: effort === "xhigh" ? "max" : "high",
+  }
+}
+
+function reasoningEffortForDeepSeek(effort: ReasoningEffort | null): string {
+  if (!effort || effort === "none") {
+    return "none"
+  }
+
+  return effort === "xhigh" ? "max" : "high"
+}
+
+function modelIdImpliesThinking(model: string): boolean {
+  return /(?:^|[-.])thinking(?:$|-)|(?:^|[-.])reasoning(?:$|-)/.test(model)
+}
+
+function isReasoningEffort(value: string): value is ReasoningEffort {
+  return ["none", "minimal", "low", "medium", "high", "xhigh"].includes(value)
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function reasoningTokensFromUsage(usage: {
+  outputTokenDetails?: { reasoningTokens?: number }
+  raw?: unknown
+  reasoningTokens?: number
+}) {
+  const rawUsage = asRecord(usage.raw)
+  const outputTokenDetails = asRecord(rawUsage?.output_tokens_details)
+  const completionTokenDetails = asRecord(rawUsage?.completion_tokens_details)
+
+  return (
+    usage.outputTokenDetails?.reasoningTokens ??
+    usage.reasoningTokens ??
+    numberFromUnknown(outputTokenDetails?.reasoning_tokens) ??
+    numberFromUnknown(outputTokenDetails?.thinking_tokens) ??
+    numberFromUnknown(completionTokenDetails?.reasoning_tokens) ??
+    numberFromUnknown(rawUsage?.thoughtsTokenCount)
+  )
+}
+
+function stringFromUnknown(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined
+}
+
+function numberFromUnknown(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return value
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  return undefined
 }
 
 function escapeCsv(value: unknown): string {

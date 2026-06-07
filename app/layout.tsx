@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google"
+import Script from "next/script"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -37,10 +38,13 @@ export default function RootLayout({
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
-      {/* impeccable-live-start */}
-<script src="http://localhost:8400/live.js"></script>
-{/* impeccable-live-end */}
-</body>
+        {/* impeccable-live-start */}
+        <Script
+          src="http://localhost:8400/live.js"
+          strategy="afterInteractive"
+        />
+        {/* impeccable-live-end */}
+      </body>
     </html>
   )
 }

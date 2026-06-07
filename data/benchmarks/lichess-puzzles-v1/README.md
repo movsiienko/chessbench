@@ -125,11 +125,12 @@ The `indexes` directory contains item-id indexes for common benchmark slices:
 
 ## Scoring
 
-The local runner asks for one UCI move at a time. If the model gives the correct
-move and the puzzle continues, the runner reveals the expected opponent reply in
-the same conversation and asks for the next move.
+The local runner asks for exactly one legal move token at a time in UCI or
+standard algebraic (SAN) notation, with no explanation or extra text. If the
+model gives the correct move and the puzzle continues, the runner reveals the
+expected opponent reply in the same conversation and asks for the next move.
 
-The scorer extracts UCI tokens and reports:
+The scorer normalizes accepted moves to UCI and reports:
 
 - `solved`: exact match against `expected.uciLine` or
   `expected.playerUciMoves`
