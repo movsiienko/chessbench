@@ -77,3 +77,23 @@ bun run benchmark:local -- --model openai/gpt-5-nano --canonical sample
 
 Canonical files are written as
 `data/results/canonical/lichess-puzzles-v1/<model-id>-sample.csv`.
+
+## Dashboard Provider Logos
+
+Dashboard model chips use provider SVG routes from [SVGL](https://svgl.app/).
+When adding a model from a new provider:
+
+1. Query `https://api.svgl.app?search=<provider>` or use the SVGL search UI.
+2. Add the returned `route` to `PROVIDER_SVGS` in
+   `components/chessbench-dashboard.tsx`. Preserve SVGL's light/dark route
+   object when one is returned.
+3. Map every new `DashboardModelId` in `MODEL_PROVIDER_LOGO`. The mapping uses
+   `satisfies Record<ModelId, ProviderLogoKey>`, so `bun run typecheck` fails
+   when dashboard data contains a model without an explicit provider SVG.
+4. Prefer the exact provider SVG. If SVGL does not have that provider, use the
+   closest model-family SVG and keep the fallback explicit. Current example:
+   `qwen3` uses SVGL's Qwen light/dark SVG because SVGL does not provide an
+   Alibaba provider logo.
+
+Current mappings: `gpt5` -> OpenAI, `claude45` -> Anthropic, `gem25` ->
+Google, `ds35` -> DeepSeek, `grok4` -> xAI, and `qwen3` -> Qwen.

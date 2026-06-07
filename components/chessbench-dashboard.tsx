@@ -48,14 +48,6 @@ import {
   YAxis,
 } from "recharts"
 
-import { AnthropicBlack } from "@/components/ui/svgs/anthropicBlack"
-import { AnthropicWhite } from "@/components/ui/svgs/anthropicWhite"
-import { Deepseek } from "@/components/ui/svgs/deepseek"
-import { Gemini } from "@/components/ui/svgs/gemini"
-import { Openai } from "@/components/ui/svgs/openai"
-import { OpenaiDark } from "@/components/ui/svgs/openaiDark"
-import { XaiDark } from "@/components/ui/svgs/xaiDark"
-import { XaiLight } from "@/components/ui/svgs/xaiLight"
 import {
   Accordion,
   AccordionContent,
@@ -131,6 +123,58 @@ type PuzzleItem = DashboardPuzzleItem
 type SolutionAttempt = DashboardSolutionAttempt
 
 const MODELS = REAL_MODELS
+
+type ProviderSvgRoute = string | { light: string; dark: string }
+
+const PROVIDER_SVGS = {
+  openai: {
+    label: "OpenAI",
+    route: {
+      light: "https://svgl.app/library/openai.svg",
+      dark: "https://svgl.app/library/openai_dark.svg",
+    },
+  },
+  anthropic: {
+    label: "Anthropic",
+    route: {
+      light: "https://svgl.app/library/anthropic_black.svg",
+      dark: "https://svgl.app/library/anthropic_white.svg",
+    },
+  },
+  google: {
+    label: "Google",
+    route: "https://svgl.app/library/google.svg",
+  },
+  deepseek: {
+    label: "DeepSeek",
+    route: "https://svgl.app/library/deepseek.svg",
+  },
+  xai: {
+    label: "xAI",
+    route: {
+      light: "https://svgl.app/library/xai_light.svg",
+      dark: "https://svgl.app/library/xai_dark.svg",
+    },
+  },
+  qwen: {
+    label: "Qwen",
+    route: {
+      light: "https://svgl.app/library/qwen_light.svg",
+      dark: "https://svgl.app/library/qwen_dark.svg",
+    },
+  },
+} as const satisfies Record<string, { label: string; route: ProviderSvgRoute }>
+
+type ProviderLogoKey = keyof typeof PROVIDER_SVGS
+
+const MODEL_PROVIDER_LOGO = {
+  gpt5: "openai",
+  claude45: "anthropic",
+  gem25: "google",
+  ds35: "deepseek",
+  grok4: "xai",
+  qwen3: "qwen",
+} as const satisfies Record<ModelId, ProviderLogoKey>
 
 const CATEGORIES = REAL_CATEGORIES
 
@@ -1890,41 +1934,7 @@ function ModelDot({
   model: ModelId
   className?: string
 }) {
-  const iconClassName = "max-h-full max-w-full"
-
-  const icon = (() => {
-    switch (model) {
-      case "gpt5":
-        return (
-          <>
-            <Openai className={cn(iconClassName, "dark:hidden")} />
-            <OpenaiDark className={cn(iconClassName, "hidden dark:block")} />
-          </>
-        )
-      case "claude45":
-        return (
-          <>
-            <AnthropicBlack className={cn(iconClassName, "dark:hidden")} />
-            <AnthropicWhite
-              className={cn(iconClassName, "hidden dark:block")}
-            />
-          </>
-        )
-      case "gem25":
-        return <Gemini className={iconClassName} />
-      case "ds35":
-        return <Deepseek className={iconClassName} />
-      case "grok4":
-        return (
-          <>
-            <XaiLight className={cn(iconClassName, "dark:hidden")} />
-            <XaiDark className={cn(iconClassName, "hidden dark:block")} />
-          </>
-        )
-      case "qwen3":
-        return <Brain className={iconClassName} />
-    }
-  })()
+  const provider = MODEL_PROVIDER_LOGO[model]
 
   return (
     <span
@@ -1934,8 +1944,42 @@ function ModelDot({
       )}
       aria-hidden="true"
     >
-      {icon}
+      <ProviderSvg provider={provider} />
     </span>
+  )
+}
+
+function ProviderSvg({ provider }: { provider: ProviderLogoKey }) {
+  const svg = PROVIDER_SVGS[provider]
+
+  if (typeof svg.route === "string") {
+    return <ProviderSvgImage src={svg.route} />
+  }
+
+  return (
+    <>
+      <ProviderSvgImage src={svg.route.light} className="dark:hidden" />
+      <ProviderSvgImage src={svg.route.dark} className="hidden dark:block" />
+    </>
+  )
+}
+
+function ProviderSvgImage({
+  src,
+  className,
+}: {
+  src: string
+  className?: string
+}) {
+  return (
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      className={cn("block h-full w-full object-contain", className)}
+    />
   )
 }
 
