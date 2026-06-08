@@ -381,7 +381,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "h4h5",
         "movePretty": "h4 -> h5",
         "thinkingMs": 2122,
-        "thinkingTokens": 149,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:rYFDJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22H3FFZQ2A48V7DDBRRJX\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: c2c4 b3c4 e3e4\nSubmitted player moves: h4h5\nLatency: 2122ms\nTokens: 149\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.000198\n\nTurn 1\nPrompt:\nPosition FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh4h5\nParsed move: h4h5\nExpected move: c2c4\nResult: wrong_move"
       }
     ]
@@ -454,7 +454,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "f2f1",
         "movePretty": "f2 -> f1",
         "thinkingMs": 4428,
-        "thinkingTokens": 409,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:xcx9M\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22MM9SNCQ1T06MY6ZCEG9\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: f2f1 e2f1q\nSubmitted player moves: f2f1\nLatency: 4428ms\nTokens: 409\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0005292\n\nTurn 1\nPrompt:\nPosition FEN: r1b5/p5k1/1b5p/4R1pQ/1Np5/8/PPP1prPP/R6K b - - 0 24\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf1+\nParsed move: f2f1\nExpected move: f2f1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: a1f1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxf1+\nParsed move: (none)\nExpected move: e2f1q\nResult: invalid_format"
       }
     ]
@@ -527,7 +527,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "f6g6",
         "movePretty": "f6 -> g6",
         "thinkingMs": 2489,
-        "thinkingTokens": 155,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:wAIrQ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22QGM14XH0PBNB516PF21\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: h7g7 a2e6 f6e6\nSubmitted player moves: f6g6\nLatency: 2489ms\nTokens: 155\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0002052\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/3qr1rR/2p1pQb1/ppP1Pp2/3P4/P1P5/B5PP/6K1 w - - 0 36\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxg6\nParsed move: f6g6\nExpected move: h7g7\nResult: wrong_move"
       }
     ]
@@ -598,7 +598,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "",
         "movePretty": "",
         "thinkingMs": 992,
-        "thinkingTokens": 153,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:Aw4iZ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22SYKAM6HTVY6P7AWDKTK\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: h5d1 c6d4\nSubmitted player moves: \nLatency: 992ms\nTokens: 153\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.000198\n\nTurn 1\nPrompt:\nPosition FEN: r1b1kbnr/pp3ppp/2n1p3/7q/2BN4/8/PPPN1PPP/R1BQ1RK1 b kq - 0 8\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nBxd4\nParsed move: (none)\nExpected move: h5d1\nResult: invalid_format"
       }
     ]
@@ -674,7 +674,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "d6d5",
         "movePretty": "d6 -> d5",
         "thinkingMs": 2173,
-        "thinkingTokens": 150,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:xxsYf\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22TY712492A3KJ243013B\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: d6d5\nLatency: 2173ms\nTokens: 150\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0001992\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nd6d5\nParsed move: d6d5\nExpected move: b8b5\nResult: wrong_move"
       }
     ]
@@ -746,7 +746,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "h6a6",
         "movePretty": "h6 -> a6",
         "thinkingMs": 953,
-        "thinkingTokens": 148,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:6RXXg\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22X1VJMXNCF1DNCYPNZSN\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: b2b4 h6c6\nSubmitted player moves: h6a6\nLatency: 953ms\nTokens: 148\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.000192\n\nTurn 1\nPrompt:\nPosition FEN: 4r3/8/p6R/1pkp4/8/2P3r1/PP1K1p2/4n3 w - - 0 44\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxa6\nParsed move: h6a6\nExpected move: b2b4\nResult: wrong_move"
       }
     ]
@@ -818,7 +818,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "",
         "movePretty": "",
         "thinkingMs": 1949,
-        "thinkingTokens": 159,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:bHLqd\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22Y0ANPD7MCG1BZ62H15G\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: e6d7 c1d2\nSubmitted player moves: \nLatency: 1949ms\nTokens: 159\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.00021\n\nTurn 1\nPrompt:\nPosition FEN: 1r2r1k1/3q4/1p2P1p1/p1p3Pp/1nP5/6QN/1P6/2K1R3 w - - 0 33\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxe8+\nParsed move: (none)\nExpected move: e6d7\nResult: invalid_format"
       }
     ]
@@ -890,7 +890,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "",
         "movePretty": "",
         "thinkingMs": 2122,
-        "thinkingTokens": 158,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:i8DfM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22ZZP8HHZ4S70BHM4HKS3\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: g6h7 f1f8\nSubmitted player moves: \nLatency: 2122ms\nTokens: 158\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0002088\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/6p1/p3p1B1/1p2q1b1/7p/1P5P/P1Qr2P1/5R1K w - - 1 35\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxf8+\nParsed move: (none)\nExpected move: g6h7\nResult: invalid_format"
       }
     ]
@@ -962,7 +962,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "",
         "movePretty": "",
         "thinkingMs": 2230,
-        "thinkingTokens": 162,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:t42fM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE2320RV5C12G0TC9DJKE5W\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: c4c3 f8c8 c8c4\nSubmitted player moves: \nLatency: 2230ms\nTokens: 162\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0002088\n\nTurn 1\nPrompt:\nPosition FEN: r4q1r/1k2bp2/4p1p1/1p1pP3/1PpP1PB1/4B2P/1Q1K4/R4R2 b - - 0 40\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxf4\nParsed move: (none)\nExpected move: c4c3\nResult: invalid_format"
       }
     ]
@@ -1034,7 +1034,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "playedMove": "h8f8",
         "movePretty": "h8 -> f8",
         "thinkingMs": 2859,
-        "thinkingTokens": 408,
+        "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:NblXJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE23656TA2AJQFW9X6CMK6E\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: h8f8 f8f5 f5d5\nSubmitted player moves: h8f8\nLatency: 2859ms\nTokens: 408\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0005184\n\nTurn 1\nPrompt:\nPosition FEN: 7R/3p3P/2p5/1pPb1p2/1P3k1r/2KB4/8/8 w - - 0 45\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: h8f8\nExpected move: h8f8\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: h4h7.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: (none)\nExpected move: f8f5\nResult: invalid_format"
       }
     ]

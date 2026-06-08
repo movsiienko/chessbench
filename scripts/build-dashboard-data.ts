@@ -506,9 +506,9 @@ function buildAttempt(model: ModelId, row: ResultRow) {
     correct: row.solved === "true",
     playedMove,
     movePretty: prettyMove(playedMove),
-    thinkingMs: Number(row.latency_ms_total) || 0,
+    thinkingMs: finiteNumber(row.latency_ms_total) ?? 0,
     thinkingTokens:
-      Number(row.reasoning_tokens) || Number(row.total_tokens) || 0,
+      finiteNumber(row.reasoning_tokens) ?? finiteNumber(row.total_tokens) ?? 0,
     transcript: buildTranscript(row, turns),
   }
 }
@@ -620,6 +620,15 @@ function average(values: number[]) {
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0)
+}
+
+function finiteNumber(value: string | undefined): number | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 function unique<T>(values: T[]) {

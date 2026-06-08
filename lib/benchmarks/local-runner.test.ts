@@ -150,6 +150,23 @@ describe("local lichess puzzle attempts", () => {
     assert.equal(row.playerMovePrefixScore, 0)
   })
 
+  test("marks illegal UCI-shaped moves invalid", async () => {
+    const row = await runLichessPuzzleAttempt({
+      runId: "run",
+      model: "test/model",
+      item: puzzle(),
+      generate: async () => ({ text: "a1b3", latencyMs: 10 }),
+    })
+
+    assert.equal(row.status, "invalid_format")
+    assert.equal(row.solved, false)
+    assert.deepEqual(row.submittedPlayerMoves, [])
+    assert.equal(
+      parseAcceptedMoveAnswer("a1b3", "8/8/8/8/8/8/8/R3K2k w - - 0 1"),
+      null
+    )
+  })
+
   test("parses SAN captures against the supplied position", () => {
     assert.equal(
       parseAcceptedMoveAnswer("Rxa6", "8/8/r7/8/8/8/8/R3K2k w - - 0 1"),

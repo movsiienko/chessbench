@@ -1486,7 +1486,7 @@ function ProblemFocus({
     setBoardFen(move.fen)
     setLastMove({ from: move.from, to: move.to })
     setFeedback({
-      ok: puzzle.solution.includes(played),
+      ok: played === expected,
       played,
       expected,
       san: move.san,

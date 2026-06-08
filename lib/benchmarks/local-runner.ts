@@ -340,10 +340,20 @@ export function parseAcceptedMoveAnswer(
   const uciMove = parseStrictUciMove(normalized)
 
   if (uciMove) {
-    return uciMove
+    return parseUciMove(uciMove, fen)
   }
 
   return parseSanMove(normalized, fen)
+}
+
+function parseUciMove(answer: string, fen: string): string | null {
+  try {
+    const chess = new Chess(fen)
+    const move = chess.move(uciToMoveObject(answer))
+    return `${move.from}${move.to}${move.promotion ?? ""}`.toLowerCase()
+  } catch {
+    return null
+  }
 }
 
 function parseSanMove(answer: string, fen: string): string | null {
