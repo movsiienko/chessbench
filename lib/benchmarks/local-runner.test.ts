@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
-import { runLichessPuzzleAttempt } from "./local-runner"
+import {
+  parseAcceptedMoveAnswer,
+  runLichessPuzzleAttempt,
+} from "./local-runner"
 
 function puzzle(): LichessPuzzleBenchmarkItem {
   return {
@@ -42,7 +45,7 @@ function puzzle(): LichessPuzzleBenchmarkItem {
 }
 
 describe("local lichess puzzle attempts", () => {
-  test("runs a puzzle as strict UCI multi-turn interaction", async () => {
+  test("runs a puzzle as UCI/SAN multi-turn interaction", async () => {
     const answers = ["c2c4", "b3c4", "e3e4"]
 
     const row = await runLichessPuzzleAttempt({
@@ -70,19 +73,51 @@ describe("local lichess puzzle attempts", () => {
         [
           "Position FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31",
           "Find the best move for the side to move.",
-          "Reply with UCI move notation only.",
+          "Output contract:",
+          "Return exactly one legal chess move for the side to move.",
+          "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+          "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
         ].join("\n"),
         [
           "Opponent played: b5c4.",
           "Find the next move.",
-          "Reply with UCI move notation only.",
+          "Output contract:",
+          "Return exactly one legal chess move for the side to move.",
+          "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+          "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
         ].join("\n"),
         [
           "Opponent played: d5c4.",
           "Find the next move.",
-          "Reply with UCI move notation only.",
+          "Output contract:",
+          "Return exactly one legal chess move for the side to move.",
+          "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+          "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
         ].join("\n"),
       ]
+    )
+  })
+
+  test("accepts SAN answers and stores them as UCI moves", async () => {
+    const answers = ["1. c4!", "bxc4+", "`Kxe4`"]
+
+    const row = await runLichessPuzzleAttempt({
+      runId: "run",
+      model: "test/model",
+      item: puzzle(),
+      generate: async () => {
+        const answer = answers.shift()
+        assert.notEqual(answer, undefined)
+        return { text: answer ?? "", latencyMs: 10 }
+      },
+    })
+
+    assert.equal(row.status, "ok")
+    assert.equal(row.solved, true)
+    assert.deepEqual(row.submittedPlayerMoves, ["c2c4", "b3c4", "e3e4"])
+    assert.deepEqual(
+      row.turns.map((turn) => turn.parsedMove),
+      ["c2c4", "b3c4", "e3e4"]
     )
   })
 
@@ -113,5 +148,87 @@ describe("local lichess puzzle attempts", () => {
     assert.equal(row.solved, false)
     assert.deepEqual(row.submittedPlayerMoves, ["a2a3"])
     assert.equal(row.playerMovePrefixScore, 0)
+  })
+
+  test("marks illegal UCI-shaped moves invalid", async () => {
+    const row = await runLichessPuzzleAttempt({
+      runId: "run",
+      model: "test/model",
+      item: puzzle(),
+      generate: async () => ({ text: "a1b3", latencyMs: 10 }),
+    })
+
+    assert.equal(row.status, "invalid_format")
+    assert.equal(row.solved, false)
+    assert.deepEqual(row.submittedPlayerMoves, [])
+    assert.equal(
+      parseAcceptedMoveAnswer("a1b3", "8/8/8/8/8/8/8/R3K2k w - - 0 1"),
+      null
+    )
+  })
+
+  test("parses SAN captures against the supplied position", () => {
+    assert.equal(
+      parseAcceptedMoveAnswer("Rxa6", "8/8/r7/8/8/8/8/R3K2k w - - 0 1"),
+      "a1a6"
+    )
+  })
+
+  test("parses SAN edge-case notation", () => {
+    const cases: Array<{
+      answer: string
+      fen: string
+      expected: string
+    }> = [
+      {
+        answer: "O-O",
+        fen: "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+        expected: "e1g1",
+      },
+      {
+        answer: "```chess\n0-0!\n```",
+        fen: "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+        expected: "e1g1",
+      },
+      {
+        answer: "0-0-0?",
+        fen: "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+        expected: "e1c1",
+      },
+      {
+        answer: "e8=Q+",
+        fen: "7k/4P3/8/8/8/8/8/4K3 w - - 0 1",
+        expected: "e7e8q",
+      },
+      {
+        answer: "Nbd2",
+        fen: "7k/8/8/8/8/5N2/8/1N2K3 w - - 0 1",
+        expected: "b1d2",
+      },
+      {
+        answer: "N1d2",
+        fen: "7k/8/8/8/8/5N2/8/5NK1 w - - 0 1",
+        expected: "f1d2",
+      },
+      {
+        answer: "Raxe6",
+        fen: "7k/8/R3p2R/8/8/8/8/4K3 w - - 0 1",
+        expected: "a6e6",
+      },
+      {
+        answer: "exd6",
+        fen: "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
+        expected: "e5d6",
+      },
+      {
+        answer: "Qh4#",
+        fen: "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq g3 0 2",
+        expected: "d8h4",
+      },
+    ]
+
+    for (const { answer, fen, expected } of cases) {
+      assert.equal(parseAcceptedMoveAnswer(answer, fen), expected, answer)
+    }
   })
 })

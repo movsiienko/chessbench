@@ -60,8 +60,10 @@ The runner requires at least one `--model`. By default it evaluates a
 deterministic 10-puzzle sample spread across rating bands. Use `--limit 50` for
 a larger sample, or `--all` for the full 500-puzzle benchmark.
 
-The local runner asks for one strict UCI move at a time. On a correct move, it
-reveals only the expected opponent move and asks for the next move in the same
+The local runner asks for exactly one legal move token at a time in UCI or
+standard algebraic (SAN) notation, with no explanation or extra text. It
+normalizes accepted answers to UCI for scoring. On a correct move, it reveals
+only the expected opponent move and asks for the next move in the same
 conversation. It stops a puzzle on the first wrong move, invalid format, or
 provider error.
 
@@ -75,3 +77,30 @@ bun run benchmark:local -- --model openai/gpt-5-nano --canonical sample
 
 Canonical files are written as
 `data/results/canonical/lichess-puzzles-v1/<model-id>-sample.csv`.
+
+## Dashboard Lab Logos
+
+Dashboard model chips use lab SVG routes for the model authors listed by
+[models.dev labs](https://models.dev/labs/). `LAB_SVGS` in
+`components/chessbench-dashboard.tsx` is keyed by the generated
+`DashboardLabId` union from `lib/benchmarks/dashboard-data.ts`.
+
+`scripts/build-dashboard-data.ts` derives `DashboardModel.lab` from
+`https://models.dev/models.json`. It first looks for a matching canonical
+model key such as `openai/gpt-5.5`; when a benchmark model id is a
+Gateway-specific variant, it validates the provider prefix against the
+models.dev lab prefix set and uses that lab id.
+
+Logo source rules:
+
+1. Prefer exact brand routes from [SVGL](https://svgl.app/) when available.
+   Query `https://api.svgl.app?search=<lab>` or use the SVGL search UI.
+2. Preserve SVGL's light/dark `route` object when one is returned.
+3. If SVGL does not have the lab, use models.dev's documented lab route:
+   `https://models.dev/logos/labs/<lab>.svg`.
+4. Keep `LAB_SVGS` complete for every generated `DashboardLabId`. The mapping
+   uses `satisfies Record<DashboardLabId, ...>`, so `bun run typecheck` fails
+   when models.dev introduces a lab id without an explicit logo route.
+
+Current mappings: `gpt5` -> OpenAI, `claude45` -> Anthropic, `gem25` ->
+Google, `ds35` -> DeepSeek, `grok4` -> xAI, and `qwen3` -> Alibaba.

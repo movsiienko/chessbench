@@ -1,3 +1,5 @@
+import { Chess } from "chess.js"
+
 import {
   LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
   buildLichessPuzzleFollowupPrompt,
@@ -15,12 +17,19 @@ export type GenerateBenchmarkText = (input: {
   messages: BenchmarkMessage[]
 }) => Promise<{
   text: string
+  reasoningText?: string
+  reasoning?: unknown
   latencyMs: number
   usage?: {
     inputTokens?: number
     outputTokens?: number
     totalTokens?: number
+    reasoningTokens?: number
+    raw?: unknown
   }
+  costUsd?: number
+  generationId?: string
+  servedProvider?: string
 }>
 
 export type LichessPuzzleTurnResult =
@@ -39,10 +48,22 @@ export type LichessPuzzleAttemptTurn = {
   turnIndex: number
   prompt: string
   rawAnswer: string
+  reasoningText?: string
+  reasoning?: unknown
   parsedMove: string
   expectedMove: string
   result: LichessPuzzleTurnResult
   errorMessage: string
+  usage?: {
+    inputTokens?: number
+    outputTokens?: number
+    totalTokens?: number
+    reasoningTokens?: number
+    raw?: unknown
+  }
+  costUsd?: number
+  servedProvider?: string
+  generationId?: string
 }
 
 export type LichessPuzzleAttemptRow = {
@@ -72,6 +93,10 @@ export type LichessPuzzleAttemptRow = {
   inputTokens: number | null
   outputTokens: number | null
   totalTokens: number | null
+  reasoningTokens: number | null
+  costUsd: number | null
+  servedProvider: string
+  generationId: string
   turns: LichessPuzzleAttemptTurn[]
 }
 
@@ -101,7 +126,14 @@ export async function runLichessPuzzleAttempt({
   let inputTokens = 0
   let outputTokens = 0
   let totalTokens = 0
+  let reasoningTokens = 0
+  let costUsd = 0
   let hasUsage = false
+  let hasReasoningUsage = false
+  let hasCost = false
+  let servedProvider = ""
+  let generationId = ""
+  const position = new Chess(item.position.fen)
 
   for (
     let playerMoveIndex = 0;
@@ -127,10 +159,45 @@ export async function runLichessPuzzleAttempt({
         inputTokens += response.usage.inputTokens ?? 0
         outputTokens += response.usage.outputTokens ?? 0
         totalTokens += response.usage.totalTokens ?? 0
+
+        if (response.usage.reasoningTokens !== undefined) {
+          hasReasoningUsage = true
+          reasoningTokens += response.usage.reasoningTokens
+        }
+      }
+
+      if (response.costUsd !== undefined) {
+        hasCost = true
+        costUsd += response.costUsd
+      }
+
+      if (response.servedProvider) {
+        servedProvider = response.servedProvider
+      }
+
+      if (response.generationId) {
+        generationId = response.generationId
       }
 
       const rawAnswer = response.text
-      const parsedMove = parseStrictUciMove(rawAnswer)
+      const parsedMove = parseAcceptedMoveAnswer(rawAnswer, position.fen())
+      const turnUsage = response.usage
+        ? {
+            inputTokens: response.usage.inputTokens,
+            outputTokens: response.usage.outputTokens,
+            totalTokens: response.usage.totalTokens,
+            reasoningTokens: response.usage.reasoningTokens,
+            raw: response.usage.raw,
+          }
+        : undefined
+      const turnMetadata = {
+        reasoningText: response.reasoningText,
+        reasoning: response.reasoning,
+        usage: turnUsage,
+        costUsd: response.costUsd,
+        servedProvider: response.servedProvider,
+        generationId: response.generationId,
+      }
 
       messages.push({ role: "assistant", content: rawAnswer })
 
@@ -145,6 +212,7 @@ export async function runLichessPuzzleAttempt({
           expectedMove,
           result: "invalid_format",
           errorMessage: "",
+          ...turnMetadata,
         })
         break
       }
@@ -162,6 +230,7 @@ export async function runLichessPuzzleAttempt({
           expectedMove,
           result: "wrong_move",
           errorMessage: "",
+          ...turnMetadata,
         })
         break
       }
@@ -174,14 +243,17 @@ export async function runLichessPuzzleAttempt({
         expectedMove,
         result: "correct",
         errorMessage: "",
+        ...turnMetadata,
       })
 
+      applyUciMove(position, parsedMove)
       const opponentMove = item.expected.uciLine[playerMoveIndex * 2 + 1]
 
       if (
         opponentMove &&
         playerMoveIndex < item.expected.playerUciMoves.length - 1
       ) {
+        applyUciMove(position, opponentMove)
         revealedOpponentMoves.push(opponentMove)
       }
     } catch (error) {
@@ -237,6 +309,10 @@ export async function runLichessPuzzleAttempt({
     inputTokens: hasUsage ? inputTokens : null,
     outputTokens: hasUsage ? outputTokens : null,
     totalTokens: hasUsage ? totalTokens : null,
+    reasoningTokens: hasReasoningUsage ? reasoningTokens : null,
+    costUsd: hasCost ? costUsd : null,
+    servedProvider,
+    generationId,
     turns,
   }
 }
@@ -249,6 +325,86 @@ export function parseStrictUciMove(answer: string): string | null {
   }
 
   return trimmed.toLowerCase()
+}
+
+export function parseAcceptedMoveAnswer(
+  answer: string,
+  fen: string
+): string | null {
+  const normalized = normalizeMoveAnswer(answer)
+
+  if (!normalized) {
+    return null
+  }
+
+  const uciMove = parseStrictUciMove(normalized)
+
+  if (uciMove) {
+    return parseUciMove(uciMove, fen)
+  }
+
+  return parseSanMove(normalized, fen)
+}
+
+function parseUciMove(answer: string, fen: string): string | null {
+  try {
+    const chess = new Chess(fen)
+    const move = chess.move(uciToMoveObject(answer))
+    return `${move.from}${move.to}${move.promotion ?? ""}`.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function parseSanMove(answer: string, fen: string): string | null {
+  try {
+    const chess = new Chess(fen)
+    const move = chess.move(answer)
+    return `${move.from}${move.to}${move.promotion ?? ""}`.toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function applyUciMove(chess: Chess, uci: string) {
+  chess.move(uciToMoveObject(uci))
+}
+
+function uciToMoveObject(uci: string) {
+  return {
+    from: uci.slice(0, 2),
+    to: uci.slice(2, 4),
+    promotion: uci[4],
+  }
+}
+
+function normalizeMoveAnswer(answer: string): string {
+  let normalized = answer
+    .trim()
+    .replaceAll("×", "x")
+    .replaceAll("–", "-")
+    .replaceAll("—", "-")
+
+  const fenced = normalized.match(
+    /^```(?:text|chess|pgn)?\s*([\s\S]*?)\s*```$/i
+  )
+  if (fenced?.[1]) {
+    normalized = fenced[1].trim()
+  }
+
+  const wrapped = normalized.match(/^`([^`\n]+)`$/)
+  if (wrapped?.[1]) {
+    normalized = wrapped[1].trim()
+  }
+
+  normalized = normalized.replace(/^\d+\.(?:\.\.)?\s*/, "")
+  normalized = normalized.replace(/[.!?]+$/g, "")
+
+  if (/^0-0(?:-0)?[+#]?$/i.test(normalized)) {
+    normalized = normalized.replaceAll("0", "O")
+  }
+
+  return /\s/.test(normalized) ? "" : normalized
 }
 
 function sameLine(actual: string[], expected: string[]): boolean {
