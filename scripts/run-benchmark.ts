@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { generateText, type ModelMessage } from "ai"
 import type { ProviderOptions } from "@ai-sdk/provider-utils"
@@ -52,6 +52,7 @@ const selectedItems = options.all
   : selectDefaultLichessPuzzleItems(items, options.limit)
 const rows: LichessPuzzleAttemptRow[] = []
 const localPath = join(localResultsDir, `${runId}.csv`)
+const canonicalStartedModels = new Set<string>()
 const totalAttempts = options.models.length * selectedItems.length
 let completedAttempts = 0
 
@@ -67,8 +68,11 @@ for (const model of options.models) {
     rows.push(row)
     completedAttempts += 1
 
-    await writeCsv(localPath, rows)
-    await writeCanonicalCsvs(rows)
+    await writeCsvRow(localPath, row, {
+      append: rows.length > 1,
+      includeHeader: rows.length === 1,
+    })
+    await writeCanonicalCsvRow(row)
 
     console.log(
       [
@@ -87,24 +91,22 @@ for (const model of options.models) {
 
 console.log(`Wrote ${rows.length} rows to ${localPath}`)
 
-async function writeCanonicalCsvs(rows: LichessPuzzleAttemptRow[]) {
+async function writeCanonicalCsvRow(row: LichessPuzzleAttemptRow) {
   if (!options.canonical) {
     return
   }
 
-  for (const model of options.models) {
-    const modelRows = rows.filter((row) => row.model === model)
+  const canonicalPath = join(
+    canonicalResultsDir,
+    `${sanitizeModelId(row.model)}-${options.canonical}.csv`
+  )
+  const append = canonicalStartedModels.has(row.model)
 
-    if (modelRows.length === 0) {
-      continue
-    }
-
-    const canonicalPath = join(
-      canonicalResultsDir,
-      `${sanitizeModelId(model)}-${options.canonical}.csv`
-    )
-    await writeCsv(canonicalPath, modelRows)
-  }
+  await writeCsvRow(canonicalPath, row, {
+    append,
+    includeHeader: !append,
+  })
+  canonicalStartedModels.add(row.model)
 }
 
 async function generateWithAiSdk({
@@ -258,90 +260,105 @@ function readArgValue(args: string[], index: number, name: string): string {
   return value
 }
 
-async function writeCsv(path: string, rows: LichessPuzzleAttemptRow[]) {
+async function writeCsvRow(
+  path: string,
+  row: LichessPuzzleAttemptRow,
+  {
+    append,
+    includeHeader,
+  }: {
+    append: boolean
+    includeHeader: boolean
+  }
+) {
   await mkdir(dirname(path), { recursive: true })
-  await writeFile(path, serializeRows(rows))
+  const contents = [
+    ...(includeHeader ? [csvHeaders.join(",")] : []),
+    serializeRow(row),
+  ].join("\n")
+  const payload = `${contents}\n`
+
+  if (append) {
+    await appendFile(path, payload)
+  } else {
+    await writeFile(path, payload)
+  }
 }
 
-function serializeRows(rows: LichessPuzzleAttemptRow[]): string {
-  const headers = [
-    "run_id",
-    "created_at",
-    "benchmark",
-    "prompt_template_id",
-    "model",
-    "item_id",
-    "lichess_puzzle_id",
-    "rating",
-    "rating_band",
-    "rating_bucket",
-    "primary_theme",
-    "status",
-    "solved",
-    "first_move_correct",
-    "exact_player_line",
-    "player_move_prefix_score",
-    "expected_full_line",
-    "expected_player_line",
-    "submitted_player_moves",
-    "revealed_opponent_moves",
-    "invalid_turn_index",
-    "error_message",
-    "latency_ms_total",
-    "input_tokens",
-    "output_tokens",
-    "total_tokens",
-    "reasoning_effort",
-    "max_output_tokens",
-    "reasoning_tokens",
-    "cost_usd",
-    "served_provider",
-    "generation_id",
-    "turns_json",
-  ]
+const csvHeaders = [
+  "run_id",
+  "created_at",
+  "benchmark",
+  "prompt_template_id",
+  "model",
+  "item_id",
+  "lichess_puzzle_id",
+  "rating",
+  "rating_band",
+  "rating_bucket",
+  "primary_theme",
+  "status",
+  "solved",
+  "first_move_correct",
+  "exact_player_line",
+  "player_move_prefix_score",
+  "expected_full_line",
+  "expected_player_line",
+  "submitted_player_moves",
+  "revealed_opponent_moves",
+  "invalid_turn_index",
+  "error_message",
+  "latency_ms_total",
+  "input_tokens",
+  "output_tokens",
+  "total_tokens",
+  "reasoning_effort",
+  "max_output_tokens",
+  "reasoning_tokens",
+  "cost_usd",
+  "served_provider",
+  "generation_id",
+  "turns_json",
+]
 
+function serializeRow(row: LichessPuzzleAttemptRow): string {
   return [
-    headers.join(","),
-    ...rows.map((row) =>
-      [
-        row.runId,
-        row.createdAt,
-        row.benchmark,
-        row.promptTemplateId,
-        row.model,
-        row.itemId,
-        row.lichessPuzzleId,
-        row.rating,
-        row.ratingBand,
-        row.ratingBucket,
-        row.primaryTheme,
-        row.status,
-        row.solved,
-        row.firstMoveCorrect,
-        row.exactPlayerLine,
-        row.playerMovePrefixScore,
-        JSON.stringify(row.expectedFullLine),
-        JSON.stringify(row.expectedPlayerLine),
-        JSON.stringify(row.submittedPlayerMoves),
-        JSON.stringify(row.revealedOpponentMoves),
-        row.invalidTurnIndex ?? "",
-        row.errorMessage,
-        row.latencyMsTotal,
-        row.inputTokens ?? "",
-        row.outputTokens ?? "",
-        row.totalTokens ?? "",
-        reasoningEffortForModel(row.model),
-        options.maxOutputTokens ?? "",
-        row.reasoningTokens ?? "",
-        row.costUsd ?? "",
-        row.servedProvider,
-        row.generationId,
-        JSON.stringify(row.turns),
-      ]
-        .map((value) => escapeCsv(value))
-        .join(",")
-    ),
-  ].join("\n")
+    row.runId,
+    row.createdAt,
+    row.benchmark,
+    row.promptTemplateId,
+    row.model,
+    row.itemId,
+    row.lichessPuzzleId,
+    row.rating,
+    row.ratingBand,
+    row.ratingBucket,
+    row.primaryTheme,
+    row.status,
+    row.solved,
+    row.firstMoveCorrect,
+    row.exactPlayerLine,
+    row.playerMovePrefixScore,
+    JSON.stringify(row.expectedFullLine),
+    JSON.stringify(row.expectedPlayerLine),
+    JSON.stringify(row.submittedPlayerMoves),
+    JSON.stringify(row.revealedOpponentMoves),
+    row.invalidTurnIndex ?? "",
+    row.errorMessage,
+    row.latencyMsTotal,
+    row.inputTokens ?? "",
+    row.outputTokens ?? "",
+    row.totalTokens ?? "",
+    reasoningEffortForModel(row.model),
+    options.maxOutputTokens ?? "",
+    row.reasoningTokens ?? "",
+    row.costUsd ?? "",
+    row.servedProvider,
+    row.generationId,
+    JSON.stringify(row.turns),
+  ]
+    .map((value) => escapeCsv(value))
+    .join(",")
 }
 
 function providerOptionsFor(model: string): ProviderOptions {
@@ -385,6 +402,8 @@ function providerOptionsFor(model: string): ProviderOptions {
 
   if (options.gatewaySystemCredentials) {
     providerOptions.gateway = {
+      // Empty request-scoped BYOK overrides cached BYOK so Gateway falls back
+      // to system credentials; this is not enabling user-supplied BYOK keys.
       byok: {},
       tags: [`benchmark:${benchmarkId}`, `run:${runId}`],
     }

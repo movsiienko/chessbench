@@ -39,4 +39,3 @@ data/raw/
 data/results/local/
 .env
 node_modules/
-data/

@@ -38,12 +38,16 @@ export default function RootLayout({
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
-        {/* impeccable-live-start */}
-        <Script
-          src="http://localhost:8400/live.js"
-          strategy="afterInteractive"
-        />
-        {/* impeccable-live-end */}
+        {process.env.NODE_ENV === "development" && (
+          <>
+            {/* impeccable-live-start */}
+            <Script
+              src="http://localhost:8400/live.js"
+              strategy="afterInteractive"
+            />
+            {/* impeccable-live-end */}
+          </>
+        )}
       </body>
     </html>
   )

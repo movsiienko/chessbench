@@ -163,8 +163,8 @@ export const SCOREBOARD: DashboardScore[] = [
     "accuracy": 0.2,
     "elo": 1516,
     "cost": 149.68,
-    "avgTokens": 6859,
-    "avgMoveTime": 92.4,
+    "avgTokens": 6173,
+    "avgMoveTime": 83.2,
     "legalRate": 1
   },
   {

@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 
+import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
 
 type ModelId = "gpt5" | "claude45" | "gem25" | "ds35" | "grok4" | "qwen3"
@@ -340,7 +341,9 @@ async function loadModelsDevData(): Promise<ModelsDevData> {
     .sort()
 
   if (labIds.length === 0) {
-    throw new Error("models.dev model catalog did not contain lab-prefixed keys")
+    throw new Error(
+      "models.dev model catalog did not contain lab-prefixed keys"
+    )
   }
 
   return {
@@ -389,49 +392,17 @@ function modelKeyCandidates(apiModel: string): string[] {
 
 async function readRows(path: string): Promise<ResultRow[]> {
   const contents = await readFile(path, "utf8")
-  const [headerLine, ...lines] = contents.trim().split("\n")
-  const headers = parseCsvLine(headerLine)
+  const [headers, ...records] = parseCsvRecords(contents)
 
-  return lines.filter(Boolean).map((line) => {
-    const cells = parseCsvLine(line)
+  if (!headers) {
+    return []
+  }
+
+  return records.map((cells) => {
     return Object.fromEntries(
       headers.map((header, index) => [header, cells[index] ?? ""])
     ) as ResultRow
   })
-}
-
-function parseCsvLine(line: string): string[] {
-  const cells: string[] = []
-  let cell = ""
-  let quoted = false
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index]
-
-    if (quoted) {
-      if (char === '"' && line[index + 1] === '"') {
-        cell += '"'
-        index += 1
-      } else if (char === '"') {
-        quoted = false
-      } else {
-        cell += char
-      }
-      continue
-    }
-
-    if (char === ",") {
-      cells.push(cell)
-      cell = ""
-    } else if (char === '"') {
-      quoted = true
-    } else {
-      cell += char
-    }
-  }
-
-  cells.push(cell)
-  return cells
 }
 
 function buildScoreboardRow(model: ModelConfig, rows: ResultRow[]) {
@@ -451,11 +422,14 @@ function buildScoreboardRow(model: ModelConfig, rows: ResultRow[]) {
     elo: estimateElo(avgRating, accuracy),
     cost: round(count === 0 ? 0 : (totalCost / count) * 1000, 2),
     avgTokens: Math.round(
-      average(rows.map((row) => Number(row.total_tokens)).filter(Boolean))
+      average(
+        rows.map((row) => Number(row.total_tokens)).filter(Number.isFinite)
+      )
     ),
     avgMoveTime: round(
-      average(rows.map((row) => Number(row.latency_ms_total)).filter(Boolean)) /
-        1000,
+      average(
+        rows.map((row) => Number(row.latency_ms_total)).filter(Number.isFinite)
+      ) / 1000,
       1
     ),
     legalRate: round(count === 0 ? 0 : valid / count, 3),

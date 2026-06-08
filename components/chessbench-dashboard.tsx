@@ -845,8 +845,14 @@ function EloLineChart() {
     ...MODELS.map((model) => ELO_HISTORY[model.id]?.length ?? 0)
   )
   const eloValues = MODELS.flatMap((model) => ELO_HISTORY[model.id] ?? [])
-  const minElo = Math.floor((Math.min(...eloValues) - 100) / 100) * 100
-  const maxElo = Math.ceil((Math.max(...eloValues) + 100) / 100) * 100
+  const minElo =
+    eloValues.length === 0
+      ? 0
+      : Math.floor((Math.min(...eloValues) - 100) / 100) * 100
+  const maxElo =
+    eloValues.length === 0
+      ? 2400
+      : Math.ceil((Math.max(...eloValues) + 100) / 100) * 100
   const rounds = Array.from({ length: maxRounds }, (_, index) => {
     const row: Record<string, string | number> = { round: `R${index + 1}` }
     for (const model of MODELS) {
@@ -2028,13 +2034,7 @@ function LabSvg({ lab }: { lab: DashboardLabId }) {
   )
 }
 
-function LabSvgImage({
-  src,
-  className,
-}: {
-  src: string
-  className?: string
-}) {
+function LabSvgImage({ src, className }: { src: string; className?: string }) {
   return (
     <img
       src={src}
