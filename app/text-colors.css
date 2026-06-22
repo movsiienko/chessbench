@@ -1,0 +1,23 @@
+:root {
+  --foreground: oklch(0.45 0 0);
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --primary-foreground: oklch(0.82 0 0);
+  --secondary-foreground: var(--foreground);
+  --accent-foreground: var(--foreground);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent-foreground: var(--foreground);
+  --muted-foreground: oklch(0.5 0 0);
+}
+
+.dark {
+  --foreground: oklch(0.72 0 0);
+  --card-foreground: var(--foreground);
+  --popover-foreground: var(--foreground);
+  --primary-foreground: oklch(0.42 0 0);
+  --secondary-foreground: var(--foreground);
+  --accent-foreground: var(--foreground);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-accent-foreground: var(--foreground);
+  --muted-foreground: oklch(0.62 0 0);
+}
