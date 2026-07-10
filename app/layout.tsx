@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import Script from "next/script"
 
 import "./globals.css"
+import "./text-colors.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
