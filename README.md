@@ -91,6 +91,10 @@ model key such as `openai/gpt-5.5`; when a benchmark model id is a
 Gateway-specific variant, it validates the provider prefix against the
 models.dev lab prefix set and uses that lab id.
 
+`DashboardLabId` is narrowed to the labs the benchmark models actually
+reference, sorted for stable diffs. It is not the full models.dev lab list, so
+the union only changes when the benchmark's model roster changes.
+
 Logo source rules:
 
 1. Prefer exact brand routes from [SVGL](https://svgl.app/) when available.

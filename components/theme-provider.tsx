@@ -43,11 +43,14 @@ function ThemeHotkey() {
         return
       }
 
+      // WCAG 2.1.4: a single-character shortcut must be remappable or
+      // modified. Shift is the only modifier that does not collide with a
+      // browser or OS binding, so the hotkey is Shift+D.
       if (event.metaKey || event.ctrlKey || event.altKey) {
         return
       }
 
-      if (event.key.toLowerCase() !== "d") {
+      if (!event.shiftKey || event.key.toLowerCase() !== "d") {
         return
       }
 

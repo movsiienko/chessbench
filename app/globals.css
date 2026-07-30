@@ -43,6 +43,8 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-result-ok: var(--result-ok);
+  --color-result-miss: var(--result-miss);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -90,6 +92,10 @@
   --chess-amber-strong: oklch(0.58 0.16 55);
   --board-light: #efe6d2;
   --board-dark: #b58863;
+  --result-ok: oklch(0.63 0.17 150);
+  --result-ok-ring: oklch(0.63 0.17 150 / 12%);
+  --result-miss: oklch(0.62 0.2 28);
+  --result-miss-ring: oklch(0.62 0.2 28 / 13%);
 }
 
 .dark {
@@ -129,6 +135,10 @@
   --chess-amber-strong: oklch(0.85 0.13 75);
   --board-light: #d7c6a5;
   --board-dark: #8c6848;
+  --result-ok: oklch(0.75 0.15 152);
+  --result-ok-ring: oklch(0.75 0.15 152 / 20%);
+  --result-miss: oklch(0.7 0.18 25);
+  --result-miss-ring: oklch(0.7 0.18 25 / 22%);
 }
 
 @layer base {
@@ -158,7 +168,7 @@
   padding: 0.25rem 0.625rem;
   color: var(--muted-foreground);
   font-family: var(--font-sans);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
 }
 
 .cb-move-line::before {
@@ -168,13 +178,13 @@
   height: 0.61rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: oklch(0.72 0.12 150);
-  box-shadow: 0 0 0 0.16rem oklch(0.72 0.12 150 / 12%);
+  background: var(--result-ok);
+  box-shadow: 0 0 0 0.16rem var(--result-ok-ring);
 }
 
 .cb-move-line[data-result="miss"]::before {
-  background: oklch(0.68 0.15 28);
-  box-shadow: 0 0 0 0.16rem oklch(0.68 0.15 28 / 13%);
+  background: var(--result-miss);
+  box-shadow: 0 0 0 0.16rem var(--result-miss-ring);
 }
 
 .cb-move-line strong {
@@ -198,9 +208,72 @@
   border-radius: 999px;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   line-height: 1;
   padding: 0.19rem 0;
+}
+
+/* Reduced motion is a deliberate alternative, not a blanket kill switch:
+   anything that moves through space is dropped, while opacity and colour
+   transitions survive at a shorter duration so state changes (accordion
+   disclosure, popover appearance, move feedback) stay perceivable. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-property:
+      opacity, color, background-color, border-color, outline-color, fill,
+      stroke, box-shadow !important;
+    transition-duration: 100ms !important;
+    transition-delay: 0ms !important;
+
+    /* Enter/exit choreography collapses to a short cross-fade: the slide,
+       zoom and spin offsets are zeroed and the opacity keyframe is kept, so
+       a popover or accordion panel still announces itself. Overriding the
+       tw-animate-css variables leaves unrelated (e.g. looping) animations
+       alone instead of freezing them. */
+    --tw-animation-duration: 120ms;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+    --tw-enter-rotate: 0;
+    --tw-exit-rotate: 0;
+    --tw-enter-blur: 0;
+    --tw-exit-blur: 0;
+  }
+
+  /* Focus rings and other affordances appear immediately and at full
+     strength; nothing here fades a ring in or out. */
+  :focus-visible {
+    transition: none !important;
+  }
+
+  /* Puzzle card hover lift: keep the ring and cursor feedback, drop the
+     displacement itself rather than only its transition. */
+  [data-slot="card"]:hover,
+  [data-slot="card"]:focus-visible {
+    translate: none !important;
+    transform: none !important;
+  }
+
+  /* Chessground slides pieces between squares. The JS animation is disabled
+     through usePreferReducedMotion(); this is the CSS backstop for board
+     themes that transition the transform. */
+  .cg-wrap piece,
+  .cg-wrap piece.anim,
+  .cg-wrap piece.fading,
+  .cg-wrap cg-auto-pieces piece,
+  .cg-wrap square {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 @media (max-width: 680px) {
