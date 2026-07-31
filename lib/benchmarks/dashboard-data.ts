@@ -41,11 +41,6 @@ export type DashboardScore = {
  * Per-theme accuracy. `accuracy` is null when the sample contained no puzzle
  * in that bucket, so consumers must render an absence instead of a value.
  */
-export type DashboardCategoryScore = {
-  accuracy: number | null
-  n: number
-}
-
 export type DashboardPuzzleItem = {
   id: string
   fen: string
@@ -182,7 +177,7 @@ export const SCOREBOARD: DashboardScore[] = [
     "n": 10,
     "accuracy": 0.3,
     "elo": 1610,
-    "cost": 105.43,
+    "cost": 105,
     "avgTokens": 3838,
     "avgMoveTime": 97,
     "legalRate": 1
@@ -192,7 +187,7 @@ export const SCOREBOARD: DashboardScore[] = [
     "n": 10,
     "accuracy": 0.2,
     "elo": 1516,
-    "cost": 149.68,
+    "cost": 150,
     "avgTokens": 6173,
     "avgMoveTime": 83.2,
     "legalRate": 1
@@ -202,7 +197,7 @@ export const SCOREBOARD: DashboardScore[] = [
     "n": 10,
     "accuracy": 0.6,
     "elo": 1827,
-    "cost": 16.25,
+    "cost": 16,
     "avgTokens": 2169,
     "avgMoveTime": 19.5,
     "legalRate": 1
@@ -212,7 +207,7 @@ export const SCOREBOARD: DashboardScore[] = [
     "n": 10,
     "accuracy": 0,
     "elo": 958,
-    "cost": 0.11,
+    "cost": 0,
     "avgTokens": 175,
     "avgMoveTime": 3.7,
     "legalRate": 0.3
@@ -222,7 +217,7 @@ export const SCOREBOARD: DashboardScore[] = [
     "n": 10,
     "accuracy": 0.3,
     "elo": 1610,
-    "cost": 9.2,
+    "cost": 9,
     "avgTokens": 19542,
     "avgMoveTime": 125.5,
     "legalRate": 1
@@ -232,335 +227,187 @@ export const SCOREBOARD: DashboardScore[] = [
     "n": 10,
     "accuracy": 0,
     "elo": 958,
-    "cost": 0.27,
+    "cost": 0,
     "avgTokens": 205,
     "avgMoveTime": 2.2,
     "legalRate": 0.4
   }
 ]
 
-export const CATEGORY: Record<DashboardModelId, Record<DashboardCategoryId, DashboardCategoryScore>> = {
+// null means the model had no evaluated puzzle in that theme bucket; it is not a score.
+export const CATEGORY: Record<DashboardModelId, Record<DashboardCategoryId, number | null>> = {
   "gpt5": {
-    "mate": {
-      "accuracy": 0.333,
-      "n": 3
-    },
-    "fork": {
-      "accuracy": 0.5,
-      "n": 2
-    },
-    "pin": {
-      "accuracy": null,
-      "n": 0
-    },
-    "skewer": {
-      "accuracy": null,
-      "n": 0
-    },
-    "discoAtk": {
-      "accuracy": null,
-      "n": 0
-    },
-    "sacrifice": {
-      "accuracy": 1,
-      "n": 1
-    },
-    "endgame": {
-      "accuracy": 0.4,
-      "n": 5
-    },
-    "opening": {
-      "accuracy": 1,
-      "n": 1
-    },
-    "middlegame": {
-      "accuracy": 0,
-      "n": 4
-    },
-    "defense": {
-      "accuracy": 1,
-      "n": 1
-    },
-    "zugzwang": {
-      "accuracy": null,
-      "n": 0
-    },
-    "promotion": {
-      "accuracy": 0,
-      "n": 2
-    }
+    "mate": 0.333,
+    "fork": 0.5,
+    "pin": null,
+    "skewer": null,
+    "discoAtk": null,
+    "sacrifice": 1,
+    "endgame": 0.4,
+    "opening": 1,
+    "middlegame": 0,
+    "defense": 1,
+    "zugzwang": null,
+    "promotion": 0
   },
   "claude45": {
-    "mate": {
-      "accuracy": 0.667,
-      "n": 3
-    },
-    "fork": {
-      "accuracy": 0,
-      "n": 2
-    },
-    "pin": {
-      "accuracy": null,
-      "n": 0
-    },
-    "skewer": {
-      "accuracy": null,
-      "n": 0
-    },
-    "discoAtk": {
-      "accuracy": null,
-      "n": 0
-    },
-    "sacrifice": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "endgame": {
-      "accuracy": 0.2,
-      "n": 5
-    },
-    "opening": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "middlegame": {
-      "accuracy": 0.25,
-      "n": 4
-    },
-    "defense": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "zugzwang": {
-      "accuracy": null,
-      "n": 0
-    },
-    "promotion": {
-      "accuracy": 0.5,
-      "n": 2
-    }
+    "mate": 0.667,
+    "fork": 0,
+    "pin": null,
+    "skewer": null,
+    "discoAtk": null,
+    "sacrifice": 0,
+    "endgame": 0.2,
+    "opening": 0,
+    "middlegame": 0.25,
+    "defense": 0,
+    "zugzwang": null,
+    "promotion": 0.5
   },
   "gem25": {
-    "mate": {
-      "accuracy": 0.667,
-      "n": 3
-    },
-    "fork": {
-      "accuracy": 0.5,
-      "n": 2
-    },
-    "pin": {
-      "accuracy": null,
-      "n": 0
-    },
-    "skewer": {
-      "accuracy": null,
-      "n": 0
-    },
-    "discoAtk": {
-      "accuracy": null,
-      "n": 0
-    },
-    "sacrifice": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "endgame": {
-      "accuracy": 0.4,
-      "n": 5
-    },
-    "opening": {
-      "accuracy": 1,
-      "n": 1
-    },
-    "middlegame": {
-      "accuracy": 0.75,
-      "n": 4
-    },
-    "defense": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "zugzwang": {
-      "accuracy": null,
-      "n": 0
-    },
-    "promotion": {
-      "accuracy": 1,
-      "n": 2
-    }
+    "mate": 0.667,
+    "fork": 0.5,
+    "pin": null,
+    "skewer": null,
+    "discoAtk": null,
+    "sacrifice": 0,
+    "endgame": 0.4,
+    "opening": 1,
+    "middlegame": 0.75,
+    "defense": 0,
+    "zugzwang": null,
+    "promotion": 1
   },
   "ds35": {
-    "mate": {
-      "accuracy": 0,
-      "n": 3
-    },
-    "fork": {
-      "accuracy": 0,
-      "n": 2
-    },
-    "pin": {
-      "accuracy": null,
-      "n": 0
-    },
-    "skewer": {
-      "accuracy": null,
-      "n": 0
-    },
-    "discoAtk": {
-      "accuracy": null,
-      "n": 0
-    },
-    "sacrifice": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "endgame": {
-      "accuracy": 0,
-      "n": 5
-    },
-    "opening": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "middlegame": {
-      "accuracy": 0,
-      "n": 4
-    },
-    "defense": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "zugzwang": {
-      "accuracy": null,
-      "n": 0
-    },
-    "promotion": {
-      "accuracy": 0,
-      "n": 2
-    }
+    "mate": 0,
+    "fork": 0,
+    "pin": null,
+    "skewer": null,
+    "discoAtk": null,
+    "sacrifice": 0,
+    "endgame": 0,
+    "opening": 0,
+    "middlegame": 0,
+    "defense": 0,
+    "zugzwang": null,
+    "promotion": 0
   },
   "grok4": {
-    "mate": {
-      "accuracy": 0.667,
-      "n": 3
-    },
-    "fork": {
-      "accuracy": 0,
-      "n": 2
-    },
-    "pin": {
-      "accuracy": null,
-      "n": 0
-    },
-    "skewer": {
-      "accuracy": null,
-      "n": 0
-    },
-    "discoAtk": {
-      "accuracy": null,
-      "n": 0
-    },
-    "sacrifice": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "endgame": {
-      "accuracy": 0.4,
-      "n": 5
-    },
-    "opening": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "middlegame": {
-      "accuracy": 0.25,
-      "n": 4
-    },
-    "defense": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "zugzwang": {
-      "accuracy": null,
-      "n": 0
-    },
-    "promotion": {
-      "accuracy": 0.5,
-      "n": 2
-    }
+    "mate": 0.667,
+    "fork": 0,
+    "pin": null,
+    "skewer": null,
+    "discoAtk": null,
+    "sacrifice": 0,
+    "endgame": 0.4,
+    "opening": 0,
+    "middlegame": 0.25,
+    "defense": 0,
+    "zugzwang": null,
+    "promotion": 0.5
   },
   "qwen3": {
-    "mate": {
-      "accuracy": 0,
-      "n": 3
-    },
-    "fork": {
-      "accuracy": 0,
-      "n": 2
-    },
-    "pin": {
-      "accuracy": null,
-      "n": 0
-    },
-    "skewer": {
-      "accuracy": null,
-      "n": 0
-    },
-    "discoAtk": {
-      "accuracy": null,
-      "n": 0
-    },
-    "sacrifice": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "endgame": {
-      "accuracy": 0,
-      "n": 5
-    },
-    "opening": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "middlegame": {
-      "accuracy": 0,
-      "n": 4
-    },
-    "defense": {
-      "accuracy": 0,
-      "n": 1
-    },
-    "zugzwang": {
-      "accuracy": null,
-      "n": 0
-    },
-    "promotion": {
-      "accuracy": 0,
-      "n": 2
-    }
+    "mate": 0,
+    "fork": 0,
+    "pin": null,
+    "skewer": null,
+    "discoAtk": null,
+    "sacrifice": 0,
+    "endgame": 0,
+    "opening": 0,
+    "middlegame": 0,
+    "defense": 0,
+    "zugzwang": null,
+    "promotion": 0
   }
 }
 
-export const ELO_HISTORY: Record<DashboardModelId, number[]> = {
-  "gpt5": [
-    1610
-  ],
-  "claude45": [
-    1516
-  ],
-  "gem25": [
-    1827
-  ],
-  "ds35": [
-    958
-  ],
-  "grok4": [
-    1610
-  ],
-  "qwen3": [
-    958
-  ]
+// Number of evaluated puzzles behind each CATEGORY reading.
+export const CATEGORY_SAMPLE: Record<DashboardModelId, Record<DashboardCategoryId, number>> = {
+  "gpt5": {
+    "mate": 3,
+    "fork": 2,
+    "pin": 0,
+    "skewer": 0,
+    "discoAtk": 0,
+    "sacrifice": 1,
+    "endgame": 5,
+    "opening": 1,
+    "middlegame": 4,
+    "defense": 1,
+    "zugzwang": 0,
+    "promotion": 2
+  },
+  "claude45": {
+    "mate": 3,
+    "fork": 2,
+    "pin": 0,
+    "skewer": 0,
+    "discoAtk": 0,
+    "sacrifice": 1,
+    "endgame": 5,
+    "opening": 1,
+    "middlegame": 4,
+    "defense": 1,
+    "zugzwang": 0,
+    "promotion": 2
+  },
+  "gem25": {
+    "mate": 3,
+    "fork": 2,
+    "pin": 0,
+    "skewer": 0,
+    "discoAtk": 0,
+    "sacrifice": 1,
+    "endgame": 5,
+    "opening": 1,
+    "middlegame": 4,
+    "defense": 1,
+    "zugzwang": 0,
+    "promotion": 2
+  },
+  "ds35": {
+    "mate": 3,
+    "fork": 2,
+    "pin": 0,
+    "skewer": 0,
+    "discoAtk": 0,
+    "sacrifice": 1,
+    "endgame": 5,
+    "opening": 1,
+    "middlegame": 4,
+    "defense": 1,
+    "zugzwang": 0,
+    "promotion": 2
+  },
+  "grok4": {
+    "mate": 3,
+    "fork": 2,
+    "pin": 0,
+    "skewer": 0,
+    "discoAtk": 0,
+    "sacrifice": 1,
+    "endgame": 5,
+    "opening": 1,
+    "middlegame": 4,
+    "defense": 1,
+    "zugzwang": 0,
+    "promotion": 2
+  },
+  "qwen3": {
+    "mate": 3,
+    "fork": 2,
+    "pin": 0,
+    "skewer": 0,
+    "discoAtk": 0,
+    "sacrifice": 1,
+    "endgame": 5,
+    "opening": 1,
+    "middlegame": 4,
+    "defense": 1,
+    "zugzwang": 0,
+    "promotion": 2
+  }
 }
 
 export const PUZZLES: DashboardPuzzleItem[] = [
@@ -1293,8 +1140,9 @@ export const PUZZLES: DashboardPuzzleItem[] = [
 
 export const META = {
   "puzzleCount": 10,
-  "datasetSize": 500,
   "evaluations": 60,
+  "sampleSize": 10,
+  "datasetSize": 500,
   "lastUpdated": "2026-06-06",
   "version": "0.8.0",
   "benchmarkId": "lichess-puzzles-v1",
@@ -1314,5 +1162,7 @@ export const META = {
     "grok4": 10,
     "qwen3": 10
   },
-  "maxOutputTokens": "uncapped"
+  "maxOutputTokens": "uncapped",
+  "eloIsEstimated": true,
+  "costIsExtrapolated": true
 }

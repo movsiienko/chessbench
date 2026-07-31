@@ -231,10 +231,82 @@
   border-radius: 999px;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
-  /* Compact technical label; snapped to the label ramp floor. */
-  font-size: var(--text-2xs);
+  /* Compact technical label. Master raised this from the ramp floor to 0.75rem
+     for legibility; that size is kept, expressed as the ramp token. */
+  font-size: var(--text-xs);
   line-height: 1;
   padding: 0.19rem 0;
+}
+
+/* Reduced motion is a deliberate alternative, not a blanket kill switch:
+   anything that moves through space is dropped, while opacity and colour
+   transitions survive at a shorter duration so state changes (accordion
+   disclosure, popover appearance, move feedback) stay perceivable. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-property:
+      opacity, color, background-color, border-color, outline-color, fill,
+      stroke, box-shadow !important;
+    transition-duration: 100ms !important;
+    transition-delay: 0ms !important;
+
+    /* Enter/exit choreography collapses to a short cross-fade: the slide,
+       zoom and spin offsets are zeroed and the opacity keyframe is kept, so
+       a popover or accordion panel still announces itself. Overriding the
+       tw-animate-css variables leaves unrelated (e.g. looping) animations
+       alone instead of freezing them. */
+    --tw-animation-duration: 120ms;
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
+    --tw-enter-rotate: 0;
+    --tw-exit-rotate: 0;
+    --tw-enter-blur: 0;
+    --tw-exit-blur: 0;
+  }
+
+  /* Focus rings and other affordances appear immediately and at full
+     strength; nothing here fades a ring in or out. */
+  :focus-visible {
+    transition: none !important;
+  }
+
+  /* Puzzle card hover lift: keep the ring and cursor feedback, drop the
+     displacement itself rather than only its transition. The travel is
+     replaced with a tonal surface shift rather than simply removed - hover
+     must still read as hover, which is the treatment DESIGN.md prescribes
+     ("hover changes tone only"). */
+  [data-slot="card"]:hover,
+  [data-slot="card"]:focus-visible {
+    translate: none !important;
+    transform: none !important;
+  }
+
+  [data-slot="card"].transition-transform:hover,
+  [data-slot="card"].transition-transform:focus-visible {
+    background-color: var(--muted);
+  }
+
+  /* Chessground slides pieces between squares. The JS animation is disabled
+     through usePreferReducedMotion(); this is the CSS backstop for board
+     themes that transition the transform. */
+  .cg-wrap piece,
+  .cg-wrap piece.anim,
+  .cg-wrap piece.fading,
+  .cg-wrap cg-auto-pieces piece,
+  .cg-wrap square {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 @media (max-width: 680px) {
@@ -249,67 +321,4 @@
     grid-column: 2;
     justify-self: start;
   }
-}
-
-/* Reduced motion.
-   Scoped on purpose. The blanket `* { animation-duration: 0.01ms !important }`
-   pattern is avoided because it flattens the state changes users still need to
-   perceive; what follows removes travel, zoom, and spin while leaving opacity,
-   tone, and focus feedback intact. Every rule below is unlayered, so it wins
-   over the Tailwind utility layer without needing `!important`. */
-@media (prefers-reduced-motion: reduce) {
-  /* 1. Card lift.
-     The puzzle card is `transition-transform hover:-translate-y-0.5`. The
-     travel is dropped, but hover must still read as hover, so the affordance
-     is re-expressed as a tonal surface shift, which is the hover treatment
-     DESIGN.md already prescribes ("hover changes tone only"). */
-  .transition-transform {
-    transition-property: none;
-  }
-
-  [data-slot="card"].transition-transform:hover,
-  [data-slot="card"].transition-transform:focus-visible {
-    translate: none;
-    transform: none;
-    background-color: var(--muted);
-  }
-
-  /* 2. Overlay enter/exit (tw-animate-css).
-     Select popups, popovers, and tooltips enter with
-     `animate-in fade-in-0 zoom-in-95 slide-in-from-*`. The keyframes read
-     these custom properties, so neutralising them removes the slide, zoom,
-     spin, and blur while the opacity phase survives untouched - the fade is
-     the cue that the overlay opened or closed.
-     Durations are deliberately left alone: Base UI waits for `animationend`
-     before unmounting, so cancelling the animation outright would strand
-     closed overlays in the DOM. */
-  [class*="animate-in"],
-  [class*="animate-out"] {
-    --tw-enter-translate-x: 0;
-    --tw-enter-translate-y: 0;
-    --tw-exit-translate-x: 0;
-    --tw-exit-translate-y: 0;
-    --tw-enter-scale: 1;
-    --tw-exit-scale: 1;
-    --tw-enter-rotate: 0deg;
-    --tw-exit-rotate: 0deg;
-    --tw-enter-blur: 0px;
-    --tw-exit-blur: 0px;
-  }
-
-  /* 3. Accordion / collapsible height.
-     Model-attempt transcripts slide open over 200ms. Snap instead. A
-     near-zero duration rather than `animation: none` keeps `animationend`
-     firing so the panel still completes its close. The reveal itself is
-     preserved - the transcript appears, it just does not travel. */
-  [class*="animate-accordion"],
-  [class*="animate-collapsible"] {
-    animation-duration: 1ms;
-  }
-
-  /* Deliberately preserved: the 1px `active:translate-y-px` press on buttons.
-     It is a hairline, non-vestibular tactile cue and it is the only press
-     feedback those controls have; removing it would cost state feedback
-     without reducing perceived motion. Focus rings, hover tone changes, and
-     opacity transitions are likewise untouched throughout. */
 }

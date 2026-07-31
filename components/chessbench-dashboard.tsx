@@ -36,8 +36,6 @@ import {
   Cell,
   ErrorBar,
   LabelList,
-  Line,
-  LineChart,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
@@ -122,8 +120,8 @@ import {
 } from "@/components/ui/tooltip"
 import {
   CATEGORY as REAL_CATEGORY,
+  CATEGORY_SAMPLE as REAL_CATEGORY_SAMPLE,
   CATEGORIES as REAL_CATEGORIES,
-  ELO_HISTORY as REAL_ELO_HISTORY,
   META as REAL_META,
   MODELS as REAL_MODELS,
   PUZZLES as REAL_PUZZLES,
@@ -134,6 +132,7 @@ import {
   type DashboardPuzzleItem,
   type DashboardSolutionAttempt,
 } from "@/lib/benchmarks/dashboard-data"
+import { usePreferReducedMotion } from "@/hooks/use-prefers-reduced-motion"
 import { cn } from "@/lib/utils"
 
 type View = "leaderboard" | "problems" | "docs"
@@ -187,8 +186,7 @@ const CATEGORIES = REAL_CATEGORIES
 const SCOREBOARD = REAL_SCOREBOARD
 
 const CATEGORY = REAL_CATEGORY
-
-const ELO_HISTORY = REAL_ELO_HISTORY
+const CATEGORY_SAMPLE = REAL_CATEGORY_SAMPLE
 
 const PUZZLES = REAL_PUZZLES
 
@@ -342,7 +340,12 @@ function moveTimeText(seconds: number, n: number) {
 }
 
 function categoryScore(model: ModelId, category: CategoryId) {
-  return CATEGORY[model][category]
+  // Master emits the reading and its sample size separately; callers here want
+  // them together, because a percentage is meaningless without the n behind it.
+  return {
+    accuracy: CATEGORY[model][category],
+    n: CATEGORY_SAMPLE[model][category],
+  }
 }
 
 /** Largest measured bucket size across the given models. */
@@ -378,12 +381,6 @@ function eloBand(score: (typeof SCOREBOARD)[number]) {
 
   return { low, high }
 }
-
-const ELO_ROUNDS = Math.max(
-  0,
-  ...MODELS.map((model) => ELO_HISTORY[model.id]?.length ?? 0)
-)
-const HAS_ELO_PROGRESSION = ELO_ROUNDS >= 2
 
 const RATING_STEP = 50
 const RATING_BOUNDS: [number, number] = (() => {
@@ -608,45 +605,6 @@ function useMounted() {
   return React.useSyncExternalStore(
     subscribeMounted,
     () => true,
-    () => false
-  )
-}
-
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
-
-function reducedMotionQuery() {
-  if (
-    typeof window === "undefined" ||
-    typeof window.matchMedia !== "function"
-  ) {
-    return null
-  }
-
-  return window.matchMedia(REDUCED_MOTION_QUERY)
-}
-
-function subscribeReducedMotion(onStoreChange: () => void) {
-  const query = reducedMotionQuery()
-
-  if (!query) {
-    return () => undefined
-  }
-
-  query.addEventListener("change", onStoreChange)
-  return () => query.removeEventListener("change", onStoreChange)
-}
-
-/**
- * Chessground animates pieces from JS (rAF writing inline transforms), so no CSS
- * media query can reach it, and it caches the animation config at construction.
- * Reading the preference as a subscribed store means the board can re-apply
- * `animation.enabled` when the OS setting flips mid-session, while the server
- * snapshot stays `false` so prerendering never touches `window`.
- */
-function useReducedMotion() {
-  return React.useSyncExternalStore(
-    subscribeReducedMotion,
-    () => reducedMotionQuery()?.matches ?? false,
     () => false
   )
 }
@@ -1031,21 +989,11 @@ function LeaderboardView() {
       <section className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardDescription>
-              {HAS_ELO_PROGRESSION ? "Time series" : "Derived rating"}
-            </CardDescription>
-            <CardTitle as="h2">
-              {HAS_ELO_PROGRESSION
-                ? "Elo progression"
-                : "Estimated Elo, single round"}
-            </CardTitle>
+            <CardDescription>Derived rating</CardDescription>
+            <CardTitle as="h2">Estimated Elo, single round</CardTitle>
           </CardHeader>
           <CardContent>
-            {HAS_ELO_PROGRESSION ? (
-              <EloLineChart />
-            ) : (
-              <EloEstimateChart sorted={sorted} />
-            )}
+            <EloEstimateChart sorted={sorted} />
           </CardContent>
         </Card>
         <Card>
@@ -1690,90 +1638,6 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
   )
 }
 
-function EloLineChart() {
-  const maxRounds = Math.max(
-    ...MODELS.map((model) => ELO_HISTORY[model.id]?.length ?? 0)
-  )
-  const eloValues = MODELS.flatMap((model) => ELO_HISTORY[model.id] ?? [])
-  const minElo =
-    eloValues.length === 0
-      ? 0
-      : Math.floor((Math.min(...eloValues) - 100) / 100) * 100
-  const maxElo =
-    eloValues.length === 0
-      ? 2400
-      : Math.ceil((Math.max(...eloValues) + 100) / 100) * 100
-  const rounds = Array.from({ length: maxRounds }, (_, index) => {
-    const row: Record<string, string | number | null> = {
-      round: `R${index + 1}`,
-    }
-    for (const model of MODELS) {
-      // A model that did not run in this round has no rating for it. Recharts
-      // breaks the line on null; a zero would draw a collapse that never
-      // happened.
-      row[model.id] = ELO_HISTORY[model.id]?.[index] ?? null
-    }
-    return row
-  })
-  const strokeLegend = describeStrokes(MODELS.map((model) => model.id))
-
-  return (
-    <SeriesScope className="space-y-4">
-      <ChartContainer
-        config={modelChartConfig}
-        className="aspect-auto h-[300px] w-full"
-      >
-        <LineChart
-          data={rounds}
-          margin={{ left: 8, right: 18, top: 12, bottom: 8 }}
-          title="Estimated Elo per benchmark round, by model"
-          desc={`One line per model across ${maxRounds} rounds. Lines are told apart by line style as well as color: ${strokeLegend}. A round a model did not run leaves a break in its line. The values are in the accompanying data table.`}
-        >
-          <CartesianGrid vertical={false} strokeDasharray="3 3" />
-          <XAxis dataKey="round" tickLine={false} axisLine={false} />
-          <YAxis
-            width={44}
-            domain={[minElo, maxElo]}
-            tickLine={false}
-            axisLine={false}
-          />
-          <ChartTooltip content={<ChartTooltipContent />} />
-          {MODELS.map((model) => (
-            <Line
-              key={model.id}
-              type="monotone"
-              dataKey={model.id}
-              stroke={seriesColor(model.id)}
-              strokeWidth={2}
-              strokeDasharray={seriesMark(model.id).dash}
-              dot={{ r: 2.5 }}
-              connectNulls={false}
-            />
-          ))}
-        </LineChart>
-      </ChartContainer>
-      <SeriesLegend models={MODELS.map((model) => model.id)} variant="line" />
-      <ChartTable
-        caption="Estimated Elo per benchmark round, by model"
-        columns={["Round", ...MODELS.map((model) => model.name)]}
-        rows={rounds.map((row, index) => ({
-          key: `round-${index + 1}`,
-          header: `Round ${index + 1}`,
-          cells: MODELS.map((model) => {
-            const value = row[model.id]
-            return typeof value === "number" ? `${value}` : "not measured"
-          }),
-        }))}
-      />
-    </SeriesScope>
-  )
-}
-
-/**
- * Stand-in for the progression chart while only one round exists: current
- * estimated Elo per model, with the range one solved or missed puzzle would
- * move it to at this sample size.
- */
 function EloEstimateChart({ sorted }: { sorted: typeof SCOREBOARD }) {
   const data = [...sorted]
     .sort((a, b) => b.elo - a.elo)
@@ -2095,7 +1959,10 @@ function TradeoffPlot({
               key={point.id}
               name={point.model}
               data={[
-                { ...point, plotLabel: plotLabels.get(point.id) ?? point.short },
+                {
+                  ...point,
+                  plotLabel: plotLabels.get(point.id) ?? point.short,
+                },
               ]}
               dataKey="accuracy"
               shape={seriesMark(point.id).symbol}
@@ -3336,7 +3203,7 @@ function ChessBoard({
   const boardRef = React.useRef<HTMLDivElement>(null)
   const apiRef = React.useRef<ChessgroundApi | null>(null)
   const skipNextSetRef = React.useRef(false)
-  const reducedMotion = useReducedMotion()
+  const reducedMotion = usePreferReducedMotion()
   const latestRef = React.useRef({
     fen,
     lastMove,

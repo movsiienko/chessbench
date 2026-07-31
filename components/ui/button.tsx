@@ -4,20 +4,25 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 /**
- * Expands the pointer/touch target of the compact sizes past their visual box
- * with a transparent overlay pseudo-element (WCAG 2.5.8 Target Size (Minimum)).
+ * Compact controls keep their documented 24-28px visual box and gain a
+ * transparent `::after` that extends the pointer target 8px past every edge
+ * (WCAG 2.5.8 Target Size). Density and layout are untouched; only the hit
+ * area grows, to 44px tall for `sm`/`icon-sm` (44x44 for `icon-sm`) and 40px
+ * for `xs`/`icon-xs`.
  *
- * The visual box is untouched, so density and layout are identical: only the
- * hit area grows, by 4px on every side. 4px is the largest expansion that
- * cannot make neighbouring targets overlap in this app's tightest control
- * clusters, which are spaced with `gap-2` (8px). The result is 32x32 for
- * `xs`/`icon-xs`, 36x36 for `sm`/`icon-sm`.
+ * 8px is the largest expansion that still cannot cover a neighbour's visible
+ * box. The tightest clusters in the app - the wrapping filter-chip row, the
+ * puzzle pager - are spaced with `gap-2`, so an 8px halo reaches exactly the
+ * neighbouring control's border and stops. The two halos do overlap across
+ * that gutter, so a press landing dead centre between two chips resolves to
+ * one of them; a press anywhere on or near either chip still hits that chip.
  *
- * Disabled inside a ButtonGroup, where buttons are flush and an expanded
- * overlay would overlap its neighbour.
+ * Suppressed inside a ButtonGroup, where buttons are flush. There is no gutter
+ * there, so the halo would extend 8px *into* the neighbour's visible box and
+ * steal presses that belong to it.
  */
 const compactHitArea =
-  "relative before:absolute before:-inset-1 before:content-[''] in-data-[slot=button-group]:before:content-none"
+  "relative after:absolute after:-inset-2 after:content-[''] in-data-[slot=button-group]:after:content-none"
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
