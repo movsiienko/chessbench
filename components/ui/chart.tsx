@@ -61,6 +61,7 @@ function ChartContainer({
   children,
   config,
   initialDimension = INITIAL_DIMENSION,
+  accessibilityLayer = true,
   ...props
 }: React.ComponentProps<"div"> & {
   config: ChartConfig
@@ -71,9 +72,27 @@ function ChartContainer({
     width: number
     height: number
   }
+  /**
+   * Recharts' keyboard/screen-reader layer: makes the chart focusable and lets
+   * arrow keys walk the data points. On by default. Recharts reads this off
+   * the chart root rather than off this wrapper, so it is injected into the
+   * child element below.
+   *
+   * @defaultValue true
+   */
+  accessibilityLayer?: boolean
 }) {
   const uniqueId = React.useId()
   const chartId = `chart-${id ?? uniqueId.replace(/:/g, "")}`
+
+  // An explicit `accessibilityLayer` on the chart root always wins, so a
+  // single chart can opt out without turning it off for everyone.
+  const chart = React.isValidElement<{ accessibilityLayer?: boolean }>(children)
+    ? React.cloneElement(children, {
+        accessibilityLayer:
+          children.props.accessibilityLayer ?? accessibilityLayer,
+      })
+    : children
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -82,6 +101,11 @@ function ChartContainer({
         data-chart={chartId}
         className={cn(
           "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-hidden [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector]:outline-hidden [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-surface]:outline-hidden",
+          // The accessibility layer puts tabIndex=0 on .recharts-surface, but
+          // the blanket outline-hidden above erases the focus indicator, which
+          // makes a focusable chart look unfocused. Restore the shared focus
+          // ring for keyboard users only.
+          "[&_.recharts-surface:focus-visible]:outline-3 [&_.recharts-surface:focus-visible]:outline-ring/50 [&_.recharts-surface:focus-visible]:outline-solid",
           className
         )}
         {...props}
@@ -90,7 +114,7 @@ function ChartContainer({
         <RechartsPrimitive.ResponsiveContainer
           initialDimension={initialDimension}
         >
-          {children}
+          {chart}
         </RechartsPrimitive.ResponsiveContainer>
       </div>
     </ChartContext.Provider>
@@ -155,12 +179,9 @@ function ChartTooltipContent({
     indicator?: "line" | "dot" | "dashed"
     nameKey?: string
     labelKey?: string
-  } & Omit<
-    RechartsPrimitive.DefaultTooltipContentProps<
-      TooltipValueType,
-      TooltipNameType
-    >,
-    "accessibilityLayer"
+  } & RechartsPrimitive.DefaultTooltipContentProps<
+    TooltipValueType,
+    TooltipNameType
   >) {
   const { config } = useChart()
 

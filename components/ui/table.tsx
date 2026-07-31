@@ -65,10 +65,20 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+/**
+ * Header cell. Defaults to `scope="col"` because the overwhelmingly common
+ * case is a column header; pass `scope="row"` / `"rowgroup"` / `"colgroup"` to
+ * override.
+ */
+function TableHead({
+  className,
+  scope = "col",
+  ...props
+}: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      scope={scope}
       className={cn(
         "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground [&:has([role=checkbox])]:pr-0",
         className
@@ -91,6 +101,15 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   )
 }
 
+/**
+ * Accessible name for the table, announced when a screen reader enters it.
+ *
+ * Render it as the *first* child of `<Table>` (the HTML parser requires
+ * `<caption>` before `<thead>`/`<tbody>`); `Table` sets `caption-bottom`, so it
+ * still paints below the rows. Add `className="sr-only"` when the surrounding
+ * card heading already carries the visible label and a second one would be
+ * redundant.
+ */
 function TableCaption({
   className,
   ...props
