@@ -80,10 +80,15 @@ Canonical files are written as
 
 ## Dashboard Lab Logos
 
-Dashboard model chips use lab SVG routes for the model authors listed by
-[models.dev labs](https://models.dev/labs/). `LAB_SVGS` in
-`components/chessbench-dashboard.tsx` is keyed by the generated
-`DashboardLabId` union from `lib/benchmarks/dashboard-data.ts`.
+Dashboard model chips render lab marks that are **vendored into the repo** as
+React components under `components/ui/svgs/`. Nothing is fetched from
+svgl.app or models.dev at render time: a third-party request per logo per page
+load leaves gaps whenever those hosts are slow, blocked or offline, and leaks
+visitor traffic to hosts the visitor did not choose.
+
+`LAB_SVGS` in `components/chessbench-dashboard.tsx` maps each generated
+`DashboardLabId` to a label and a mark. A lab with no vendored mark may omit
+`icon` and falls back to a monogram, which still never touches the network.
 
 `scripts/build-dashboard-data.ts` derives `DashboardModel.lab` from
 `https://models.dev/models.json`. It first looks for a matching canonical
@@ -91,16 +96,23 @@ model key such as `openai/gpt-5.5`; when a benchmark model id is a
 Gateway-specific variant, it validates the provider prefix against the
 models.dev lab prefix set and uses that lab id.
 
-Logo source rules:
+The emitted `DashboardLabId` union covers only the labs the configured models
+belong to, not the whole remote catalog, so a lab added upstream cannot rewrite
+the generated file or break `bun run typecheck`.
 
-1. Prefer exact brand routes from [SVGL](https://svgl.app/) when available.
-   Query `https://api.svgl.app?search=<lab>` or use the SVGL search UI.
-2. Preserve SVGL's light/dark `route` object when one is returned.
-3. If SVGL does not have the lab, use models.dev's documented lab route:
-   `https://models.dev/logos/labs/<lab>.svg`.
+Logo rules:
+
+1. Prefer the exact brand mark from [SVGL](https://svgl.app/). Query
+   `https://api.svgl.app?search=<lab>` or use the SVGL search UI.
+2. Vendor it as a component in `components/ui/svgs/`, in the style of the files
+   already there: a typed `SVGProps` component, no width/height, and
+   `React.useId()` for any gradient, mask or filter id. Keep SVGL's light/dark
+   pair when it publishes one and wire both into `icon`.
+3. Marks stay the trademark of the lab they name and are used only to identify
+   that lab's model.
 4. Keep `LAB_SVGS` complete for every generated `DashboardLabId`. The mapping
    uses `satisfies Record<DashboardLabId, ...>`, so `bun run typecheck` fails
-   when models.dev introduces a lab id without an explicit logo route.
+   when a benchmarked model introduces a lab with no entry.
 
 Current mappings: `gpt5` -> OpenAI, `claude45` -> Anthropic, `gem25` ->
-Google, `ds35` -> DeepSeek, `grok4` -> xAI, and `qwen3` -> Alibaba.
+Google, `ds35` -> DeepSeek, `grok4` -> xAI, and `qwen3` -> Alibaba (Qwen mark).
