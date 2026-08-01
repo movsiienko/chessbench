@@ -12,6 +12,13 @@
     "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+  /* Type ramp, DESIGN.md section 3. The label step runs 0.65rem to 0.75rem,
+     but Tailwind's built-in scale bottoms out at --text-xs (0.75rem), so the
+     0.65rem floor is registered here as `text-2xs` rather than written as an
+     inline arbitrary value at each call site. Line height 1 matches the
+     documented label spec. */
+  --text-2xs: 0.65rem;
+  --text-2xs--line-height: 1;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -43,8 +50,10 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --color-result-ok: var(--result-ok);
-  --color-result-miss: var(--result-miss);
+  --color-move-correct: var(--move-correct);
+  --color-move-correct-foreground: var(--move-correct-foreground);
+  --color-move-incorrect: var(--move-incorrect);
+  --color-move-incorrect-foreground: var(--move-incorrect-foreground);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -92,10 +101,16 @@
   --chess-amber-strong: oklch(0.58 0.16 55);
   --board-light: #efe6d2;
   --board-dark: #b58863;
-  --result-ok: oklch(0.63 0.17 150);
-  --result-ok-ring: oklch(0.63 0.17 150 / 12%);
-  --result-miss: oklch(0.62 0.2 28);
-  --result-miss-ring: oklch(0.62 0.2 28 / 13%);
+  /* Move correctness. Semantic, not decorative: these are the only two
+     colors allowed to encode "the model played the solution" vs "it did
+     not". They are not part of the accent vocabulary and must not be used
+     as page-level fills. Both clear 3:1 non-text contrast against --card
+     (4.35:1 and 5.31:1 here), and their paired foregrounds clear 4:1 on
+     the fill so the check/cross glyph stays legible inside a filled chip. */
+  --move-correct: oklch(0.56 0.15 150);
+  --move-correct-foreground: oklch(0.985 0 0);
+  --move-incorrect: oklch(0.55 0.18 28);
+  --move-incorrect-foreground: oklch(0.985 0 0);
 }
 
 .dark {
@@ -135,10 +150,14 @@
   --chess-amber-strong: oklch(0.85 0.13 75);
   --board-light: #d7c6a5;
   --board-dark: #8c6848;
-  --result-ok: oklch(0.75 0.15 152);
-  --result-ok-ring: oklch(0.75 0.15 152 / 20%);
-  --result-miss: oklch(0.7 0.18 25);
-  --result-miss-ring: oklch(0.7 0.18 25 / 22%);
+  /* Lightness inverts on dark surfaces, as it does for --chess-amber.
+     Against --card (oklch(0.205 0 0)) these measure 7.64:1 and 6.26:1,
+     well clear of the 3:1 non-text floor, and the ink foreground measures
+     6.2:1 or better on either fill. */
+  --move-correct: oklch(0.72 0.14 150);
+  --move-correct-foreground: oklch(0.205 0 0);
+  --move-incorrect: oklch(0.7 0.16 28);
+  --move-incorrect-foreground: oklch(0.205 0 0);
 }
 
 @layer base {
@@ -168,7 +187,9 @@
   padding: 0.25rem 0.625rem;
   color: var(--muted-foreground);
   font-family: var(--font-sans);
-  font-size: 0.75rem;
+  /* Snapped onto the DESIGN.md ramp: this sits with the mono FEN string in
+     the same row, and 0.75rem is the nearest documented step. */
+  font-size: var(--text-xs);
 }
 
 .cb-move-line::before {
@@ -178,13 +199,15 @@
   height: 0.61rem;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: var(--result-ok);
-  box-shadow: 0 0 0 0.16rem var(--result-ok-ring);
+  background: var(--move-correct);
+  box-shadow: 0 0 0 0.16rem
+    color-mix(in oklch, var(--move-correct) 14%, transparent);
 }
 
 .cb-move-line[data-result="miss"]::before {
-  background: var(--result-miss);
-  box-shadow: 0 0 0 0.16rem var(--result-miss-ring);
+  background: var(--move-incorrect);
+  box-shadow: 0 0 0 0.16rem
+    color-mix(in oklch, var(--move-incorrect) 14%, transparent);
 }
 
 .cb-move-line strong {
@@ -208,7 +231,9 @@
   border-radius: 999px;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  /* Compact technical label. Master raised this from the ramp floor to 0.75rem
+     for legibility; that size is kept, expressed as the ramp token. */
+  font-size: var(--text-xs);
   line-height: 1;
   padding: 0.19rem 0;
 }
@@ -256,11 +281,19 @@
   }
 
   /* Puzzle card hover lift: keep the ring and cursor feedback, drop the
-     displacement itself rather than only its transition. */
+     displacement itself rather than only its transition. The travel is
+     replaced with a tonal surface shift rather than simply removed - hover
+     must still read as hover, which is the treatment DESIGN.md prescribes
+     ("hover changes tone only"). */
   [data-slot="card"]:hover,
   [data-slot="card"]:focus-visible {
     translate: none !important;
     transform: none !important;
+  }
+
+  [data-slot="card"].transition-transform:hover,
+  [data-slot="card"].transition-transform:focus-visible {
+    background-color: var(--muted);
   }
 
   /* Chessground slides pieces between squares. The JS animation is disabled

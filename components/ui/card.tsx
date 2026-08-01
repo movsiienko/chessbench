@@ -33,18 +33,29 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+type CardTitleElement = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "div" | "span"
+
 /**
- * Renders a `div` by default so existing call sites are unchanged. Pass
- * `as="h2"` (or another heading level) to place the title in the document's
- * heading outline for screen-reader navigation.
+ * Card heading. Renders a real `<h3>` by default so card titles appear in the
+ * document outline and in a screen reader's heading list.
+ *
+ * Pass `as` to place the card correctly in the page hierarchy, e.g.
+ * `<CardTitle as="h2">` under an `<h1>` page title, or `as="div"` for the rare
+ * card whose title is decorative and should stay out of the outline.
+ *
+ * Styling is unchanged: Tailwind's preflight resets heading font-size/weight
+ * to inherit, and the classes below set them explicitly, so every element
+ * choice renders identically.
  */
 function CardTitle({
   className,
-  as: Component = "div",
+  as = "h3",
   ...props
-}: React.ComponentProps<"div"> & { as?: React.ElementType }) {
+}: React.ComponentProps<"div"> & { as?: CardTitleElement }) {
+  const Comp = as as React.ElementType
+
   return (
-    <Component
+    <Comp
       data-slot="card-title"
       className={cn(
         "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",

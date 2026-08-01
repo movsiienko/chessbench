@@ -12,6 +12,7 @@
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
+    "verify:ui": "bun scripts/verify-ui.ts",
     "dashboard:data": "bun scripts/build-dashboard-data.ts",
     "benchmark:local": "bun scripts/run-benchmark.ts",
     "benchmark:cheap": "bun scripts/run-benchmark.ts --model google/gemini-3.1-flash-lite-preview --model openai/gpt-5-nano",
@@ -44,9 +45,10 @@
     "@types/react-dom": "^19.2.3",
     "eslint": "^9.39.4",
     "eslint-config-next": "16.1.7",
+    "playwright": "^1.62.1",
+    "postcss": "^8",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "postcss": "^8",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3"
   }

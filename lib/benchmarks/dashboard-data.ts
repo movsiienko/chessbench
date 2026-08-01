@@ -10,20 +10,37 @@ export type DashboardModel = {
   name: string
   vendor: string
   lab: DashboardLabId
+  /**
+   * Chart series color for the light theme. Derived from the lab's brand hex:
+   * hue is kept (rotated only to break a collision with an earlier series) and
+   * lightness is moved until the color clears 3.5:1 against
+   * the light `--card` surface, so it satisfies WCAG 1.4.11 as a graphical
+   * object. Never assume the brand hex itself is safe on either surface.
+   */
   color: string
+  /** Same series, fitted to the dark `--card` surface. */
+  colorDark: string
   releaseQ: string
 }
 
 export type DashboardScore = {
   model: DashboardModelId
+  /** Puzzles this model was actually evaluated on. */
+  n: number
   accuracy: number
+  /** Derived from puzzle ratings and accuracy, not a played rating. */
   elo: number
+  /** Extrapolated cost per 1,000 puzzles from the sampled rows. */
   cost: number
   avgTokens: number
   avgMoveTime: number
   legalRate: number
 }
 
+/**
+ * Per-theme accuracy. `accuracy` is null when the sample contained no puzzle
+ * in that bucket, so consumers must render an absence instead of a value.
+ */
 export type DashboardPuzzleItem = {
   id: string
   fen: string
@@ -52,7 +69,8 @@ export const MODELS: DashboardModel[] = [
     "name": "GPT 5.5",
     "vendor": "OpenAI",
     "lab": "openai",
-    "color": "#10a37f",
+    "color": "#009b78",
+    "colorDark": "#10a37f",
     "releaseQ": "v3 low reasoning"
   },
   {
@@ -60,7 +78,8 @@ export const MODELS: DashboardModel[] = [
     "name": "Claude Opus 4.8",
     "vendor": "Anthropic",
     "lab": "anthropic",
-    "color": "#d97757",
+    "color": "#cf6e4e",
+    "colorDark": "#d97757",
     "releaseQ": "v3 low thinking"
   },
   {
@@ -69,6 +88,7 @@ export const MODELS: DashboardModel[] = [
     "vendor": "Google",
     "lab": "google",
     "color": "#4285f4",
+    "colorDark": "#4285f4",
     "releaseQ": "v3 low thinking"
   },
   {
@@ -76,7 +96,8 @@ export const MODELS: DashboardModel[] = [
     "name": "DeepSeek V3.2 Thinking",
     "vendor": "DeepSeek",
     "lab": "deepseek",
-    "color": "#2563eb",
+    "color": "#007d98",
+    "colorDark": "#007d98",
     "releaseQ": "v3 low thinking"
   },
   {
@@ -85,6 +106,7 @@ export const MODELS: DashboardModel[] = [
     "vendor": "xAI",
     "lab": "xai",
     "color": "#111827",
+    "colorDark": "#a4aec3",
     "releaseQ": "v3 low thinking"
   },
   {
@@ -92,7 +114,8 @@ export const MODELS: DashboardModel[] = [
     "name": "Qwen3 Max Thinking",
     "vendor": "Alibaba",
     "lab": "alibaba",
-    "color": "#8b5cf6",
+    "color": "#9a56ed",
+    "colorDark": "#9a56ed",
     "releaseQ": "v3 thinking model"
   }
 ]
@@ -151,6 +174,7 @@ export const CATEGORIES: Array<{ id: DashboardCategoryId; label: string }> = [
 export const SCOREBOARD: DashboardScore[] = [
   {
     "model": "gpt5",
+    "n": 10,
     "accuracy": 0.3,
     "elo": 1610,
     "cost": 105,
@@ -160,6 +184,7 @@ export const SCOREBOARD: DashboardScore[] = [
   },
   {
     "model": "claude45",
+    "n": 10,
     "accuracy": 0.2,
     "elo": 1516,
     "cost": 150,
@@ -169,6 +194,7 @@ export const SCOREBOARD: DashboardScore[] = [
   },
   {
     "model": "gem25",
+    "n": 10,
     "accuracy": 0.6,
     "elo": 1827,
     "cost": 16,
@@ -178,6 +204,7 @@ export const SCOREBOARD: DashboardScore[] = [
   },
   {
     "model": "ds35",
+    "n": 10,
     "accuracy": 0,
     "elo": 958,
     "cost": 0,
@@ -187,6 +214,7 @@ export const SCOREBOARD: DashboardScore[] = [
   },
   {
     "model": "grok4",
+    "n": 10,
     "accuracy": 0.3,
     "elo": 1610,
     "cost": 9,
@@ -196,6 +224,7 @@ export const SCOREBOARD: DashboardScore[] = [
   },
   {
     "model": "qwen3",
+    "n": 10,
     "accuracy": 0,
     "elo": 958,
     "cost": 0,

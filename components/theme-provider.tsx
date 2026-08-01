@@ -21,6 +21,69 @@ function ThemeProvider({
   )
 }
 
+/**
+ * The theme toggle keyboard shortcut. A modifier is required so the binding
+ * cannot fire from a stray or dictated keystroke (WCAG 2.1.4).
+ *
+ * - `label` / `macLabel` are display strings; prefer `useThemeShortcutLabel()`
+ *   so the rendered label stays hydration-safe.
+ * - `label` also doubles as a valid `aria-keyshortcuts` value.
+ */
+const THEME_SHORTCUT = {
+  key: "d",
+  code: "KeyD",
+  altKey: true,
+  shiftKey: true,
+  label: "Alt+Shift+D",
+  macLabel: "⌥⇧D",
+} as const
+
+function isMacPlatform() {
+  if (typeof navigator === "undefined") {
+    return false
+  }
+
+  return /mac|iphone|ipad|ipod/i.test(navigator.userAgent)
+}
+
+function subscribeShortcutLabel() {
+  return () => {}
+}
+
+/**
+ * Platform-aware label for the theme shortcut, e.g. for a tooltip or
+ * `aria-keyshortcuts`. Renders the generic label on the server and during
+ * hydration, then swaps to the mac glyphs on macOS.
+ */
+function useThemeShortcutLabel() {
+  return React.useSyncExternalStore(
+    subscribeShortcutLabel,
+    () => (isMacPlatform() ? THEME_SHORTCUT.macLabel : THEME_SHORTCUT.label),
+    () => THEME_SHORTCUT.label
+  )
+}
+
+function matchesThemeShortcut(event: KeyboardEvent) {
+  if (event.ctrlKey || event.metaKey) {
+    return false
+  }
+
+  if (event.altKey !== THEME_SHORTCUT.altKey) {
+    return false
+  }
+
+  if (event.shiftKey !== THEME_SHORTCUT.shiftKey) {
+    return false
+  }
+
+  // With Alt held, macOS reports a composed character in `event.key`, so fall
+  // back to the physical key position.
+  return (
+    event.key.toLowerCase() === THEME_SHORTCUT.key ||
+    event.code === THEME_SHORTCUT.code
+  )
+}
+
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false
@@ -43,14 +106,7 @@ function ThemeHotkey() {
         return
       }
 
-      // WCAG 2.1.4: a single-character shortcut must be remappable or
-      // modified. Shift is the only modifier that does not collide with a
-      // browser or OS binding, so the hotkey is Shift+D.
-      if (event.metaKey || event.ctrlKey || event.altKey) {
-        return
-      }
-
-      if (!event.shiftKey || event.key.toLowerCase() !== "d") {
+      if (!matchesThemeShortcut(event)) {
         return
       }
 
@@ -58,6 +114,7 @@ function ThemeHotkey() {
         return
       }
 
+      event.preventDefault()
       setTheme(resolvedTheme === "dark" ? "light" : "dark")
     }
 
@@ -71,4 +128,4 @@ function ThemeHotkey() {
   return null
 }
 
-export { ThemeProvider }
+export { ThemeProvider, THEME_SHORTCUT, useThemeShortcutLabel }
