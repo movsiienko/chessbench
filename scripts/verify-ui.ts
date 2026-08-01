@@ -201,6 +201,12 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     return
   }
 
+  const statusBefore = await page.evaluate(() =>
+    [...document.querySelectorAll('[role="status"]')]
+      .map((el) => el.textContent?.trim() ?? "")
+      .join("|")
+  )
+
   const input = page.getByPlaceholder(/Nf3 or g1f3/i)
   await input.fill(new Chess(fen).moves()[0])
   await page.keyboard.press("Enter")
@@ -211,11 +217,15 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     survived:
       document.querySelector(".cg-wrap")?.getAttribute("data-probe") ===
       "original",
-    announced:
-      [...document.querySelectorAll('[role="status"]')]
-        .map((el) => el.textContent?.trim())
-        .filter(Boolean).length > 0,
+    status: [...document.querySelectorAll('[role="status"]')]
+      .map((el) => el.textContent?.trim() ?? "")
+      .join("|"),
   }))
+
+  // Comparing against the pre-move snapshot, because a live region that already
+  // held text would otherwise pass this check without the move announcing
+  // anything at all.
+  const announced = state.status !== statusBefore && state.status.trim() !== ""
 
   if (!state.survived)
     fail(
@@ -224,9 +234,12 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     )
   else ok("board lifecycle", "board node survives a move")
 
-  if (!state.announced)
-    fail("board feedback", "no live region announced the move")
-  else ok("board feedback", "move is announced in a live region")
+  if (!announced)
+    fail(
+      "board feedback",
+      `live region did not change when the move was played (before: "${statusBefore}", after: "${state.status}")`
+    )
+  else ok("board feedback", "move changes the live region")
 
   if (reduced && sawAnimation)
     fail(

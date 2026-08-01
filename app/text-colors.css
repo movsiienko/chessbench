@@ -1,3 +1,19 @@
+/* Text-colour overrides for app/globals.css.
+ *
+ * Every token below is already declared in globals.css, in the matching :root
+ * and .dark blocks. Neither file is wrapped in @layer, so both rule sets carry
+ * equal specificity and the winner is decided purely by import order: this file
+ * must be imported *after* globals.css in app/layout.tsx, and that import
+ * carries a comment saying so. Reordering them reverts all nine overrides with
+ * no build error.
+ *
+ * The `var(--foreground)` aliases are deliberate: --card-foreground,
+ * --popover-foreground, --secondary-foreground, --accent-foreground,
+ * --sidebar-foreground and --sidebar-accent-foreground are collapsed onto one
+ * grey so surface-level text reads uniformly, instead of each surface carrying
+ * its own near-identical shade. Only --foreground, --primary-foreground and
+ * --muted-foreground hold independent values.
+ */
 :root {
   --foreground: oklch(0.45 0 0);
   --card-foreground: var(--foreground);

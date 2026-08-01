@@ -227,13 +227,17 @@ function seriesColor(model: ModelId) {
  * keyed off the model's index in `MODELS`, and the legend draws the same two
  * marks, so the legend is readable in greyscale.
  */
-const SERIES_MARKS: Array<{ dash?: string; symbol: SymbolType }> = [
-  { symbol: "circle" },
-  { dash: "7 4", symbol: "square" },
-  { dash: "2 4", symbol: "triangle" },
-  { dash: "11 4 2 4", symbol: "diamond" },
-  { dash: "16 5", symbol: "star" },
-  { dash: "4 3 1 3", symbol: "cross" },
+const SERIES_MARKS: Array<{
+  dash?: string
+  stroke: string
+  symbol: SymbolType
+}> = [
+  { stroke: "solid", symbol: "circle" },
+  { dash: "7 4", stroke: "dashed", symbol: "square" },
+  { dash: "2 4", stroke: "dotted", symbol: "triangle" },
+  { dash: "11 4 2 4", stroke: "dash-dot", symbol: "diamond" },
+  { dash: "16 5", stroke: "long-dashed", symbol: "star" },
+  { dash: "4 3 1 3", stroke: "dash-dot-dot", symbol: "cross" },
 ]
 
 function seriesMark(model: ModelId) {
@@ -244,6 +248,7 @@ function seriesMark(model: ModelId) {
 
   return SERIES_MARKS[index % SERIES_MARKS.length] as {
     dash?: string
+    stroke: string
     symbol: SymbolType
   }
 }
@@ -274,12 +279,14 @@ const SERIES_SHORT_NAMES: Record<string, string> = (() => {
 
 /** Spoken form of the dash patterns, for a chart's `desc`. */
 function describeStrokes(models: ModelId[]) {
-  return models
-    .map(
-      (model) =>
-        `${modelById(model).name} ${seriesMark(model).dash ? "dashed" : "solid"}`
-    )
-    .join(", ")
+  return (
+    models
+      // Naming the actual pattern, not just "dashed": five of the six series are
+      // dashed, so collapsing them left a description that could not be used to
+      // tell one line from another.
+      .map((model) => `${modelById(model).name} ${seriesMark(model).stroke}`)
+      .join(", ")
+  )
 }
 
 function shortModelName(model: ModelId) {
@@ -405,7 +412,9 @@ function downloadFile(filename: string, contents: string, type: string) {
   document.body.append(link)
   link.click()
   link.remove()
-  URL.revokeObjectURL(url)
+  // Some browsers resolve the download asynchronously, after this task ends,
+  // and fail if the object URL has already been revoked.
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 function csvCell(value: string | number) {
@@ -1126,14 +1135,27 @@ function SampleNote({ children }: { children: React.ReactNode }) {
 }
 
 /** Column or metric label that opens the derivation behind the number. */
+/**
+ * Column header for a figure that was derived rather than measured, with the
+ * derivation in a tooltip.
+ *
+ * The trigger is a real `<button>`, not a styled `<span>`: a span is not in the
+ * tab order, so the explanation of how Elo, token and cost figures were
+ * produced was reachable by hover only. That explanation is the point of the
+ * label, and it is exactly what a keyboard or screen-reader user needs most.
+ */
 function DerivedLabel({ label, hint }: { label: string; hint: string }) {
   return (
     <Tooltip>
       <TooltipTrigger
         render={
-          <span className="cursor-help border-b border-dashed border-muted-foreground/60">
+          <button
+            type="button"
+            className="cursor-help border-b border-dashed border-muted-foreground/60 font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
             {label}
-          </span>
+            <span className="sr-only">. {hint}</span>
+          </button>
         }
       />
       <TooltipContent>{hint}</TooltipContent>
@@ -1525,7 +1547,13 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
     )
   )
   const omitted = CATEGORIES.filter((category) => !measured.includes(category))
-  const axes = measured.slice(0, 8)
+  // A radar stays readable to about eight spokes. Anything past that is cut,
+  // but a *measured* theme disappearing has to be said out loud - unlike an
+  // unmeasured one, it has a real value that simply is not on the chart. The
+  // sample currently has exactly eight, so this is one theme away from firing.
+  const AXIS_LIMIT = 8
+  const axes = measured.slice(0, AXIS_LIMIT)
+  const overflow = measured.slice(AXIS_LIMIT)
   const data = axes.map((category) => {
     const row: Record<string, string | number> = {
       category: categoryAxisLabel(category, shownModels),
@@ -1603,13 +1631,19 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
         </RadarChart>
       </ChartContainer>
       <SeriesLegend models={shownModels} variant="line" />
+      {/*
+        Rows come from every measured theme, not just the ones that fit on the
+        chart. The axis cap exists because a radar stops being readable past
+        about eight spokes; a table has no such limit, so capping it here too
+        would drop a real reading from the one place it could still be read.
+      */}
       <ChartTable
         caption="Capability radar for the top three models"
         columns={[
           "Theme",
           ...shownModels.map((model) => modelById(model).name),
         ]}
-        rows={axes.map((category) => ({
+        rows={measured.map((category) => ({
           key: category.id,
           header: category.label,
           cells: shownModels.map((model) => {
@@ -1631,6 +1665,16 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
               {omitted.map((category) => category.label).join(", ")}
             </span>
             .
+          </>
+        ) : null}
+        {overflow.length > 0 ? (
+          <>
+            {" "}
+            <span className="text-foreground">
+              Measured but not shown, the chart holds {AXIS_LIMIT} axes:{" "}
+              {overflow.map((category) => category.label).join(", ")}
+            </span>
+            . Those readings are in the table below.
           </>
         ) : null}
       </SampleNote>
@@ -1860,9 +1904,13 @@ function TradeoffPlot({
   // on a LabelList. So coincident points get one shared label naming all of
   // them, anchored on the first, and the rest render nothing.
   const metricMax = Math.max(...data.map((point) => point[metric]), 0)
-  // Accuracy is a 0-1 share; the metric axis runs from 0 to its own maximum.
+  // Accuracy is already a 0-100 percentage here; the metric axis runs from 0 to
+  // its own maximum.
   const nearby = (a: TradeoffPoint, b: TradeoffPoint) =>
-    Math.abs(a.accuracy - b.accuracy) <= 0.08 &&
+    // `accuracy` here is already scaled to 0-100, so the threshold is 8
+    // percentage points - the same 8% of the axis the metric side uses. It read
+    // 0.08 against a 0-100 value, which only ever matched an exact tie.
+    Math.abs(a.accuracy - b.accuracy) <= 8 &&
     (metricMax === 0 || Math.abs(a[metric] - b[metric]) / metricMax <= 0.08)
 
   const clusters: TradeoffPoint[][] = []
