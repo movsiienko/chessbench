@@ -40,13 +40,14 @@ alternate checkmate ambiguity, and writes the benchmark JSONL plus manifest.
 
 ## Scoring
 
-Use `scoreLichessPuzzleAnswer` from
-`lib/benchmarks/lichess-puzzles.ts`.
+Scoring lives in `runLichessPuzzleAttempt` in `lib/benchmarks/local-runner.ts`
+and runs as part of `bun run benchmark:local`.
 
-The primary metric is `solved_rate`: an answer is solved when its extracted UCI
-move sequence exactly matches either the full forcing line or the player-only
-move line. Secondary metrics include first move accuracy, full-line prefix
-score, and player-move prefix score.
+The primary metric is `solved_rate`: a puzzle is solved when the model plays
+every player move of the solution line correctly, one move per turn. The
+attempt stops at the first wrong move, invalid format, or provider error, and
+only a completed line counts as solved. Secondary metrics include first move
+accuracy and player-move prefix score.
 
 ## Local Benchmark Runs
 
