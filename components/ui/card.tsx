@@ -52,7 +52,7 @@ function CardTitle({
   as = "h3",
   ...props
 }: React.ComponentProps<"div"> & { as?: CardTitleElement }) {
-  const Comp = as as React.ElementType
+  const Comp: React.ElementType = as
 
   return (
     <Comp

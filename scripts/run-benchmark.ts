@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { generateText, type ModelMessage } from "ai"
+import { generateText, type JSONValue, type LanguageModelUsage } from "ai"
 import type { ProviderOptions } from "@ai-sdk/provider-utils"
 import {
   selectDefaultLichessPuzzleItems,
@@ -120,27 +120,20 @@ async function generateWithAiSdk({
   const providerOptions = providerOptionsFor(model)
   const result = await generateText({
     model,
-    messages: messages as ModelMessage[],
-    ...(options.maxOutputTokens === null
-      ? {}
-      : { maxOutputTokens: options.maxOutputTokens }),
-    ...(Object.keys(providerOptions).length === 0 ? {} : { providerOptions }),
+    messages,
+    maxOutputTokens: options.maxOutputTokens ?? undefined,
+    providerOptions: Object.keys(providerOptions).length
+      ? providerOptions
+      : undefined,
   })
   const gatewayMetadata = asRecord(result.providerMetadata?.gateway)
   const routing = asRecord(gatewayMetadata?.routing)
-  const usage = result.usage as typeof result.usage & {
-    raw?: unknown
-    reasoningTokens?: number
-  }
-  const reasoningResult = result as typeof result & {
-    reasoningText?: string
-    reasoning?: unknown
-  }
+  const usage = result.usage
 
   return {
     text: result.text,
-    reasoningText: reasoningResult.reasoningText,
-    reasoning: reasoningResult.reasoning,
+    reasoningText: result.reasoningText,
+    reasoning: result.reasoning,
     latencyMs: Math.round(performance.now() - startedAt),
     usage: {
       inputTokens: usage.inputTokens,
@@ -149,17 +142,16 @@ async function generateWithAiSdk({
       reasoningTokens: reasoningTokensFromUsage(usage),
       raw: usage.raw,
     },
-    costUsd: numberFromUnknown(
-      gatewayMetadata?.gatewayCost ?? gatewayMetadata?.cost
-    ),
-    generationId: stringFromUnknown(gatewayMetadata?.generationId),
-    servedProvider: stringFromUnknown(routing?.finalProvider),
+    costUsd: numberFrom(gatewayMetadata?.gatewayCost ?? gatewayMetadata?.cost),
+    generationId: stringFrom(gatewayMetadata?.generationId),
+    servedProvider: stringFrom(routing?.finalProvider),
   }
 }
 
 async function loadItems(path: string): Promise<LichessPuzzleBenchmarkItem[]> {
   const contents = await readFile(path, "utf8")
 
+  // SAFETY: items.jsonl is written by prepare-lichess-puzzles.ts as one LichessPuzzleBenchmarkItem per line.
   return contents
     .trim()
     .split("\n")
@@ -525,17 +517,25 @@ function isReasoningEffort(value: string): value is ReasoningEffort {
   return ["none", "minimal", "low", "medium", "high", "xhigh"].includes(value)
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : null
+function isJsonRecord(
+  value: JSONValue | undefined
+): value is Record<string, JSONValue> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-function reasoningTokensFromUsage(usage: {
-  outputTokenDetails?: { reasoningTokens?: number }
-  raw?: unknown
-  reasoningTokens?: number
-}) {
+function isString(value: JSONValue | undefined): value is string {
+  return typeof value === "string"
+}
+
+function isNumber(value: JSONValue | undefined): value is number {
+  return typeof value === "number"
+}
+
+function asRecord(value: JSONValue | undefined) {
+  return isJsonRecord(value) ? value : null
+}
+
+function reasoningTokensFromUsage(usage: LanguageModelUsage) {
   const rawUsage = asRecord(usage.raw)
   const outputTokenDetails = asRecord(rawUsage?.output_tokens_details)
   const completionTokenDetails = asRecord(rawUsage?.completion_tokens_details)
@@ -543,31 +543,27 @@ function reasoningTokensFromUsage(usage: {
   return (
     usage.outputTokenDetails?.reasoningTokens ??
     usage.reasoningTokens ??
-    numberFromUnknown(outputTokenDetails?.reasoning_tokens) ??
-    numberFromUnknown(outputTokenDetails?.thinking_tokens) ??
-    numberFromUnknown(completionTokenDetails?.reasoning_tokens) ??
-    numberFromUnknown(rawUsage?.thoughtsTokenCount)
+    numberFrom(outputTokenDetails?.reasoning_tokens) ??
+    numberFrom(outputTokenDetails?.thinking_tokens) ??
+    numberFrom(completionTokenDetails?.reasoning_tokens) ??
+    numberFrom(rawUsage?.thoughtsTokenCount)
   )
 }
 
-function stringFromUnknown(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined
+function stringFrom(value: JSONValue | undefined) {
+  return isString(value) ? value : undefined
 }
 
-function numberFromUnknown(value: unknown): number | undefined {
-  if (typeof value === "number") {
+function numberFrom(value: JSONValue | undefined) {
+  if (isNumber(value)) {
     return value
   }
 
-  if (typeof value === "string") {
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : undefined
-  }
-
-  return undefined
+  const parsed = isString(value) ? Number(value) : NaN
+  return Number.isFinite(parsed) ? parsed : undefined
 }
 
-function escapeCsv(value: unknown): string {
+function escapeCsv(value: string | number | boolean | null): string {
   const text = String(value)
 
   if (!/[",\n\r]/.test(text)) {

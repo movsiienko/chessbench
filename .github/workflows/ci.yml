@@ -25,6 +25,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Node
+        # oxlint runs oxlint.config.ts and the vendored JS plugin on Node.
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
 

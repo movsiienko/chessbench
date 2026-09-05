@@ -43,6 +43,14 @@ function isSafeChartKey(key: string) {
   return /^[\w-]+$/.test(key)
 }
 
+function isString(value: unknown): value is string {
+  return typeof value === "string"
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === "number"
+}
+
 const ChartContext = React.createContext<ChartContextProps | null>(null)
 
 function useChart() {
@@ -139,6 +147,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
+    // SAFETY: `theme` iterates the keys of THEMES, which is also the key type of ChartConfig.theme.
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
@@ -192,9 +201,9 @@ function ChartTooltipContent({
 
     const [item] = payload
     const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`
-    const itemConfig = getPayloadConfigFromPayload(config, item, key)
+    const itemConfig = config[key]
     const value =
-      !labelKey && typeof label === "string"
+      !labelKey && isString(label)
         ? (config[label]?.label ?? label)
         : itemConfig?.label
 
@@ -240,7 +249,7 @@ function ChartTooltipContent({
           .filter((item) => item.type !== "none")
           .map((item, index) => {
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`
-            const itemConfig = getPayloadConfigFromPayload(config, item, key)
+            const itemConfig = config[key]
             const indicatorColor = color ?? item.payload?.fill ?? item.color
 
             return (
@@ -268,6 +277,7 @@ function ChartTooltipContent({
                             "my-0.5": nestLabel && indicator === "dashed",
                           })}
                           style={
+                            // SAFETY: custom properties are valid CSS that React.CSSProperties does not enumerate.
                             {
                               "--color-bg": indicatorColor,
                               "--color-border": indicatorColor,
@@ -290,7 +300,7 @@ function ChartTooltipContent({
                       </div>
                       {item.value != null && (
                         <span className="font-mono font-medium text-foreground tabular-nums">
-                          {typeof item.value === "number"
+                          {isNumber(item.value)
                             ? item.value.toLocaleString()
                             : String(item.value)}
                         </span>
@@ -336,9 +346,9 @@ function ChartLegendContent({
         .filter((item) => item.type !== "none")
         .map((item, index) => {
           const key = `${nameKey ?? item.dataKey ?? "value"}`
-          const itemConfig = getPayloadConfigFromPayload(config, item, key)
+          const itemConfig = config[key]
           const fallbackLabel =
-            typeof item.dataKey === "string" || typeof item.dataKey === "number"
+            isString(item.dataKey) || isNumber(item.dataKey)
               ? item.dataKey
               : item.value != null
                 ? String(item.value)
@@ -367,42 +377,6 @@ function ChartLegendContent({
         })}
     </div>
   )
-}
-
-function getPayloadConfigFromPayload(
-  config: ChartConfig,
-  payload: unknown,
-  key: string
-) {
-  if (typeof payload !== "object" || payload === null) {
-    return undefined
-  }
-
-  const payloadPayload =
-    "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
-      ? payload.payload
-      : undefined
-
-  let configLabelKey: string = key
-
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string
-  }
-
-  return configLabelKey in config ? config[configLabelKey] : config[key]
 }
 
 export {

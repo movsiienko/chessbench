@@ -1,13 +1,19 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
+import type {
+  LichessPuzzleBenchmarkItem,
+  RatingBandId,
+} from "./lichess-puzzles"
 import {
   LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
   buildLichessPuzzleInitialPrompt,
   selectDefaultLichessPuzzleItems,
 } from "./lichess-puzzles"
 
-function item(id: string, ratingBand: string): LichessPuzzleBenchmarkItem {
+function item(
+  id: string,
+  ratingBand: RatingBandId
+): LichessPuzzleBenchmarkItem {
   return {
     id,
     benchmark: "lichess-puzzles-v1",
@@ -29,8 +35,7 @@ function item(id: string, ratingBand: string): LichessPuzzleBenchmarkItem {
       ratingDeviation: 80,
       popularity: 90,
       nbPlays: 500,
-      ratingBand:
-        ratingBand as LichessPuzzleBenchmarkItem["metadata"]["ratingBand"],
+      ratingBand,
       ratingBucket: "1000-1099",
       length: "short",
       moveCounts: {

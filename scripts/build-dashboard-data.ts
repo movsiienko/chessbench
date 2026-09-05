@@ -239,7 +239,7 @@ const dashboardModels = models.map(
     name,
     vendor,
     lab: resolveModelLab(apiModel, modelsDev),
-    ...(seriesColors[index] as SeriesColors),
+    ...seriesColors[index],
     releaseQ,
   })
 )
@@ -262,9 +262,11 @@ const categoryStats = models.map((model) => ({
   id: model.id,
   ...buildCategoryStats(rowsByModel.get(model.id) ?? [], itemsById),
 }))
+// SAFETY: categoryStats has one entry per model, so the keys are exactly the ModelId union.
 const categoryScores = Object.fromEntries(
   categoryStats.map((entry) => [entry.id, entry.scores])
 ) as Record<ModelId, Record<CategoryId, number | null>>
+// SAFETY: same shape as categoryScores above.
 const categorySample = Object.fromEntries(
   categoryStats.map((entry) => [entry.id, entry.sample])
 ) as Record<ModelId, Record<CategoryId, number>>
@@ -613,6 +615,7 @@ function contrastRatio(a: Rgb, b: Rgb) {
 
 async function loadItems(path: string): Promise<LichessPuzzleBenchmarkItem[]> {
   const contents = await readFile(path, "utf8")
+  // SAFETY: items.jsonl is written by prepare-lichess-puzzles.ts as one LichessPuzzleBenchmarkItem per line.
   return contents
     .trim()
     .split("\n")
@@ -629,7 +632,7 @@ async function loadModelsDevData(): Promise<ModelsDevData> {
     )
   }
 
-  const catalog = (await response.json()) as Record<string, unknown>
+  const catalog: object = await response.json()
   const modelKeys = Object.keys(catalog)
   const labIds = unique(modelKeys.map((key) => key.split("/")[0] ?? ""))
     .filter(Boolean)
@@ -694,6 +697,7 @@ async function readRows(path: string): Promise<ResultRow[]> {
   }
 
   return records.map((cells) => {
+    // SAFETY: the header row names every ResultRow column, as written by run-benchmark.ts; a missing cell reads as "".
     return Object.fromEntries(
       headers.map((header, index) => [header, cells[index] ?? ""])
     ) as ResultRow
@@ -736,10 +740,7 @@ function buildScoreboardRow(model: ModelConfig, rows: ResultRow[]) {
 function buildCategoryStats(
   rows: ResultRow[],
   itemLookup: Map<string, LichessPuzzleBenchmarkItem>
-): {
-  scores: Record<CategoryId, number | null>
-  sample: Record<CategoryId, number>
-} {
+) {
   const scores = new Map<CategoryId, number | null>()
   const sample = new Map<CategoryId, number>()
 
@@ -762,19 +763,21 @@ function buildCategoryStats(
     )
   }
 
-  return {
-    scores: Object.fromEntries(scores) as Record<CategoryId, number | null>,
-    sample: Object.fromEntries(sample) as Record<CategoryId, number>,
-  }
+  return { scores: byCategory(scores), sample: byCategory(sample) }
+}
+
+function byCategory<T>(entries: Map<CategoryId, T>) {
+  // SAFETY: the map is filled by iterating `categories`, so its keys are exactly the CategoryId union.
+  return Object.fromEntries(entries) as Record<CategoryId, T>
 }
 
 async function loadDatasetSize(path: string, itemCount: number) {
-  const manifest = JSON.parse(await readFile(path, "utf8")) as {
-    selection?: { totalItems?: number }
-  }
+  const manifest: { selection?: { totalItems?: number } } = JSON.parse(
+    await readFile(path, "utf8")
+  )
   const declared = manifest.selection?.totalItems
 
-  if (typeof declared !== "number" || !Number.isFinite(declared)) {
+  if (declared === undefined || !Number.isFinite(declared)) {
     return itemCount
   }
 
@@ -932,6 +935,7 @@ function parseJson<T>(value: string | undefined, fallback: T): T {
   }
 
   try {
+    // SAFETY: the cell was serialised by run-benchmark.ts from a T; a malformed cell takes the fallback below.
     return JSON.parse(value) as T
   } catch {
     return fallback
@@ -979,6 +983,6 @@ function round(value: number, digits: number) {
   return Math.round(value * factor) / factor
 }
 
-function toTs(value: unknown) {
+function toTs<T>(value: T) {
   return JSON.stringify(value, null, 2)
 }

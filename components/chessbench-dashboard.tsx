@@ -5,7 +5,7 @@ import { Chess, type Square } from "chess.js"
 import { Chessground } from "@lichess-org/chessground"
 import type { Api as ChessgroundApi } from "@lichess-org/chessground/api"
 import type { Config as ChessgroundConfig } from "@lichess-org/chessground/config"
-import type { DrawShape } from "@lichess-org/chessground/draw"
+import type { DrawShape as BoardArrow } from "@lichess-org/chessground/draw"
 import type * as cg from "@lichess-org/chessground/types"
 import {
   ArrowLeft,
@@ -147,11 +147,11 @@ type LabIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
 type LabLogo = {
   label: string
   /**
-   * Vendored mark. Labs that publish a single mono mark get one component;
-   * labs that publish a light and a dark cut get the pair. Omit it entirely
+   * Vendored mark, as a light and a dark cut. Labs that publish a single mono
+   * mark use it for both. Omit it entirely
    * and the lab falls back to a monogram.
    */
-  icon?: LabIcon | { light: LabIcon; dark: LabIcon }
+  icon?: { light: LabIcon; dark: LabIcon }
 }
 
 /**
@@ -175,8 +175,8 @@ const LAB_SVGS = {
     label: "Anthropic",
     icon: { light: AnthropicBlack, dark: AnthropicWhite },
   },
-  deepseek: { label: "DeepSeek", icon: Deepseek },
-  google: { label: "Google", icon: Gemini },
+  deepseek: { label: "DeepSeek", icon: { light: Deepseek, dark: Deepseek } },
+  google: { label: "Google", icon: { light: Gemini, dark: Gemini } },
   openai: { label: "OpenAI", icon: { light: Openai, dark: OpenaiDark } },
   xai: { label: "xAI", icon: { light: XaiLight, dark: XaiDark } },
 } as const satisfies Record<DashboardLabId, LabLogo>
@@ -246,11 +246,7 @@ function seriesMark(model: ModelId) {
     MODELS.findIndex((entry) => entry.id === model)
   )
 
-  return SERIES_MARKS[index % SERIES_MARKS.length] as {
-    dash?: string
-    stroke: string
-    symbol: SymbolType
-  }
+  return SERIES_MARKS[index % SERIES_MARKS.length]
 }
 
 /**
@@ -540,10 +536,12 @@ function solutionsFor(puzzle: PuzzleItem): SolutionAttempt[] {
 }
 
 function safeSquare(square: string) {
+  // SAFETY: squares come from chess.js and Chessground, which only emit a1-h8.
   return square as Square
 }
 
 function safeKey(square: string) {
+  // SAFETY: squares come from chess.js and Chessground, which only emit a1-h8.
   return square as cg.Key
 }
 
@@ -590,7 +588,7 @@ function legalDests(fen: string): cg.Dests {
   return dests
 }
 
-function moveArrow(uci: string): DrawShape | null {
+function moveArrow(uci: string): BoardArrow | null {
   const orig = uci.slice(0, 2)
   const dest = uci.slice(2, 4)
 
@@ -608,7 +606,7 @@ function moveArrow(uci: string): DrawShape | null {
   }
 }
 
-const EMPTY_DRAW_SHAPES: DrawShape[] = []
+const NO_ARROWS: BoardArrow[] = []
 
 function useMounted() {
   return React.useSyncExternalStore(
@@ -626,7 +624,7 @@ function boardAnimation(reducedMotion: boolean, small: boolean) {
 
 type BoardPiece = NonNullable<ReturnType<Chess["board"]>[number][number]>
 
-const PIECE_NAMES: Record<string, string> = {
+const PIECE_NAMES = {
   k: "king",
   q: "queen",
   r: "rook",
@@ -790,7 +788,10 @@ export function ChessBenchDashboard() {
   return (
     <Tabs
       value={view}
-      onValueChange={(value) => setView(value as View)}
+      onValueChange={(value) => {
+        // SAFETY: the only TabsTriggers rendered carry View values.
+        setView(value as View)
+      }}
       className="min-h-svh bg-background text-foreground"
     >
       {/*
@@ -1351,6 +1352,7 @@ function OverallAccuracyChart({ sorted }: { sorted: typeof SCOREBOARD }) {
             content={
               <ChartTooltipContent
                 formatter={(value, name, item) => {
+                  // SAFETY: recharts hands the formatter the row from `data` behind the hovered series entry.
                   const row = item?.payload as (typeof data)[number] | undefined
 
                   return (
@@ -1409,9 +1411,8 @@ function CategoryBars() {
   const sorted = [...SCOREBOARD].sort((a, b) => b.accuracy - a.accuracy)
   const shownModels = sorted.map((score) => score.model)
   const data = CATEGORIES.map((category) => {
-    const row: Record<string, string | number | null> = {
-      category: categoryAxisLabel(category, shownModels),
-    }
+    const row: Record<string, string | number | null> = {}
+    row.category = categoryAxisLabel(category, shownModels)
 
     for (const score of sorted) {
       const bucket = categoryScore(score.model, category.id)
@@ -1464,11 +1465,13 @@ function CategoryBars() {
             content={
               <ChartTooltipContent
                 formatter={(value, name, item) => {
+                  // SAFETY: series dataKeys are model ids, so `name` is a ModelId.
                   const model = modelById(name as ModelId)
+                  // SAFETY: recharts hands the formatter the row from `data` behind the hovered series entry.
                   const row = item?.payload as
                     | Record<string, string | number | null>
                     | undefined
-                  const n = Number(row?.[`${name as string}__n`] ?? 0)
+                  const n = Number(row?.[`${String(name)}__n`] ?? 0)
 
                   return (
                     <div className="flex w-full min-w-44 items-center justify-between gap-3 leading-none">
@@ -1555,9 +1558,8 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
   const axes = measured.slice(0, AXIS_LIMIT)
   const overflow = measured.slice(AXIS_LIMIT)
   const data = axes.map((category) => {
-    const row: Record<string, string | number> = {
-      category: categoryAxisLabel(category, shownModels),
-    }
+    const row: Record<string, string | number> = {}
+    row.category = categoryAxisLabel(category, shownModels)
 
     for (const score of sorted) {
       const bucket = categoryScore(score.model, category.id)
@@ -1608,11 +1610,13 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
             content={
               <ChartTooltipContent
                 formatter={(value, name, item) => {
+                  // SAFETY: series dataKeys are model ids, so `name` is a ModelId.
                   const model = modelById(name as ModelId)
+                  // SAFETY: recharts hands the formatter the row from `data` behind the hovered series entry.
                   const row = item?.payload as
                     | Record<string, string | number>
                     | undefined
-                  const n = Number(row?.[`${name as string}__n`] ?? 0)
+                  const n = Number(row?.[`${String(name)}__n`] ?? 0)
 
                   return (
                     <div className="flex w-full min-w-44 items-center justify-between gap-3 leading-none">
@@ -1688,6 +1692,7 @@ function EloEstimateChart({ sorted }: { sorted: typeof SCOREBOARD }) {
     .map((score) => {
       const model = modelById(score.model)
       const { low, high } = eloBand(score)
+      const swing: [number, number] = [score.elo - low, high - score.elo]
 
       return {
         model: model.name,
@@ -1695,7 +1700,7 @@ function EloEstimateChart({ sorted }: { sorted: typeof SCOREBOARD }) {
         n: score.n,
         low,
         high,
-        swing: [score.elo - low, high - score.elo] as [number, number],
+        swing,
         label: eloText(score.elo, score.n),
         fill: seriesColor(score.model),
       }
@@ -1736,6 +1741,7 @@ function EloEstimateChart({ sorted }: { sorted: typeof SCOREBOARD }) {
             content={
               <ChartTooltipContent
                 formatter={(value, name, item) => {
+                  // SAFETY: recharts hands the formatter the row from `data` behind the hovered series entry.
                   const row = item?.payload as (typeof data)[number] | undefined
 
                   return (
@@ -1937,7 +1943,7 @@ function TradeoffPlot({
 
   const shared = clusters.filter((cluster) => cluster.length > 1)
 
-  const shapeLegend = data
+  const markLegend = data
     .map((point) => `${point.model} ${seriesMark(point.id).symbol}`)
     .join(", ")
 
@@ -1956,7 +1962,7 @@ function TradeoffPlot({
         <ScatterChart
           margin={{ left: 4, right: 24, top: 20, bottom: 20 }}
           title={`Accuracy against ${isCost ? "extrapolated cost per 1,000 puzzles" : "mean thinking tokens per puzzle"}`}
-          desc={`One point per model, each drawn with its own shape and labelled on the plot: ${shapeLegend}. The values are in the accompanying data table.`}
+          desc={`One point per model, each drawn with its own shape and labelled on the plot: ${markLegend}. The values are in the accompanying data table.`}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
@@ -1980,6 +1986,7 @@ function TradeoffPlot({
             content={
               <ChartTooltipContent
                 formatter={(value, name, item) => {
+                  // SAFETY: recharts hands the formatter the row from `data` behind the hovered series entry.
                   const row = item?.payload as TradeoffPoint | undefined
                   const n = row?.n ?? MIN_SAMPLE
                   const isMetric = item?.dataKey === metric
@@ -2432,7 +2439,10 @@ function FiltersPopover({
           </div>
           <Select
             value={side}
-            onValueChange={(value) => setSide(value as "any" | "w" | "b")}
+            onValueChange={(value) => {
+              // SAFETY: the only SelectItems rendered carry these three values.
+              setSide(value as "any" | "w" | "b")
+            }}
           >
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -2580,7 +2590,7 @@ function ProblemFocus({
   const hintId = React.useId()
   const attempts = React.useMemo(() => solutionsFor(puzzle), [puzzle])
   const solved = attempts.filter((attempt) => attempt.correct).length
-  const correctionShapes = React.useMemo(() => {
+  const correctionArrows = React.useMemo(() => {
     if (!feedback || feedback.ok) {
       return []
     }
@@ -2712,7 +2722,7 @@ function ProblemFocus({
               <ChessBoard
                 fen={boardFen}
                 lastMove={lastMove}
-                autoShapes={correctionShapes}
+                arrows={correctionArrows}
                 onMove={handleMove}
                 describedBy={hintId}
               />
@@ -3233,7 +3243,7 @@ function ChessBoard({
   interactive = true,
   onMove,
   lastMove,
-  autoShapes = EMPTY_DRAW_SHAPES,
+  arrows = NO_ARROWS,
   small = false,
   decorative = false,
   describedBy,
@@ -3242,7 +3252,7 @@ function ChessBoard({
   interactive?: boolean
   onMove?: (move: PlayedMove) => void
   lastMove?: { from: string; to: string } | null
-  autoShapes?: DrawShape[]
+  arrows?: BoardArrow[]
   small?: boolean
   /** The position is already described by an ancestor's accessible name. */
   decorative?: boolean
@@ -3255,7 +3265,7 @@ function ChessBoard({
   const latestRef = React.useRef({
     fen,
     lastMove,
-    autoShapes,
+    arrows,
     onMove,
     reducedMotion,
   })
@@ -3264,7 +3274,7 @@ function ChessBoard({
   // Chessground instance outlives each render, and its move handler has to read
   // the position the user is currently looking at, not the one it was built on.
   React.useEffect(() => {
-    latestRef.current = { fen, lastMove, autoShapes, onMove, reducedMotion }
+    latestRef.current = { fen, lastMove, arrows, onMove, reducedMotion }
   })
 
   // Construction only. `viewOnly` and `drawable.visible` cannot be changed
@@ -3333,7 +3343,8 @@ function ChessBoard({
         visible: interactive && !small,
         defaultSnapToValidMove: true,
         eraseOnMovablePieceClick: false,
-        autoShapes: initial.autoShapes,
+        // Chessground owns this key name.
+        ["autoShapes"]: initial.arrows,
       },
     }
 
@@ -3379,10 +3390,11 @@ function ChessBoard({
         dests: interactive ? legalDests(fen) : undefined,
       },
       drawable: {
-        autoShapes,
+        // Chessground owns this key name.
+        ["autoShapes"]: arrows,
       },
     })
-  }, [autoShapes, fen, interactive, lastMove, reducedMotion, small])
+  }, [arrows, fen, interactive, lastMove, reducedMotion, small])
 
   const summary = React.useMemo(() => boardSummary(fen), [fen])
 
@@ -3438,11 +3450,6 @@ function LabSvg({ lab }: { lab: DashboardLabId }) {
 
   if (!logo.icon) {
     return <LabMonogram label={logo.label} />
-  }
-
-  if (typeof logo.icon === "function") {
-    const Icon = logo.icon
-    return <Icon className="block size-full" />
   }
 
   const { light: Light, dark: Dark } = logo.icon

@@ -127,7 +127,7 @@
     "rowsParsed": 5939980,
     "rowsPassingFilters": 2771631,
     "rowsBuilt": 4717,
-    "rowsWithInvalidShape": 0,
+    "rowsWithInvalidColumns": 0,
     "rowsRejectedByQuality": 2838030,
     "rowsRejectedAsMateInOne": 330319,
     "rowsRejectedAsIllegal": 0
