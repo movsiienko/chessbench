@@ -3157,15 +3157,16 @@ function DocsView() {
                 reply and a request for the next move in the same conversation,
                 and a puzzle ends at the first wrong move, unusable answer, or
                 provider error. The legal move column is the share of attempts
-                whose answer parsed into a legal move at all.
+                that did not end on an unusable answer.
               </p>
             </div>
             <div>
               <h3 className="font-medium text-foreground">Scoring</h3>
               <p className="mt-2">
-                Accuracy is the share of puzzles where the extracted UCI
-                sequence matches either the full forcing line or the player-only
-                line. That is the only measured headline number.
+                Accuracy is the share of puzzles where the model played every
+                player move of the solution line correctly, one move per turn,
+                before the attempt stopped. That is the only measured headline
+                number.
               </p>
             </div>
             <div>

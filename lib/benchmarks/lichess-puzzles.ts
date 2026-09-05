@@ -56,18 +56,6 @@ export type LichessPuzzleBenchmarkItem = {
   }
 }
 
-export type LichessPuzzleScore = {
-  solved: boolean
-  firstMoveCorrect: boolean
-  exactFullLine: boolean
-  exactPlayerLine: boolean
-  fullLinePrefixScore: number
-  playerMovePrefixScore: number
-  submittedMoves: string[]
-  submittedPlayerMoves: string[]
-}
-
-const UCI_MOVE_PATTERN = /\b[a-h][1-8][a-h][1-8][qrbn]?\b/gi
 const ratingBandOrder: RatingBandId[] = [
   "under-1200",
   "1200-1599",
@@ -131,72 +119,4 @@ export function selectDefaultLichessPuzzleItems(
   }
 
   return selected
-}
-
-export function extractUciMoves(answer: string): string[] {
-  return (answer.match(UCI_MOVE_PATTERN) ?? []).map((move) =>
-    move.toLowerCase()
-  )
-}
-
-export function scoreLichessPuzzleAnswer(
-  item: Pick<LichessPuzzleBenchmarkItem, "expected">,
-  answer: string
-): LichessPuzzleScore {
-  const submittedMoves = extractUciMoves(answer)
-  const expectedFullLine = item.expected.uciLine
-  const expectedPlayerLine = item.expected.playerUciMoves
-  const exactFullLine = sameLine(submittedMoves, expectedFullLine)
-  const exactPlayerLine = sameLine(submittedMoves, expectedPlayerLine)
-  const likelyFullLine =
-    exactFullLine ||
-    submittedMoves.length === expectedFullLine.length ||
-    submittedMoves[1] === expectedFullLine[1]
-
-  const submittedPlayerMoves = likelyFullLine
-    ? submittedMoves.filter((_, index) => index % 2 === 0)
-    : submittedMoves
-
-  return {
-    solved: exactFullLine || exactPlayerLine,
-    firstMoveCorrect: submittedMoves[0] === expectedPlayerLine[0],
-    exactFullLine,
-    exactPlayerLine,
-    fullLinePrefixScore: prefixScore(submittedMoves, expectedFullLine),
-    playerMovePrefixScore: prefixScore(
-      submittedPlayerMoves,
-      expectedPlayerLine
-    ),
-    submittedMoves,
-    submittedPlayerMoves,
-  }
-}
-
-function sameLine(actual: string[], expected: string[]): boolean {
-  return (
-    actual.length === expected.length &&
-    prefixCount(actual, expected) === expected.length
-  )
-}
-
-function prefixScore(actual: string[], expected: string[]): number {
-  if (expected.length === 0) {
-    return actual.length === 0 ? 1 : 0
-  }
-
-  return prefixCount(actual, expected) / expected.length
-}
-
-function prefixCount(actual: string[], expected: string[]): number {
-  let correct = 0
-
-  for (let index = 0; index < expected.length; index += 1) {
-    if (actual[index] !== expected[index]) {
-      break
-    }
-
-    correct += 1
-  }
-
-  return correct
 }
