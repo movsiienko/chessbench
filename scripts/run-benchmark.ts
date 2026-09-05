@@ -3,7 +3,6 @@ import { appendFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { generateText, type LanguageModelUsage } from "ai"
 import { z } from "zod"
-import type { ProviderOptions } from "@ai-sdk/provider-utils"
 import { ATTEMPT_CSV_HEADER, serializeAttemptRow } from "@/lib/benchmarks/csv"
 import {
   loadItems,
@@ -14,6 +13,12 @@ import {
   type BenchmarkMessage,
   type LichessPuzzleAttemptRow,
 } from "@/lib/benchmarks/local-runner"
+import {
+  isReasoningEffort,
+  providerOptionsFor,
+  reasoningEffortForModel,
+  type ReasoningEffort,
+} from "@/lib/benchmarks/models"
 
 type CliOptions = {
   models: string[]
@@ -24,9 +29,6 @@ type CliOptions = {
   maxOutputTokens: number | null
   gatewaySystemCredentials: boolean
 }
-
-type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh"
-type ActiveReasoningEffort = Exclude<ReasoningEffort, "none">
 
 const benchmarkId = "lichess-puzzles-v1"
 const itemsPath = `data/benchmarks/${benchmarkId}/items.jsonl`
@@ -67,7 +69,7 @@ for (const model of options.models) {
         item,
         generate: generateWithAiSdk,
       })),
-      reasoningEffort: reasoningEffortForModel(model),
+      reasoningEffort: reasoningEffortForModel(model, options.reasoningEffort),
       maxOutputTokens: options.maxOutputTokens,
     }
 
@@ -123,7 +125,13 @@ async function generateWithAiSdk({
   messages: BenchmarkMessage[]
 }) {
   const startedAt = performance.now()
-  const providerOptions = providerOptionsFor(model)
+  const providerOptions = providerOptionsFor(
+    model,
+    options.reasoningEffort,
+    options.gatewaySystemCredentials
+      ? [`benchmark:${benchmarkId}`, `run:${runId}`]
+      : null
+  )
   const result = await generateText({
     model,
     messages,
@@ -269,170 +277,6 @@ async function writeCsvRow(
   } else {
     await writeFile(path, payload)
   }
-}
-
-function providerOptionsFor(model: string): ProviderOptions {
-  const providerOptions: ProviderOptions = {}
-  const activeEffort = activeReasoningEffort(options.reasoningEffort)
-
-  if (activeEffort && model.startsWith("openai/")) {
-    providerOptions.openai = { reasoningEffort: activeEffort }
-  }
-
-  if (activeEffort && model.startsWith("anthropic/")) {
-    providerOptions.anthropic = {
-      thinking: {
-        type: "adaptive",
-      },
-      output_config: {
-        effort: reasoningEffortForAnthropic(activeEffort),
-      },
-    }
-  }
-
-  if (activeEffort && model.startsWith("google/")) {
-    providerOptions.google = {
-      thinkingConfig: {
-        thinkingLevel: reasoningEffortForGoogle(activeEffort),
-        includeThoughts: true,
-      },
-    }
-  }
-
-  const xaiReasoningEffort = reasoningEffortForXai(activeEffort)
-  if (xaiReasoningEffort && model.startsWith("xai/")) {
-    providerOptions.xai = { reasoningEffort: xaiReasoningEffort }
-  }
-
-  if (model.startsWith("deepseek/")) {
-    providerOptions.deepseek = providerOptionsForDeepSeek(
-      options.reasoningEffort
-    )
-  }
-
-  if (options.gatewaySystemCredentials) {
-    providerOptions.gateway = {
-      // Empty request-scoped BYOK overrides cached BYOK so Gateway falls back
-      // to system credentials; this is not enabling user-supplied BYOK keys.
-      byok: {},
-      tags: [`benchmark:${benchmarkId}`, `run:${runId}`],
-    }
-  }
-
-  return providerOptions
-}
-
-function reasoningEffortForModel(model: string): string {
-  if (model.startsWith("deepseek/")) {
-    return reasoningEffortForDeepSeek(options.reasoningEffort)
-  }
-
-  const activeEffort = activeReasoningEffort(options.reasoningEffort)
-
-  if (!activeEffort) {
-    return ""
-  }
-
-  if (modelIdImpliesThinking(model)) {
-    return "model-thinking"
-  }
-
-  if (model.startsWith("anthropic/")) {
-    return reasoningEffortForAnthropic(activeEffort)
-  }
-
-  if (model.startsWith("google/")) {
-    return reasoningEffortForGoogle(activeEffort)
-  }
-
-  if (model.startsWith("xai/")) {
-    return reasoningEffortForXai(activeEffort) ?? ""
-  }
-
-  if (!model.startsWith("openai/")) {
-    return ""
-  }
-
-  return activeEffort
-}
-
-function activeReasoningEffort(
-  effort: ReasoningEffort
-): ActiveReasoningEffort | null {
-  if (effort === "none") {
-    return null
-  }
-
-  return effort
-}
-
-function reasoningEffortForXai(
-  effort: ActiveReasoningEffort | null
-): "low" | "high" | null {
-  if (!effort) {
-    return null
-  }
-
-  return effort === "high" || effort === "xhigh" ? "high" : "low"
-}
-
-function reasoningEffortForAnthropic(
-  effort: ActiveReasoningEffort
-): "low" | "medium" | "high" | "max" {
-  if (effort === "xhigh") {
-    return "max"
-  }
-
-  if (effort === "high") {
-    return "high"
-  }
-
-  if (effort === "medium") {
-    return "medium"
-  }
-
-  return "low"
-}
-
-function reasoningEffortForGoogle(
-  effort: ActiveReasoningEffort
-): "low" | "medium" | "high" {
-  if (effort === "high" || effort === "xhigh") {
-    return "high"
-  }
-
-  if (effort === "medium") {
-    return "medium"
-  }
-
-  return "low"
-}
-
-function providerOptionsForDeepSeek(effort: ReasoningEffort) {
-  if (effort === "none") {
-    return { thinking: { type: "disabled" } }
-  }
-
-  return {
-    thinking: { type: "enabled" },
-    reasoning_effort: effort === "xhigh" ? "max" : "high",
-  }
-}
-
-function reasoningEffortForDeepSeek(effort: ReasoningEffort | null): string {
-  if (!effort || effort === "none") {
-    return "none"
-  }
-
-  return effort === "xhigh" ? "max" : "high"
-}
-
-function modelIdImpliesThinking(model: string): boolean {
-  return /(?:^|[-.])thinking(?:$|-)|(?:^|[-.])reasoning(?:$|-)/.test(model)
-}
-
-function isReasoningEffort(value: string): value is ReasoningEffort {
-  return ["none", "minimal", "low", "medium", "high", "xhigh"].includes(value)
 }
 
 /**
