@@ -62,6 +62,7 @@ export async function loadItems(
   path: string
 ): Promise<LichessPuzzleBenchmarkItem[]> {
   const contents = await readFile(path, "utf8")
+  // SAFETY: items.jsonl is written by prepare-lichess-puzzles.ts as one LichessPuzzleBenchmarkItem per line.
   return contents
     .trim()
     .split("\n")

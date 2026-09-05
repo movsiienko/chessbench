@@ -481,7 +481,6 @@ function reasoningTokensFromUsage(usage: LanguageModelUsage) {
   )
 }
 
-
 function createRunId(): string {
   const timestamp = new Date()
     .toISOString()

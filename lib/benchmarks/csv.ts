@@ -65,12 +65,12 @@ export function parseCsvRecords(contents: string): string[][] {
   return records
 }
 
-export function escapeCsv(value: unknown): string {
+export function escapeCsv(value: string | number): string {
   const text = String(value)
   return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
 }
 
-type CellKind = "string" | "number" | "nullableNumber" | "boolean" | "json"
+type CellKind = "string" | "number" | "boolean" | "json"
 
 // On-disk column order of data/results/**/*.csv. Append only; never reorder.
 const ATTEMPT_COLUMNS: [string, keyof LichessPuzzleAttemptRow, CellKind][] = [
@@ -94,16 +94,16 @@ const ATTEMPT_COLUMNS: [string, keyof LichessPuzzleAttemptRow, CellKind][] = [
   ["expected_player_line", "expectedPlayerLine", "json"],
   ["submitted_player_moves", "submittedPlayerMoves", "json"],
   ["revealed_opponent_moves", "revealedOpponentMoves", "json"],
-  ["invalid_turn_index", "invalidTurnIndex", "nullableNumber"],
+  ["invalid_turn_index", "invalidTurnIndex", "number"],
   ["error_message", "errorMessage", "string"],
   ["latency_ms_total", "latencyMsTotal", "number"],
-  ["input_tokens", "inputTokens", "nullableNumber"],
-  ["output_tokens", "outputTokens", "nullableNumber"],
-  ["total_tokens", "totalTokens", "nullableNumber"],
+  ["input_tokens", "inputTokens", "number"],
+  ["output_tokens", "outputTokens", "number"],
+  ["total_tokens", "totalTokens", "number"],
   ["reasoning_effort", "reasoningEffort", "string"],
-  ["max_output_tokens", "maxOutputTokens", "nullableNumber"],
-  ["reasoning_tokens", "reasoningTokens", "nullableNumber"],
-  ["cost_usd", "costUsd", "nullableNumber"],
+  ["max_output_tokens", "maxOutputTokens", "number"],
+  ["reasoning_tokens", "reasoningTokens", "number"],
+  ["cost_usd", "costUsd", "number"],
   ["served_provider", "servedProvider", "string"],
   ["generation_id", "generationId", "string"],
   ["turns_json", "turns", "json"],
@@ -116,7 +116,9 @@ export const ATTEMPT_CSV_HEADER = ATTEMPT_COLUMNS.map(
 export function serializeAttemptRow(row: LichessPuzzleAttemptRow): string {
   return ATTEMPT_COLUMNS.map(([, key, kind]) => {
     const value = row[key]
-    return escapeCsv(kind === "json" ? JSON.stringify(value) : (value ?? ""))
+    return escapeCsv(
+      kind === "json" ? JSON.stringify(value) : String(value ?? "")
+    )
   }).join(",")
 }
 
@@ -124,26 +126,24 @@ export function parseAttemptRows(contents: string): LichessPuzzleAttemptRow[] {
   const [headers, ...records] = parseCsvRecords(contents)
   if (!headers) return []
 
-  // Looked up by name, so older files missing trailing columns decode those
-  // cells as empty ("" / null).
-  const indices = ATTEMPT_COLUMNS.map(([header]) => headers.indexOf(header))
-
-  return records.map((cells) => {
-    const row: Record<string, unknown> = {}
-    ATTEMPT_COLUMNS.forEach(([, key, kind], column) => {
-      row[key] = decodeCell(cells[indices[column]] ?? "", kind)
-    })
-    return row as LichessPuzzleAttemptRow
-  })
+  // Looked up by name, so older files missing trailing columns decode as "" / null.
+  // SAFETY: every ATTEMPT_COLUMNS key is set below, so the object has the full LichessPuzzleAttemptRow shape; cell kinds match the field types.
+  return records.map(
+    (cells) =>
+      Object.fromEntries(
+        ATTEMPT_COLUMNS.map(([header, key, kind]) => [
+          key,
+          decodeCell(cells[headers.indexOf(header)] ?? "", kind),
+        ])
+      ) as LichessPuzzleAttemptRow
+  )
 }
 
-function decodeCell(cell: string, kind: CellKind): unknown {
+function decodeCell(cell: string, kind: CellKind) {
   switch (kind) {
     case "string":
       return cell
     case "number":
-      return Number(cell)
-    case "nullableNumber":
       return cell === "" ? null : Number(cell)
     case "boolean":
       return cell === "true"
