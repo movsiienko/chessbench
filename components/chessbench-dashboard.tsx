@@ -3052,6 +3052,7 @@ function ChessBoard({
       orientation: "white",
       turnColor: color,
       check: isCheck(initial.fen) ? color : false,
+      // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
       lastMove: initial.lastMove
         ? [initial.lastMove.from as cg.Key, initial.lastMove.to as cg.Key]
         : undefined,
@@ -3139,6 +3140,7 @@ function ChessBoard({
       fen: boardOnlyFen(fen),
       turnColor: color,
       check: isCheck(fen) ? color : false,
+      // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
       lastMove: lastMove
         ? [lastMove.from as cg.Key, lastMove.to as cg.Key]
         : undefined,

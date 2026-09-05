@@ -1,5 +1,5 @@
 import { Chess, type Move, type Square } from "chess.js"
-import type { DrawShape } from "@lichess-org/chessground/draw"
+import type { DrawShape as BoardArrow } from "@lichess-org/chessground/draw"
 import type * as cg from "@lichess-org/chessground/types"
 
 const SQUARE = /^[a-h][1-8]$/
@@ -24,16 +24,12 @@ function uciToMoveObject(uci: string) {
   }
 }
 
-function moveToUci(move: { from: string; to: string; promotion?: string }) {
-  return `${move.from}${move.to}${move.promotion ?? ""}`.toLowerCase()
-}
-
 function played(chess: Chess, move: Move): PlayedMove {
   return {
     from: move.from,
     to: move.to,
     promotion: move.promotion,
-    uci: moveToUci(move),
+    uci: `${move.from}${move.to}${move.promotion ?? ""}`,
     san: move.san,
     fen: chess.fen(),
   }
@@ -72,6 +68,7 @@ export function playMove(
 ): PlayedMove | null {
   try {
     const chess = new Chess(fen)
+    // SAFETY: `from` is a square Chessground or the UCI grammar already validated.
     const piece = chess.get(from as Square)
     const promotesTo =
       promotion ?? (piece?.type === "p" && /[18]$/.test(to) ? "q" : undefined)
@@ -124,7 +121,6 @@ function normalizeMoveAnswer(answer: string): string {
   return /\s/.test(normalized) ? "" : normalized
 }
 
-const UCI_INPUT = /^([a-h][1-8])-?([a-h][1-8])([qrbn]?)$/
 const CASTLE_INPUT = /^[o0](?:-?[o0]){1,2}$/i
 
 /**
@@ -140,10 +136,11 @@ export function parseMoveInput(fen: string, input: string): PlayedMove | null {
     return null
   }
 
-  const uci = UCI_INPUT.exec(text.toLowerCase())
+  const dashless = text.replace("-", "")
 
-  if (uci) {
-    return playMove(fen, uci[1], uci[2], uci[3] || undefined)
+  if (UCI.test(dashless)) {
+    const { from, to, promotion } = uciToMoveObject(dashless)
+    return playMove(fen, from, to, promotion)
   }
 
   const san = CASTLE_INPUT.test(text)
@@ -215,13 +212,14 @@ export function legalDests(fen: string): cg.Dests {
   return dests
 }
 
-export function moveArrow(uci: string): DrawShape | null {
+export function moveArrow(uci: string): BoardArrow | null {
   const { from, to } = uciToMoveObject(uci)
 
   if (!SQUARE.test(from) || !SQUARE.test(to)) {
     return null
   }
 
+  // SAFETY: both squares matched the a1-h8 pattern above.
   return {
     orig: from as cg.Key,
     dest: to as cg.Key,
@@ -232,7 +230,7 @@ export function moveArrow(uci: string): DrawShape | null {
 
 type BoardPiece = NonNullable<ReturnType<Chess["board"]>[number][number]>
 
-const PIECE_NAMES: Record<string, string> = {
+const PIECE_NAMES = {
   k: "king",
   q: "queen",
   r: "rook",
