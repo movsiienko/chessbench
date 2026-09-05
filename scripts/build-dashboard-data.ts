@@ -8,6 +8,7 @@ import {
   type LichessPuzzleBenchmarkItem,
 } from "@/lib/benchmarks/lichess-puzzles"
 import type { LichessPuzzleAttemptRow } from "@/lib/benchmarks/local-runner"
+import { readableMove } from "@/lib/chess/moves"
 
 type ModelId = "gpt5" | "claude45" | "gem25" | "ds35" | "grok4" | "qwen3"
 type CategoryId =
@@ -779,7 +780,7 @@ function buildAttempt(model: ModelId, row: LichessPuzzleAttemptRow) {
     model,
     correct: row.solved,
     playedMove,
-    movePretty: prettyMove(playedMove),
+    movePretty: readableMove(playedMove),
     thinkingMs: row.latencyMsTotal,
     thinkingTokens: row.reasoningTokens ?? row.totalTokens ?? 0,
     transcript: buildTranscript(row),
@@ -836,16 +837,6 @@ function byTheme(theme: string) {
 function byThemePrefix(prefix: string) {
   return (item: LichessPuzzleBenchmarkItem) =>
     item.metadata.themes.some((theme) => theme.startsWith(prefix))
-}
-
-function prettyMove(uci: string) {
-  if (!uci) {
-    return ""
-  }
-
-  return `${uci.slice(0, 2)} -> ${uci.slice(2, 4)}${
-    uci.length > 4 ? `=${uci[4]?.toUpperCase()}` : ""
-  }`
 }
 
 function formatTheme(theme: string) {
