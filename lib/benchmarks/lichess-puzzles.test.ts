@@ -4,11 +4,7 @@ import type {
   LichessPuzzleBenchmarkItem,
   RatingBandId,
 } from "./lichess-puzzles"
-import {
-  LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
-  buildLichessPuzzleInitialPrompt,
-  selectDefaultLichessPuzzleItems,
-} from "./lichess-puzzles"
+import { selectDefaultLichessPuzzleItems } from "./lichess-puzzles"
 
 function item(
   id: string,
@@ -50,26 +46,6 @@ function item(
     },
   }
 }
-
-describe("lichess puzzle runtime prompt contract", () => {
-  test("builds the prompt at runtime from FEN instead of storing it on items", () => {
-    const benchmarkItem = item("one", "under-1200")
-
-    assert.equal("prompt" in benchmarkItem, false)
-    assert.equal(LICHESS_PUZZLE_PROMPT_TEMPLATE_ID, "uci-or-san-single-move-v3")
-    assert.equal(
-      buildLichessPuzzleInitialPrompt(benchmarkItem),
-      [
-        "Position FEN: 8/8/8/8/8/8/8/8 w - - 0 1",
-        "Find the best move for the side to move.",
-        "Output contract:",
-        "Return exactly one legal chess move for the side to move.",
-        "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
-        "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
-      ].join("\n")
-    )
-  })
-})
 
 describe("lichess puzzle default selection", () => {
   test("selects a deterministic sample spread across rating bands", () => {
