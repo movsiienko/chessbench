@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+
 export type RatingBandId =
   | "under-1200"
   | "1200-1599"
@@ -54,6 +56,17 @@ export type LichessPuzzleBenchmarkItem = {
     themes: string[]
     openingTags: string[]
   }
+}
+
+export async function loadItems(
+  path: string
+): Promise<LichessPuzzleBenchmarkItem[]> {
+  const contents = await readFile(path, "utf8")
+  return contents
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as LichessPuzzleBenchmarkItem)
 }
 
 const ratingBandOrder: RatingBandId[] = [

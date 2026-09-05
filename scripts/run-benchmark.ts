@@ -1,12 +1,13 @@
 import { randomUUID } from "node:crypto"
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
+import { appendFile, mkdir, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import { generateText, type LanguageModelUsage } from "ai"
 import { z } from "zod"
 import type { ProviderOptions } from "@ai-sdk/provider-utils"
+import { ATTEMPT_CSV_HEADER, serializeAttemptRow } from "@/lib/benchmarks/csv"
 import {
+  loadItems,
   selectDefaultLichessPuzzleItems,
-  type LichessPuzzleBenchmarkItem,
 } from "@/lib/benchmarks/lichess-puzzles"
 import {
   runLichessPuzzleAttempt,
@@ -59,12 +60,16 @@ let completedAttempts = 0
 
 for (const model of options.models) {
   for (const item of selectedItems) {
-    const row = await runLichessPuzzleAttempt({
-      runId,
-      model,
-      item,
-      generate: generateWithAiSdk,
-    })
+    const row: LichessPuzzleAttemptRow = {
+      ...(await runLichessPuzzleAttempt({
+        runId,
+        model,
+        item,
+        generate: generateWithAiSdk,
+      })),
+      reasoningEffort: reasoningEffortForModel(model),
+      maxOutputTokens: options.maxOutputTokens,
+    }
 
     rows.push(row)
     completedAttempts += 1
@@ -146,17 +151,6 @@ async function generateWithAiSdk({
     generationId: gateway?.generationId,
     servedProvider: gateway?.routing?.finalProvider,
   }
-}
-
-async function loadItems(path: string): Promise<LichessPuzzleBenchmarkItem[]> {
-  const contents = await readFile(path, "utf8")
-
-  // SAFETY: items.jsonl is written by prepare-lichess-puzzles.ts as one LichessPuzzleBenchmarkItem per line.
-  return contents
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as LichessPuzzleBenchmarkItem)
 }
 
 function parseArgs(args: string[]): CliOptions {
@@ -265,8 +259,8 @@ async function writeCsvRow(
 ) {
   await mkdir(dirname(path), { recursive: true })
   const contents = [
-    ...(includeHeader ? [csvHeaders.join(",")] : []),
-    serializeRow(row),
+    ...(includeHeader ? [ATTEMPT_CSV_HEADER] : []),
+    serializeAttemptRow(row),
   ].join("\n")
   const payload = `${contents}\n`
 
@@ -275,82 +269,6 @@ async function writeCsvRow(
   } else {
     await writeFile(path, payload)
   }
-}
-
-const csvHeaders = [
-  "run_id",
-  "created_at",
-  "benchmark",
-  "prompt_template_id",
-  "model",
-  "item_id",
-  "lichess_puzzle_id",
-  "rating",
-  "rating_band",
-  "rating_bucket",
-  "primary_theme",
-  "status",
-  "solved",
-  "first_move_correct",
-  "exact_player_line",
-  "player_move_prefix_score",
-  "expected_full_line",
-  "expected_player_line",
-  "submitted_player_moves",
-  "revealed_opponent_moves",
-  "invalid_turn_index",
-  "error_message",
-  "latency_ms_total",
-  "input_tokens",
-  "output_tokens",
-  "total_tokens",
-  "reasoning_effort",
-  "max_output_tokens",
-  "reasoning_tokens",
-  "cost_usd",
-  "served_provider",
-  "generation_id",
-  "turns_json",
-]
-
-function serializeRow(row: LichessPuzzleAttemptRow): string {
-  return [
-    row.runId,
-    row.createdAt,
-    row.benchmark,
-    row.promptTemplateId,
-    row.model,
-    row.itemId,
-    row.lichessPuzzleId,
-    row.rating,
-    row.ratingBand,
-    row.ratingBucket,
-    row.primaryTheme,
-    row.status,
-    row.solved,
-    row.firstMoveCorrect,
-    row.exactPlayerLine,
-    row.playerMovePrefixScore,
-    JSON.stringify(row.expectedFullLine),
-    JSON.stringify(row.expectedPlayerLine),
-    JSON.stringify(row.submittedPlayerMoves),
-    JSON.stringify(row.revealedOpponentMoves),
-    row.invalidTurnIndex ?? "",
-    row.errorMessage,
-    row.latencyMsTotal,
-    row.inputTokens ?? "",
-    row.outputTokens ?? "",
-    row.totalTokens ?? "",
-    reasoningEffortForModel(row.model),
-    options.maxOutputTokens ?? "",
-    row.reasoningTokens ?? "",
-    row.costUsd ?? "",
-    row.servedProvider,
-    row.generationId,
-    JSON.stringify(row.turns),
-  ]
-    .map((value) => escapeCsv(value))
-    .join(",")
 }
 
 function providerOptionsFor(model: string): ProviderOptions {
@@ -563,15 +481,6 @@ function reasoningTokensFromUsage(usage: LanguageModelUsage) {
   )
 }
 
-function escapeCsv(value: string | number | boolean | null): string {
-  const text = String(value)
-
-  if (!/[",\n\r]/.test(text)) {
-    return text
-  }
-
-  return `"${text.replaceAll('"', '""')}"`
-}
 
 function createRunId(): string {
   const timestamp = new Date()

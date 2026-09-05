@@ -2,8 +2,12 @@ import { readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { z } from "zod"
 
-import { parseCsvRecords } from "@/lib/benchmarks/csv"
-import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
+import { parseAttemptRows } from "@/lib/benchmarks/csv"
+import {
+  loadItems,
+  type LichessPuzzleBenchmarkItem,
+} from "@/lib/benchmarks/lichess-puzzles"
+import type { LichessPuzzleAttemptRow } from "@/lib/benchmarks/local-runner"
 
 type ModelId = "gpt5" | "claude45" | "gem25" | "ds35" | "grok4" | "qwen3"
 type CategoryId =
@@ -38,52 +42,6 @@ type SeriesColors = { color: string; colorDark: string }
 type ModelsDevData = {
   labIds: string[]
   modelKeysByLowercase: Map<string, string>
-}
-
-type ResultRow = {
-  run_id: string
-  created_at: string
-  benchmark: string
-  prompt_template_id: string
-  model: string
-  item_id: string
-  lichess_puzzle_id: string
-  rating: string
-  rating_band: string
-  rating_bucket: string
-  primary_theme: string
-  status: string
-  solved: string
-  first_move_correct: string
-  exact_player_line: string
-  player_move_prefix_score: string
-  expected_full_line: string
-  expected_player_line: string
-  submitted_player_moves: string
-  revealed_opponent_moves: string
-  invalid_turn_index: string
-  error_message: string
-  latency_ms_total: string
-  input_tokens: string
-  output_tokens: string
-  total_tokens: string
-  reasoning_effort?: string
-  max_output_tokens?: string
-  reasoning_tokens?: string
-  cost_usd?: string
-  served_provider?: string
-  generation_id?: string
-  turns_json: string
-}
-
-type Turn = {
-  turnIndex: number
-  prompt: string
-  rawAnswer: string
-  parsedMove: string
-  expectedMove: string
-  result: string
-  errorMessage: string
 }
 
 const benchmarkId = "lichess-puzzles-v1"
@@ -210,16 +168,19 @@ const MIN_HUE_SEPARATION = 40
 
 const allItems = await loadItems(itemsPath)
 const itemsById = new Map(allItems.map((item) => [item.id, item]))
-const rowsByModel = new Map<ModelId, ResultRow[]>()
+const rowsByModel = new Map<ModelId, LichessPuzzleAttemptRow[]>()
 const modelsDev = await loadModelsDevData()
 
 for (const model of models) {
-  rowsByModel.set(model.id, await readRows(join(resultsDir, model.file)))
+  rowsByModel.set(
+    model.id,
+    parseAttemptRows(await readFile(join(resultsDir, model.file), "utf8"))
+  )
 }
 
 const attemptedItemIds = unique(
   models.flatMap((model) =>
-    (rowsByModel.get(model.id) ?? []).map((row) => row.item_id)
+    (rowsByModel.get(model.id) ?? []).map((row) => row.itemId)
   )
 )
 const attemptedItems = attemptedItemIds
@@ -614,16 +575,6 @@ function contrastRatio(a: Rgb, b: Rgb) {
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05)
 }
 
-async function loadItems(path: string): Promise<LichessPuzzleBenchmarkItem[]> {
-  const contents = await readFile(path, "utf8")
-  // SAFETY: items.jsonl is written by prepare-lichess-puzzles.ts as one LichessPuzzleBenchmarkItem per line.
-  return contents
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as LichessPuzzleBenchmarkItem)
-}
-
 async function loadModelsDevData(): Promise<ModelsDevData> {
   const response = await fetch("https://models.dev/models.json")
 
@@ -689,32 +640,16 @@ function modelKeyCandidates(apiModel: string): string[] {
   return slugCandidates.map((candidate) => `${lab}/${candidate}`)
 }
 
-async function readRows(path: string): Promise<ResultRow[]> {
-  const contents = await readFile(path, "utf8")
-  const [headers, ...records] = parseCsvRecords(contents)
-
-  if (!headers) {
-    return []
-  }
-
-  return records.map((cells) => {
-    // SAFETY: the header row names every ResultRow column, as written by run-benchmark.ts; a missing cell reads as "".
-    return Object.fromEntries(
-      headers.map((header, index) => [header, cells[index] ?? ""])
-    ) as ResultRow
-  })
-}
-
-function buildScoreboardRow(model: ModelConfig, rows: ResultRow[]) {
+function buildScoreboardRow(
+  model: ModelConfig,
+  rows: LichessPuzzleAttemptRow[]
+) {
   const count = rows.length
-  const solved = rows.filter((row) => row.solved === "true").length
+  const solved = rows.filter((row) => row.solved).length
   const valid = rows.filter((row) => row.status !== "invalid_format").length
   const accuracy = count === 0 ? 0 : solved / count
-  const avgRating =
-    count === 0
-      ? 0
-      : average(rows.map((row) => Number(row.rating)).filter(Number.isFinite))
-  const totalCost = sum(rows.map((row) => Number(row.cost_usd ?? 0)))
+  const avgRating = count === 0 ? 0 : average(rows.map((row) => row.rating))
+  const totalCost = sum(rows.map((row) => row.costUsd ?? 0))
 
   return {
     model: model.id,
@@ -723,15 +658,10 @@ function buildScoreboardRow(model: ModelConfig, rows: ResultRow[]) {
     elo: estimateElo(avgRating, accuracy),
     // Extrapolated from a small sample, so it is emitted at whole-dollar precision.
     cost: round(count === 0 ? 0 : (totalCost / count) * 1000, 0),
-    avgTokens: Math.round(
-      average(
-        rows.map((row) => Number(row.total_tokens)).filter(Number.isFinite)
-      )
-    ),
+    // Errored attempts have no usage; they count as 0 tokens in the average.
+    avgTokens: Math.round(average(rows.map((row) => row.totalTokens ?? 0))),
     avgMoveTime: round(
-      average(
-        rows.map((row) => Number(row.latency_ms_total)).filter(Number.isFinite)
-      ) / 1000,
+      average(rows.map((row) => row.latencyMsTotal)) / 1000,
       1
     ),
     legalRate: round(count === 0 ? 0 : valid / count, 3),
@@ -739,7 +669,7 @@ function buildScoreboardRow(model: ModelConfig, rows: ResultRow[]) {
 }
 
 function buildCategoryStats(
-  rows: ResultRow[],
+  rows: LichessPuzzleAttemptRow[],
   itemLookup: Map<string, LichessPuzzleBenchmarkItem>
 ) {
   const scores = new Map<CategoryId, number | null>()
@@ -747,7 +677,7 @@ function buildCategoryStats(
 
   for (const category of categories) {
     const categoryRows = rows.filter((row) => {
-      const item = itemLookup.get(row.item_id)
+      const item = itemLookup.get(row.itemId)
       return item ? category.matches(item) : false
     })
 
@@ -757,7 +687,7 @@ function buildCategoryStats(
       categoryRows.length === 0
         ? null
         : round(
-            categoryRows.filter((row) => row.solved === "true").length /
+            categoryRows.filter((row) => row.solved).length /
               categoryRows.length,
             3
           )
@@ -798,7 +728,7 @@ async function loadDatasetSize(path: string, itemCount: number) {
 function resolveSampleSize() {
   const counts = models.map(
     (model) =>
-      unique((rowsByModel.get(model.id) ?? []).map((row) => row.item_id)).length
+      unique((rowsByModel.get(model.id) ?? []).map((row) => row.itemId)).length
   )
   const min = Math.min(...counts)
   const max = Math.max(...counts)
@@ -816,7 +746,7 @@ function resolveSampleSize() {
 
 function buildPuzzle(
   item: LichessPuzzleBenchmarkItem,
-  resultRows: Map<ModelId, ResultRow[]>
+  resultRows: Map<ModelId, LichessPuzzleAttemptRow[]>
 ) {
   return {
     id: item.id,
@@ -833,7 +763,7 @@ function buildPuzzle(
       .map((model) => {
         const row = resultRows
           .get(model.id)
-          ?.find((candidate) => candidate.item_id === item.id)
+          ?.find((candidate) => candidate.itemId === item.id)
         return row ? buildAttempt(model.id, row) : null
       })
       .filter((attempt): attempt is NonNullable<typeof attempt> =>
@@ -842,48 +772,39 @@ function buildPuzzle(
   }
 }
 
-function buildAttempt(model: ModelId, row: ResultRow) {
-  const moves = parseJson<string[]>(row.submitted_player_moves, [])
-  const playedMove = moves[0] ?? ""
-  const turns = parseJson<Turn[]>(row.turns_json, [])
+function buildAttempt(model: ModelId, row: LichessPuzzleAttemptRow) {
+  const playedMove = row.submittedPlayerMoves[0] ?? ""
 
   return {
     model,
-    correct: row.solved === "true",
+    correct: row.solved,
     playedMove,
     movePretty: prettyMove(playedMove),
-    thinkingMs: finiteNumber(row.latency_ms_total) ?? 0,
-    thinkingTokens:
-      finiteNumber(row.reasoning_tokens) ?? finiteNumber(row.total_tokens) ?? 0,
-    transcript: buildTranscript(row, turns),
+    thinkingMs: row.latencyMsTotal,
+    thinkingTokens: row.reasoningTokens ?? row.totalTokens ?? 0,
+    transcript: buildTranscript(row),
   }
 }
 
-function buildTranscript(row: ResultRow, turns: Turn[]): string {
+function buildTranscript(row: LichessPuzzleAttemptRow): string {
   const header = [
-    `# ${row.model} trace - ${row.item_id}`,
-    `Run: ${row.run_id}`,
-    `Generation: ${row.generation_id || "not recorded"}`,
-    `Served provider: ${row.served_provider || "not recorded"}`,
+    `# ${row.model} trace - ${row.itemId}`,
+    `Run: ${row.runId}`,
+    `Generation: ${row.generationId || "not recorded"}`,
+    `Served provider: ${row.servedProvider || "not recorded"}`,
     `Status: ${row.status}`,
     `Solved: ${row.solved}`,
-    `Expected player line: ${parseJson<string[]>(
-      row.expected_player_line,
-      []
-    ).join(" ")}`,
-    `Submitted player moves: ${parseJson<string[]>(
-      row.submitted_player_moves,
-      []
-    ).join(" ")}`,
-    `Latency: ${row.latency_ms_total}ms`,
-    `Tokens: ${row.total_tokens || "not recorded"}`,
-    `Reasoning effort: ${row.reasoning_effort || "not recorded"}`,
-    `Max output tokens: ${row.max_output_tokens || "not recorded"}`,
-    `Reasoning tokens: ${row.reasoning_tokens || "not recorded"}`,
-    `Cost USD: ${row.cost_usd || "not recorded"}`,
+    `Expected player line: ${row.expectedPlayerLine.join(" ")}`,
+    `Submitted player moves: ${row.submittedPlayerMoves.join(" ")}`,
+    `Latency: ${row.latencyMsTotal}ms`,
+    `Tokens: ${row.totalTokens ?? "not recorded"}`,
+    `Reasoning effort: ${row.reasoningEffort || "not recorded"}`,
+    `Max output tokens: ${row.maxOutputTokens ?? "not recorded"}`,
+    `Reasoning tokens: ${row.reasoningTokens ?? "not recorded"}`,
+    `Cost USD: ${row.costUsd ?? "not recorded"}`,
   ]
 
-  const turnText = turns.flatMap((turn) => [
+  const turnText = row.turns.flatMap((turn) => [
     "",
     `Turn ${turn.turnIndex + 1}`,
     "Prompt:",
@@ -933,28 +854,15 @@ function formatTheme(theme: string) {
     .replace(/^./, (first) => first.toUpperCase())
 }
 
-function parseJson<T>(value: string | undefined, fallback: T): T {
-  if (!value) {
-    return fallback
-  }
-
-  try {
-    // SAFETY: the cell was serialised by run-benchmark.ts from a T; a malformed cell takes the fallback below.
-    return JSON.parse(value) as T
-  } catch {
-    return fallback
-  }
-}
-
 function estimateElo(avgRating: number, score: number) {
   const clamped = Math.max(0.01, Math.min(0.99, score))
   return Math.round(avgRating + 400 * Math.log10(clamped / (1 - clamped)))
 }
 
-function latestDate(rows: ResultRow[]) {
+function latestDate(rows: LichessPuzzleAttemptRow[]) {
   return (
     rows
-      .map((row) => row.created_at)
+      .map((row) => row.createdAt)
       .filter(Boolean)
       .sort()
       .at(-1) ?? new Date(0).toISOString()
@@ -967,15 +875,6 @@ function average(values: number[]) {
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0)
-}
-
-function finiteNumber(value: string | undefined): number | undefined {
-  if (!value) {
-    return undefined
-  }
-
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 function unique<T>(values: T[]) {
