@@ -133,6 +133,7 @@ import {
   type DashboardSolutionAttempt,
 } from "@/lib/benchmarks/dashboard-data"
 import { usePreferReducedMotion } from "@/hooks/use-prefers-reduced-motion"
+import { escapeCsv } from "@/lib/benchmarks/csv"
 import { cn } from "@/lib/utils"
 
 type View = "leaderboard" | "problems" | "docs"
@@ -413,11 +414,6 @@ function downloadFile(filename: string, contents: string, type: string) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
-function csvCell(value: string | number) {
-  const text = String(value)
-  return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
-}
-
 function leaderboardCsv() {
   const header = [
     "model_id",
@@ -450,7 +446,7 @@ function leaderboardCsv() {
     })
 
   return [header, ...rows]
-    .map((row) => row.map(csvCell).join(","))
+    .map((row) => row.map(escapeCsv).join(","))
     .concat("")
     .join("\n")
 }
