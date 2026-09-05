@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto"
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { generateText, type JSONValue, type LanguageModelUsage } from "ai"
+import { generateText, type LanguageModelUsage } from "ai"
+import { z } from "zod"
 import type { ProviderOptions } from "@ai-sdk/provider-utils"
 import {
   selectDefaultLichessPuzzleItems,
@@ -126,8 +127,7 @@ async function generateWithAiSdk({
       ? providerOptions
       : undefined,
   })
-  const gatewayMetadata = asRecord(result.providerMetadata?.gateway)
-  const routing = asRecord(gatewayMetadata?.routing)
+  const gateway = gatewayMetadataSchema.parse(result.providerMetadata?.gateway)
   const usage = result.usage
 
   return {
@@ -142,9 +142,9 @@ async function generateWithAiSdk({
       reasoningTokens: reasoningTokensFromUsage(usage),
       raw: usage.raw,
     },
-    costUsd: numberFrom(gatewayMetadata?.gatewayCost ?? gatewayMetadata?.cost),
-    generationId: stringFrom(gatewayMetadata?.generationId),
-    servedProvider: stringFrom(routing?.finalProvider),
+    costUsd: gateway?.gatewayCost ?? gateway?.cost,
+    generationId: gateway?.generationId,
+    servedProvider: gateway?.routing?.finalProvider,
   }
 }
 
@@ -517,50 +517,50 @@ function isReasoningEffort(value: string): value is ReasoningEffort {
   return ["none", "minimal", "low", "medium", "high", "xhigh"].includes(value)
 }
 
-function isJsonRecord(
-  value: JSONValue | undefined
-): value is Record<string, JSONValue> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
+/**
+ * Provider metadata is best-effort and differs per provider, so every field is
+ * read leniently: missing or oddly typed values become undefined instead of
+ * failing a paid benchmark run.
+ */
+function lenient<T extends z.ZodType>(schema: T) {
+  return schema.optional().catch(undefined)
 }
 
-function isString(value: JSONValue | undefined): value is string {
-  return typeof value === "string"
-}
+const numeric = lenient(
+  z.union([z.number(), z.string().pipe(z.coerce.number())])
+)
+const text = lenient(z.string())
 
-function isNumber(value: JSONValue | undefined): value is number {
-  return typeof value === "number"
-}
+const gatewayMetadataSchema = lenient(
+  z.object({
+    gatewayCost: numeric,
+    cost: numeric,
+    generationId: text,
+    routing: lenient(z.object({ finalProvider: text })),
+  })
+)
 
-function asRecord(value: JSONValue | undefined) {
-  return isJsonRecord(value) ? value : null
-}
+const rawUsageSchema = lenient(
+  z.object({
+    output_tokens_details: lenient(
+      z.object({ reasoning_tokens: numeric, thinking_tokens: numeric })
+    ),
+    completion_tokens_details: lenient(z.object({ reasoning_tokens: numeric })),
+    thoughtsTokenCount: numeric,
+  })
+)
 
 function reasoningTokensFromUsage(usage: LanguageModelUsage) {
-  const rawUsage = asRecord(usage.raw)
-  const outputTokenDetails = asRecord(rawUsage?.output_tokens_details)
-  const completionTokenDetails = asRecord(rawUsage?.completion_tokens_details)
+  const raw = rawUsageSchema.parse(usage.raw)
 
   return (
     usage.outputTokenDetails?.reasoningTokens ??
     usage.reasoningTokens ??
-    numberFrom(outputTokenDetails?.reasoning_tokens) ??
-    numberFrom(outputTokenDetails?.thinking_tokens) ??
-    numberFrom(completionTokenDetails?.reasoning_tokens) ??
-    numberFrom(rawUsage?.thoughtsTokenCount)
+    raw?.output_tokens_details?.reasoning_tokens ??
+    raw?.output_tokens_details?.thinking_tokens ??
+    raw?.completion_tokens_details?.reasoning_tokens ??
+    raw?.thoughtsTokenCount
   )
-}
-
-function stringFrom(value: JSONValue | undefined) {
-  return isString(value) ? value : undefined
-}
-
-function numberFrom(value: JSONValue | undefined) {
-  if (isNumber(value)) {
-    return value
-  }
-
-  const parsed = isString(value) ? Number(value) : NaN
-  return Number.isFinite(parsed) ? parsed : undefined
 }
 
 function escapeCsv(value: string | number | boolean | null): string {

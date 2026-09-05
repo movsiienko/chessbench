@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { z } from "zod"
 
 import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
@@ -632,7 +633,7 @@ async function loadModelsDevData(): Promise<ModelsDevData> {
     )
   }
 
-  const catalog: object = await response.json()
+  const catalog = z.record(z.string(), z.unknown()).parse(await response.json())
   const modelKeys = Object.keys(catalog)
   const labIds = unique(modelKeys.map((key) => key.split("/")[0] ?? ""))
     .filter(Boolean)
@@ -772,12 +773,15 @@ function byCategory<T>(entries: Map<CategoryId, T>) {
 }
 
 async function loadDatasetSize(path: string, itemCount: number) {
-  const manifest: { selection?: { totalItems?: number } } = JSON.parse(
-    await readFile(path, "utf8")
+  const manifestSchema = z.object({
+    selection: z.object({ totalItems: z.number().optional() }).optional(),
+  })
+  const manifest = manifestSchema.parse(
+    JSON.parse(await readFile(path, "utf8"))
   )
   const declared = manifest.selection?.totalItems
 
-  if (declared === undefined || !Number.isFinite(declared)) {
+  if (declared === undefined) {
     return itemCount
   }
 

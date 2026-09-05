@@ -4,6 +4,8 @@ import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 import type { TooltipValueType } from "recharts"
 
+import { z } from "zod"
+
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -41,14 +43,6 @@ function isSafeChartColor(color: string) {
 
 function isSafeChartKey(key: string) {
   return /^[\w-]+$/.test(key)
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string"
-}
-
-function isNumber(value: unknown): value is number {
-  return typeof value === "number"
 }
 
 const ChartContext = React.createContext<ChartContextProps | null>(null)
@@ -202,9 +196,10 @@ function ChartTooltipContent({
     const [item] = payload
     const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`
     const itemConfig = config[key]
+    const labelText = labelKey ? undefined : z.string().safeParse(label).data
     const value =
-      !labelKey && isString(label)
-        ? (config[label]?.label ?? label)
+      labelText !== undefined
+        ? (config[labelText]?.label ?? labelText)
         : itemConfig?.label
 
     if (labelFormatter) {
@@ -300,9 +295,10 @@ function ChartTooltipContent({
                       </div>
                       {item.value != null && (
                         <span className="font-mono font-medium text-foreground tabular-nums">
-                          {isNumber(item.value)
-                            ? item.value.toLocaleString()
-                            : String(item.value)}
+                          {z
+                            .number()
+                            .safeParse(item.value)
+                            .data?.toLocaleString() ?? String(item.value)}
                         </span>
                       )}
                     </div>
@@ -348,11 +344,8 @@ function ChartLegendContent({
           const key = `${nameKey ?? item.dataKey ?? "value"}`
           const itemConfig = config[key]
           const fallbackLabel =
-            isString(item.dataKey) || isNumber(item.dataKey)
-              ? item.dataKey
-              : item.value != null
-                ? String(item.value)
-                : undefined
+            z.union([z.string(), z.number()]).safeParse(item.dataKey).data ??
+            (item.value != null ? String(item.value) : undefined)
 
           return (
             <div
