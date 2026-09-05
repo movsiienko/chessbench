@@ -119,7 +119,6 @@ import {
 } from "@/components/ui/tooltip"
 import {
   CATEGORY as REAL_CATEGORY,
-  CATEGORY_SAMPLE as REAL_CATEGORY_SAMPLE,
   CATEGORIES as REAL_CATEGORIES,
   META as REAL_META,
   MODELS as REAL_MODELS,
@@ -200,7 +199,6 @@ const CATEGORIES = REAL_CATEGORIES
 const SCOREBOARD = REAL_SCOREBOARD
 
 const CATEGORY = REAL_CATEGORY
-const CATEGORY_SAMPLE = REAL_CATEGORY_SAMPLE
 
 const PUZZLES = REAL_PUZZLES
 
@@ -263,30 +261,6 @@ function seriesMark(model: ModelId) {
   return SERIES_MARKS[index % SERIES_MARKS.length]
 }
 
-/**
- * Shortest prefix of the model name that is still unique, for direct labels on
- * marks that have room for a word but not for "DeepSeek V3.2 Thinking".
- */
-const SERIES_SHORT_NAMES: Record<string, string> = (() => {
-  const names = MODELS.map((model) => model.name)
-
-  return Object.fromEntries(
-    MODELS.map((model) => {
-      const words = model.name.split(" ")
-
-      for (let length = 1; length < words.length; length += 1) {
-        const candidate = words.slice(0, length).join(" ")
-
-        if (names.filter((name) => name.startsWith(candidate)).length === 1) {
-          return [model.id, candidate]
-        }
-      }
-
-      return [model.id, model.name]
-    })
-  )
-})()
-
 /** Spoken form of the dash patterns, for a chart's `desc`. */
 function describeStrokes(models: ModelId[]) {
   return (
@@ -297,10 +271,6 @@ function describeStrokes(models: ModelId[]) {
       .map((model) => `${modelById(model).name} ${seriesMark(model).stroke}`)
       .join(", ")
   )
-}
-
-function shortModelName(model: ModelId) {
-  return SERIES_SHORT_NAMES[model] ?? modelById(model).name
 }
 
 function modelById(id: ModelId) {
@@ -318,11 +288,11 @@ function pct(value: number, digits = 1) {
 // Scores come from a small per-model puzzle sample, so derived values are
 // rendered at the precision that sample supports and stay marked as estimates
 // until the sample is large enough to carry more digits.
-const SAMPLE_SIZES = SCOREBOARD.map((score) => score.n)
-const MIN_SAMPLE = SAMPLE_SIZES.length === 0 ? 0 : Math.min(...SAMPLE_SIZES)
-const MAX_SAMPLE = SAMPLE_SIZES.length === 0 ? 0 : Math.max(...SAMPLE_SIZES)
+const MIN_SAMPLE = META.sampleSize.min
 const SAMPLE_LABEL =
-  MIN_SAMPLE === MAX_SAMPLE ? `${MAX_SAMPLE}` : `${MIN_SAMPLE}-${MAX_SAMPLE}`
+  META.sampleSize.min === META.sampleSize.max
+    ? `${META.sampleSize.min}`
+    : `${META.sampleSize.min}-${META.sampleSize.max}`
 const FULL_PRECISION_SAMPLE = 100
 
 function isPrecise(n: number) {
@@ -356,19 +326,10 @@ function moveTimeText(seconds: number, n: number) {
   return isPrecise(n) ? `${seconds.toFixed(1)}s` : `~${seconds.toFixed(0)}s`
 }
 
-function categoryScore(model: ModelId, category: CategoryId) {
-  // Master emits the reading and its sample size separately; callers here want
-  // them together, because a percentage is meaningless without the n behind it.
-  return {
-    accuracy: CATEGORY[model][category],
-    n: CATEGORY_SAMPLE[model][category],
-  }
-}
-
 /** Largest measured bucket size across the given models. */
 function bucketSize(category: CategoryId, models: ModelId[]) {
   return models.reduce(
-    (largest, model) => Math.max(largest, categoryScore(model, category).n),
+    (largest, model) => Math.max(largest, CATEGORY[model][category].n),
     0
   )
 }
@@ -380,38 +341,8 @@ function categoryAxisLabel(
   return `${category.label} · n=${bucketSize(category.id, models)}`
 }
 
-/**
- * The generator's Elo estimate is `avgPuzzleRating + 400 * log10(p / (1 - p))`.
- * Re-deriving the rating anchor lets us show how far one solved or missed
- * puzzle moves the estimate at this sample size.
- */
-function eloLogit(accuracy: number) {
-  const clamped = Math.min(0.99, Math.max(0.01, accuracy))
-  return 400 * Math.log10(clamped / (1 - clamped))
-}
-
-function eloBand(score: (typeof SCOREBOARD)[number]) {
-  const anchor = score.elo - eloLogit(score.accuracy)
-  const step = score.n === 0 ? 0 : 1 / score.n
-  const low = Math.round(anchor + eloLogit(Math.max(0, score.accuracy - step)))
-  const high = Math.round(anchor + eloLogit(Math.min(1, score.accuracy + step)))
-
-  return { low, high }
-}
-
-const RATING_STEP = 50
-const RATING_BOUNDS: [number, number] = (() => {
-  const ratings = PUZZLES.map((puzzle) => puzzle.rating)
-
-  if (ratings.length === 0) {
-    return [0, 0]
-  }
-
-  return [
-    Math.floor(Math.min(...ratings) / RATING_STEP) * RATING_STEP,
-    Math.ceil(Math.max(...ratings) / RATING_STEP) * RATING_STEP,
-  ]
-})()
+const RATING_STEP = META.ratingStep
+const RATING_BOUNDS = META.ratingBounds
 
 function downloadFile(filename: string, contents: string, type: string) {
   const url = URL.createObjectURL(new Blob([contents], { type }))
@@ -1179,7 +1110,7 @@ function CategoryBars() {
     row.category = categoryAxisLabel(category, shownModels)
 
     for (const score of sorted) {
-      const bucket = categoryScore(score.model, category.id)
+      const bucket = CATEGORY[score.model][category.id]
       // A bucket with no puzzles has no bar at all, so an absent measurement
       // reads as a gap instead of a zero.
       row[score.model] =
@@ -1278,7 +1209,7 @@ function CategoryBars() {
           key: category.id,
           header: category.label,
           cells: shownModels.map((model) => {
-            const bucket = categoryScore(model, category.id)
+            const bucket = CATEGORY[model][category.id]
 
             return bucket.accuracy === null
               ? "no puzzles in sample"
@@ -1309,9 +1240,7 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
   // A radar closes its polygon through every axis, so an unmeasured axis would
   // read as 0%. Unmeasured themes are dropped from the chart and named below.
   const measured = CATEGORIES.filter((category) =>
-    shownModels.every(
-      (model) => categoryScore(model, category.id).accuracy !== null
-    )
+    shownModels.every((model) => CATEGORY[model][category.id].accuracy !== null)
   )
   const omitted = CATEGORIES.filter((category) => !measured.includes(category))
   // A radar stays readable to about eight spokes. Anything past that is cut,
@@ -1326,7 +1255,7 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
     row.category = categoryAxisLabel(category, shownModels)
 
     for (const score of sorted) {
-      const bucket = categoryScore(score.model, category.id)
+      const bucket = CATEGORY[score.model][category.id]
       row[score.model] = Number(((bucket.accuracy ?? 0) * 100).toFixed(1))
       row[`${score.model}__n`] = bucket.n
     }
@@ -1415,7 +1344,7 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
           key: category.id,
           header: category.label,
           cells: shownModels.map((model) => {
-            const bucket = categoryScore(model, category.id)
+            const bucket = CATEGORY[model][category.id]
 
             return bucket.accuracy === null
               ? "no puzzles in sample"
@@ -1455,7 +1384,7 @@ function EloEstimateChart({ sorted }: { sorted: typeof SCOREBOARD }) {
     .sort((a, b) => b.elo - a.elo)
     .map((score) => {
       const model = modelById(score.model)
-      const { low, high } = eloBand(score)
+      const { eloLow: low, eloHigh: high } = score
       const swing: [number, number] = [score.elo - low, high - score.elo]
 
       return {
@@ -1589,7 +1518,7 @@ function TradeoffScatter() {
   const data: TradeoffPoint[] = SCOREBOARD.map((score) => ({
     id: score.model,
     model: modelById(score.model).name,
-    short: shortModelName(score.model),
+    short: modelById(score.model).shortName,
     accuracy: Number((score.accuracy * 100).toFixed(1)),
     cost: score.cost,
     tokens: score.avgTokens,
@@ -2859,10 +2788,6 @@ function MetaCell({
 }
 
 function DocsView() {
-  const ratings = PUZZLES.map((puzzle) => puzzle.rating)
-  const rowCounts = Object.values(META.rowsByModel)
-  const minRows = Math.min(...rowCounts)
-  const maxRows = Math.max(...rowCounts)
   const maxMoveTime = Math.max(...SCOREBOARD.map((score) => score.avgMoveTime))
 
   return (
@@ -2973,7 +2898,7 @@ function DocsView() {
             <Metric label="Themes" value={CATEGORIES.length.toString()} mono />
             <Metric
               label="Rating range"
-              value={`${Math.min(...ratings)}-${Math.max(...ratings)}`}
+              value={`${RATING_BOUNDS[0]}-${RATING_BOUNDS[1]}`}
               mono
             />
             <Metric
@@ -2981,13 +2906,7 @@ function DocsView() {
               value={`<= ${Math.ceil(maxMoveTime)}s`}
               mono
             />
-            <Metric
-              label="Rows / model"
-              value={
-                minRows === maxRows ? `${maxRows}` : `${minRows}-${maxRows}`
-              }
-              mono
-            />
+            <Metric label="Rows / model" value={SAMPLE_LABEL} mono />
             <Metric label="Token cap" value={META.maxOutputTokens} mono />
           </CardContent>
         </Card>

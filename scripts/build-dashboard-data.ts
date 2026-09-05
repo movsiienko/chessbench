@@ -3,27 +3,11 @@ import { join } from "node:path"
 import { z } from "zod"
 
 import { parseAttemptRows } from "@/lib/benchmarks/csv"
-import {
-  loadItems,
-  type LichessPuzzleBenchmarkItem,
-} from "@/lib/benchmarks/lichess-puzzles"
+import { buildDashboardData, unique } from "@/lib/benchmarks/dashboard-build"
+import { loadItems } from "@/lib/benchmarks/lichess-puzzles"
 import type { LichessPuzzleAttemptRow } from "@/lib/benchmarks/local-runner"
-import { readableMove } from "@/lib/chess/moves"
 
 type ModelId = "gpt5" | "claude45" | "gem25" | "ds35" | "grok4" | "qwen3"
-type CategoryId =
-  | "mate"
-  | "fork"
-  | "pin"
-  | "skewer"
-  | "discoAtk"
-  | "sacrifice"
-  | "endgame"
-  | "opening"
-  | "middlegame"
-  | "defense"
-  | "zugzwang"
-  | "promotion"
 
 type ModelConfig = {
   id: ModelId
@@ -108,52 +92,6 @@ const models: ModelConfig[] = [
   },
 ]
 
-const categories: Array<{
-  id: CategoryId
-  label: string
-  matches: (item: LichessPuzzleBenchmarkItem) => boolean
-}> = [
-  { id: "mate", label: "Mate", matches: byThemePrefix("mate") },
-  { id: "fork", label: "Fork", matches: byTheme("fork") },
-  { id: "pin", label: "Pin", matches: byTheme("pin") },
-  { id: "skewer", label: "Skewer", matches: byTheme("skewer") },
-  {
-    id: "discoAtk",
-    label: "Discovered attack",
-    matches: byTheme("discoveredAttack"),
-  },
-  { id: "sacrifice", label: "Sacrifice", matches: byTheme("sacrifice") },
-  {
-    id: "endgame",
-    label: "Endgame",
-    matches: (item) => item.metadata.themeGroups.includes("endgame"),
-  },
-  {
-    id: "opening",
-    label: "Opening",
-    matches: (item) =>
-      item.metadata.themes.includes("opening") ||
-      item.metadata.openingTags.length > 0,
-  },
-  { id: "middlegame", label: "Middlegame", matches: byTheme("middlegame") },
-  {
-    id: "defense",
-    label: "Defense",
-    matches: (item) =>
-      item.metadata.themeGroups.includes("defense") ||
-      item.metadata.themes.includes("defensiveMove"),
-  },
-  { id: "zugzwang", label: "Zugzwang", matches: byTheme("zugzwang") },
-  {
-    id: "promotion",
-    label: "Promotion",
-    matches: (item) =>
-      item.metadata.themes.includes("promotion") ||
-      item.metadata.themes.includes("advancedPawn") ||
-      item.metadata.themes.includes("underPromotion"),
-  },
-]
-
 /** `--card` in app/globals.css, light and dark. */
 const LIGHT_SURFACE: Oklch = { l: 1, c: 0, h: 0 }
 const DARK_SURFACE: Oklch = { l: 0.205, c: 0, h: 0 }
@@ -168,86 +106,53 @@ const ACHROMATIC_CHROMA = 0.04
 const MIN_HUE_SEPARATION = 40
 
 const allItems = await loadItems(itemsPath)
-const itemsById = new Map(allItems.map((item) => [item.id, item]))
-const rowsByModel = new Map<ModelId, LichessPuzzleAttemptRow[]>()
 const modelsDev = await loadModelsDevData()
-
-for (const model of models) {
-  rowsByModel.set(
-    model.id,
-    parseAttemptRows(await readFile(join(resultsDir, model.file), "utf8"))
+const rows: Record<ModelId, LichessPuzzleAttemptRow[]> = Object.fromEntries(
+  await Promise.all(
+    models.map(async (model) => [
+      model.id,
+      parseAttemptRows(await readFile(join(resultsDir, model.file), "utf8")),
+    ])
   )
-}
-
-const attemptedItemIds = unique(
-  models.flatMap((model) =>
-    (rowsByModel.get(model.id) ?? []).map((row) => row.itemId)
-  )
-)
-const attemptedItems = attemptedItemIds
-  .map((id) => itemsById.get(id))
-  .filter((item): item is LichessPuzzleBenchmarkItem => Boolean(item))
-const latestCreatedAt = latestDate(
-  models.flatMap((model) => rowsByModel.get(model.id) ?? [])
-)
-const totalRows = models.reduce(
-  (sum, model) => sum + (rowsByModel.get(model.id)?.length ?? 0),
-  0
 )
 
 const seriesColors = buildSeriesPalette(models.map((model) => model.brand))
-const dashboardModels = models.map(
-  ({ id, apiModel, name, vendor, releaseQ }, index) => ({
+const data = buildDashboardData({
+  models: models.map(({ id, apiModel, name, vendor, releaseQ }, index) => ({
     id,
     name,
     vendor,
     lab: resolveModelLab(apiModel, modelsDev),
     ...seriesColors[index],
     releaseQ,
-  })
-)
-/**
- * The emitted `DashboardLabId` union covers exactly the labs the configured
- * models belong to, never the full remote catalog: models.dev gains labs on its
- * own schedule, and widening the union from it would rewrite this file — and
- * break the `satisfies Record<DashboardLabId, ...>` check on `LAB_SVGS` — on
- * any day a third party shipped a lab nothing here uses. Derived this way the
- * union only moves when the model list above moves, and the exhaustiveness
- * check still fails the build when a lab the dashboard *does* render has no
- * logo.
- */
-const usedLabIds = unique(dashboardModels.map((model) => model.lab)).sort()
-const dashboardCategories = categories.map(({ id, label }) => ({ id, label }))
-const scoreboard = models.map((model) =>
-  buildScoreboardRow(model, rowsByModel.get(model.id) ?? [])
-)
-const categoryStats = models.map((model) => ({
-  id: model.id,
-  ...buildCategoryStats(rowsByModel.get(model.id) ?? [], itemsById),
-}))
-// SAFETY: categoryStats has one entry per model, so the keys are exactly the ModelId union.
-const categoryScores = Object.fromEntries(
-  categoryStats.map((entry) => [entry.id, entry.scores])
-) as Record<ModelId, Record<CategoryId, number | null>>
-// SAFETY: same shape as categoryScores above.
-const categorySample = Object.fromEntries(
-  categoryStats.map((entry) => [entry.id, entry.sample])
-) as Record<ModelId, Record<CategoryId, number>>
-const puzzles = attemptedItems.map((item) => buildPuzzle(item, rowsByModel))
-const datasetSize = await loadDatasetSize(manifestPath, allItems.length)
-const sampleSize = resolveSampleSize()
+  })),
+  items: allItems,
+  rows,
+  datasetSize: await loadDatasetSize(manifestPath, allItems.length),
+  sourceFiles: models.map((model) => model.file),
+})
 
-const sourceFiles = models.map((model) => model.file)
 const contents = `// Generated by scripts/build-dashboard-data.ts from canonical benchmark CSVs.
 // Do not edit this file by hand.
 
-export type DashboardModelId = ${models.map((model) => JSON.stringify(model.id)).join(" | ")}
-export type DashboardLabId = ${usedLabIds.map((lab) => JSON.stringify(lab)).join(" | ")}
-export type DashboardCategoryId = ${categories.map((category) => JSON.stringify(category.id)).join(" | ")}
+export type DashboardModelId = ${data.models.map((model) => JSON.stringify(model.id)).join(" | ")}
+/**
+ * Exactly the labs the configured models belong to, never the full models.dev
+ * catalog: models.dev gains labs on its own schedule, and widening the union
+ * from it would rewrite this file — and break the \`satisfies
+ * Record<DashboardLabId, ...>\` check on \`LAB_SVGS\` — on any day a third party
+ * shipped a lab nothing here uses. Derived this way the union only moves when
+ * the model list moves, and the exhaustiveness check still fails the build when
+ * a lab the dashboard *does* render has no logo.
+ */
+export type DashboardLabId = ${data.labIds.map((lab) => JSON.stringify(lab)).join(" | ")}
+export type DashboardCategoryId = ${data.categories.map((category) => JSON.stringify(category.id)).join(" | ")}
 
 export type DashboardModel = {
   id: DashboardModelId
   name: string
+  /** Shortest word prefix of \`name\` that no other model shares, for tight labels. */
+  shortName: string
   vendor: string
   lab: DashboardLabId
   /**
@@ -270,6 +175,9 @@ export type DashboardScore = {
   accuracy: number
   /** Derived from puzzle ratings and accuracy, not a played rating. */
   elo: number
+  /** Where \`elo\` lands if the model misses (low) or solves (high) one more of its n puzzles. */
+  eloLow: number
+  eloHigh: number
   /** Extrapolated cost per 1,000 puzzles from the sampled rows. */
   cost: number
   avgTokens: number
@@ -281,6 +189,8 @@ export type DashboardScore = {
  * Per-theme accuracy. \`accuracy\` is null when the sample contained no puzzle
  * in that bucket, so consumers must render an absence instead of a value.
  */
+export type DashboardCategoryScore = { accuracy: number | null; n: number }
+
 export type DashboardPuzzleItem = {
   id: string
   fen: string
@@ -303,36 +213,37 @@ export type DashboardSolutionAttempt = {
   transcript: string
 }
 
-export const MODELS: DashboardModel[] = ${toTs(dashboardModels)}
+export type DashboardMeta = {
+  puzzleCount: number
+  evaluations: number
+  /** Distinct puzzles per model; a range when models were not run on the same count. */
+  sampleSize: { min: number; max: number }
+  datasetSize: number
+  lastUpdated: string
+  version: string
+  benchmarkId: string
+  sourceFiles: string[]
+  rowsByModel: Record<DashboardModelId, number>
+  /** Min and max puzzle rating, rounded outward to \`ratingStep\`. */
+  ratingBounds: [number, number]
+  ratingStep: number
+  maxOutputTokens: string
+  eloIsEstimated: boolean
+  costIsExtrapolated: boolean
+}
 
-export const CATEGORIES: Array<{ id: DashboardCategoryId; label: string }> = ${toTs(dashboardCategories)}
+export const MODELS: DashboardModel[] = ${toTs(data.models)}
 
-export const SCOREBOARD: DashboardScore[] = ${toTs(scoreboard)}
+export const CATEGORIES: Array<{ id: DashboardCategoryId; label: string }> = ${toTs(data.categories)}
 
-// null means the model had no evaluated puzzle in that theme bucket; it is not a score.
-export const CATEGORY: Record<DashboardModelId, Record<DashboardCategoryId, number | null>> = ${toTs(categoryScores)}
+export const SCOREBOARD: DashboardScore[] = ${toTs(data.scoreboard)}
 
-// Number of evaluated puzzles behind each CATEGORY reading.
-export const CATEGORY_SAMPLE: Record<DashboardModelId, Record<DashboardCategoryId, number>> = ${toTs(categorySample)}
+// accuracy null means the model had no evaluated puzzle in that theme bucket; it is not a score.
+export const CATEGORY: Record<DashboardModelId, Record<DashboardCategoryId, DashboardCategoryScore>> = ${toTs(data.category)}
 
-export const PUZZLES: DashboardPuzzleItem[] = ${toTs(puzzles)}
+export const PUZZLES: DashboardPuzzleItem[] = ${toTs(data.puzzles)}
 
-export const META = ${toTs({
-  puzzleCount: attemptedItems.length,
-  evaluations: totalRows,
-  sampleSize,
-  datasetSize,
-  lastUpdated: latestCreatedAt.slice(0, 10),
-  version: "0.8.0",
-  benchmarkId,
-  sourceFiles,
-  rowsByModel: Object.fromEntries(
-    models.map((model) => [model.id, rowsByModel.get(model.id)?.length ?? 0])
-  ),
-  maxOutputTokens: "uncapped",
-  eloIsEstimated: true,
-  costIsExtrapolated: true,
-})}
+export const META: DashboardMeta = ${toTs(data.meta)}
 `
 
 await writeFile(outputPath, contents)
@@ -641,68 +552,6 @@ function modelKeyCandidates(apiModel: string): string[] {
   return slugCandidates.map((candidate) => `${lab}/${candidate}`)
 }
 
-function buildScoreboardRow(
-  model: ModelConfig,
-  rows: LichessPuzzleAttemptRow[]
-) {
-  const count = rows.length
-  const solved = rows.filter((row) => row.solved).length
-  const valid = rows.filter((row) => row.status !== "invalid_format").length
-  const accuracy = count === 0 ? 0 : solved / count
-  const avgRating = count === 0 ? 0 : average(rows.map((row) => row.rating))
-  const totalCost = sum(rows.map((row) => row.costUsd ?? 0))
-
-  return {
-    model: model.id,
-    n: count,
-    accuracy: round(accuracy, 3),
-    elo: estimateElo(avgRating, accuracy),
-    // Extrapolated from a small sample, so it is emitted at whole-dollar precision.
-    cost: round(count === 0 ? 0 : (totalCost / count) * 1000, 0),
-    // Errored attempts have no usage; they count as 0 tokens in the average.
-    avgTokens: Math.round(average(rows.map((row) => row.totalTokens ?? 0))),
-    avgMoveTime: round(
-      average(rows.map((row) => row.latencyMsTotal)) / 1000,
-      1
-    ),
-    legalRate: round(count === 0 ? 0 : valid / count, 3),
-  }
-}
-
-function buildCategoryStats(
-  rows: LichessPuzzleAttemptRow[],
-  itemLookup: Map<string, LichessPuzzleBenchmarkItem>
-) {
-  const scores = new Map<CategoryId, number | null>()
-  const sample = new Map<CategoryId, number>()
-
-  for (const category of categories) {
-    const categoryRows = rows.filter((row) => {
-      const item = itemLookup.get(row.itemId)
-      return item ? category.matches(item) : false
-    })
-
-    sample.set(category.id, categoryRows.length)
-    scores.set(
-      category.id,
-      categoryRows.length === 0
-        ? null
-        : round(
-            categoryRows.filter((row) => row.solved).length /
-              categoryRows.length,
-            3
-          )
-    )
-  }
-
-  return { scores: byCategory(scores), sample: byCategory(sample) }
-}
-
-function byCategory<T>(entries: Map<CategoryId, T>) {
-  // SAFETY: the map is filled by iterating `categories`, so its keys are exactly the CategoryId union.
-  return Object.fromEntries(entries) as Record<CategoryId, T>
-}
-
 async function loadDatasetSize(path: string, itemCount: number) {
   const manifestSchema = z.object({
     selection: z.object({ totalItems: z.number().optional() }).optional(),
@@ -724,157 +573,6 @@ async function loadDatasetSize(path: string, itemCount: number) {
   }
 
   return declared
-}
-
-function resolveSampleSize() {
-  const counts = models.map(
-    (model) =>
-      unique((rowsByModel.get(model.id) ?? []).map((row) => row.itemId)).length
-  )
-  const min = Math.min(...counts)
-  const max = Math.max(...counts)
-
-  if (min === max) {
-    return min
-  }
-
-  console.warn(
-    `Models were evaluated on different puzzle counts (min ${min}, max ${max}); emitting a range for META.sampleSize.`
-  )
-
-  return { min, max }
-}
-
-function buildPuzzle(
-  item: LichessPuzzleBenchmarkItem,
-  resultRows: Map<ModelId, LichessPuzzleAttemptRow[]>
-) {
-  return {
-    id: item.id,
-    fen: item.position.fen,
-    themes: categoriesFor(item),
-    side: item.position.sideToMove,
-    rating: item.metadata.rating,
-    popularity: item.metadata.popularity,
-    solution: item.expected.playerUciMoves,
-    caption: `${item.metadata.lichessPuzzleId}: ${formatTheme(
-      item.metadata.primaryTheme
-    )} puzzle rated ${item.metadata.rating}.`,
-    attempts: models
-      .map((model) => {
-        const row = resultRows
-          .get(model.id)
-          ?.find((candidate) => candidate.itemId === item.id)
-        return row ? buildAttempt(model.id, row) : null
-      })
-      .filter((attempt): attempt is NonNullable<typeof attempt> =>
-        Boolean(attempt)
-      ),
-  }
-}
-
-function buildAttempt(model: ModelId, row: LichessPuzzleAttemptRow) {
-  const playedMove = row.submittedPlayerMoves[0] ?? ""
-
-  return {
-    model,
-    correct: row.solved,
-    playedMove,
-    movePretty: readableMove(playedMove),
-    thinkingMs: row.latencyMsTotal,
-    thinkingTokens: row.reasoningTokens ?? row.totalTokens ?? 0,
-    transcript: buildTranscript(row),
-  }
-}
-
-function buildTranscript(row: LichessPuzzleAttemptRow): string {
-  const header = [
-    `# ${row.model} trace - ${row.itemId}`,
-    `Run: ${row.runId}`,
-    `Generation: ${row.generationId || "not recorded"}`,
-    `Served provider: ${row.servedProvider || "not recorded"}`,
-    `Status: ${row.status}`,
-    `Solved: ${row.solved}`,
-    `Expected player line: ${row.expectedPlayerLine.join(" ")}`,
-    `Submitted player moves: ${row.submittedPlayerMoves.join(" ")}`,
-    `Latency: ${row.latencyMsTotal}ms`,
-    `Tokens: ${row.totalTokens ?? "not recorded"}`,
-    `Reasoning effort: ${row.reasoningEffort || "not recorded"}`,
-    `Max output tokens: ${row.maxOutputTokens ?? "not recorded"}`,
-    `Reasoning tokens: ${row.reasoningTokens ?? "not recorded"}`,
-    `Cost USD: ${row.costUsd ?? "not recorded"}`,
-  ]
-
-  const turnText = row.turns.flatMap((turn) => [
-    "",
-    `Turn ${turn.turnIndex + 1}`,
-    "Prompt:",
-    turn.prompt,
-    "Raw answer:",
-    turn.rawAnswer || "(empty)",
-    `Parsed move: ${turn.parsedMove || "(none)"}`,
-    `Expected move: ${turn.expectedMove}`,
-    `Result: ${turn.result}`,
-    ...(turn.errorMessage ? [`Error: ${turn.errorMessage}`] : []),
-  ])
-
-  return [...header, ...turnText].join("\n")
-}
-
-function categoriesFor(item: LichessPuzzleBenchmarkItem): CategoryId[] {
-  const matched = categories
-    .filter((category) => category.matches(item))
-    .map((category) => category.id)
-
-  return matched.length > 0 ? matched.slice(0, 3) : ["middlegame"]
-}
-
-function byTheme(theme: string) {
-  return (item: LichessPuzzleBenchmarkItem) =>
-    item.metadata.themes.includes(theme)
-}
-
-function byThemePrefix(prefix: string) {
-  return (item: LichessPuzzleBenchmarkItem) =>
-    item.metadata.themes.some((theme) => theme.startsWith(prefix))
-}
-
-function formatTheme(theme: string) {
-  return theme
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/^./, (first) => first.toUpperCase())
-}
-
-function estimateElo(avgRating: number, score: number) {
-  const clamped = Math.max(0.01, Math.min(0.99, score))
-  return Math.round(avgRating + 400 * Math.log10(clamped / (1 - clamped)))
-}
-
-function latestDate(rows: LichessPuzzleAttemptRow[]) {
-  return (
-    rows
-      .map((row) => row.createdAt)
-      .filter(Boolean)
-      .sort()
-      .at(-1) ?? new Date(0).toISOString()
-  )
-}
-
-function average(values: number[]) {
-  return values.length === 0 ? 0 : sum(values) / values.length
-}
-
-function sum(values: number[]) {
-  return values.reduce((total, value) => total + value, 0)
-}
-
-function unique<T>(values: T[]) {
-  return [...new Set(values)]
-}
-
-function round(value: number, digits: number) {
-  const factor = 10 ** digits
-  return Math.round(value * factor) / factor
 }
 
 function toTs<T>(value: T) {
