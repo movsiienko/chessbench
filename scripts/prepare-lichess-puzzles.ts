@@ -143,58 +143,60 @@ const themePriority = new Set([
   "advantage",
 ])
 
-const themeGroupsByTheme: Record<string, ThemeGroupId> = {
-  advancedPawn: "special",
-  anastasiaMate: "checkmate",
-  arabianMate: "checkmate",
-  attackingF2F7: "attack",
-  attraction: "tactic",
-  backRankMate: "checkmate",
-  bishopEndgame: "endgame",
-  capturingDefender: "material",
-  clearance: "tactic",
-  collinearMove: "tactic",
-  cornerMate: "checkmate",
-  crushing: "positional",
-  decoy: "tactic",
-  defensiveMove: "defense",
-  deflection: "tactic",
-  discoveredAttack: "tactic",
-  discoveredCheck: "tactic",
-  doubleCheck: "tactic",
-  endgame: "endgame",
-  enPassant: "special",
-  epauletteMate: "checkmate",
-  exposedKing: "attack",
-  fork: "tactic",
-  hangingPiece: "material",
-  hookMate: "checkmate",
-  interference: "tactic",
-  kingsideAttack: "attack",
-  knightEndgame: "endgame",
-  mate: "checkmate",
-  mateIn2: "checkmate",
-  mateIn3: "checkmate",
-  mateIn4: "checkmate",
-  mateIn5: "checkmate",
-  morphysMate: "checkmate",
-  operaMate: "checkmate",
-  pawnEndgame: "endgame",
-  pin: "tactic",
-  promotion: "special",
-  queenEndgame: "endgame",
-  queenRookEndgame: "endgame",
-  queensideAttack: "attack",
-  quietMove: "positional",
-  rookEndgame: "endgame",
-  sacrifice: "material",
-  skewer: "tactic",
-  smotheredMate: "checkmate",
-  trappedPiece: "material",
-  triangleMate: "checkmate",
-  xRayAttack: "tactic",
-  zugzwang: "positional",
-}
+const themeGroupsByTheme = new Map<string, ThemeGroupId>(
+  Object.entries({
+    advancedPawn: "special",
+    anastasiaMate: "checkmate",
+    arabianMate: "checkmate",
+    attackingF2F7: "attack",
+    attraction: "tactic",
+    backRankMate: "checkmate",
+    bishopEndgame: "endgame",
+    capturingDefender: "material",
+    clearance: "tactic",
+    collinearMove: "tactic",
+    cornerMate: "checkmate",
+    crushing: "positional",
+    decoy: "tactic",
+    defensiveMove: "defense",
+    deflection: "tactic",
+    discoveredAttack: "tactic",
+    discoveredCheck: "tactic",
+    doubleCheck: "tactic",
+    endgame: "endgame",
+    enPassant: "special",
+    epauletteMate: "checkmate",
+    exposedKing: "attack",
+    fork: "tactic",
+    hangingPiece: "material",
+    hookMate: "checkmate",
+    interference: "tactic",
+    kingsideAttack: "attack",
+    knightEndgame: "endgame",
+    mate: "checkmate",
+    mateIn2: "checkmate",
+    mateIn3: "checkmate",
+    mateIn4: "checkmate",
+    mateIn5: "checkmate",
+    morphysMate: "checkmate",
+    operaMate: "checkmate",
+    pawnEndgame: "endgame",
+    pin: "tactic",
+    promotion: "special",
+    queenEndgame: "endgame",
+    queenRookEndgame: "endgame",
+    queensideAttack: "attack",
+    quietMove: "positional",
+    rookEndgame: "endgame",
+    sacrifice: "material",
+    skewer: "tactic",
+    smotheredMate: "checkmate",
+    trappedPiece: "material",
+    triangleMate: "checkmate",
+    xRayAttack: "tactic",
+    zugzwang: "positional",
+  } as const)
+)
 
 if (!existsSync(sourcePath)) {
   throw new Error(
@@ -210,7 +212,7 @@ const sourceStats = {
   rowsParsed: 0,
   rowsPassingFilters: 0,
   rowsBuilt: 0,
-  rowsWithInvalidShape: 0,
+  rowsWithInvalidColumns: 0,
   rowsRejectedByQuality: 0,
   rowsRejectedAsMateInOne: 0,
   rowsRejectedAsIllegal: 0,
@@ -241,7 +243,7 @@ for await (const line of readLines(sourcePath)) {
   const row = parseRow(line)
 
   if (row === null) {
-    sourceStats.rowsWithInvalidShape += 1
+    sourceStats.rowsWithInvalidColumns += 1
     continue
   }
 
@@ -556,6 +558,7 @@ function parseRow(line: string): LichessPuzzleCsvRow | null {
     return null
   }
 
+  // SAFETY: values.length === columns.length was checked above, and `columns` lists every LichessPuzzleCsvRow key.
   return Object.fromEntries(
     columns.map((column, index) => [column, values[index]])
   ) as LichessPuzzleCsvRow
@@ -774,7 +777,7 @@ function findThemeGroups(
   const groups = new Set<ThemeGroupId>()
 
   for (const theme of [primaryTheme, ...themes]) {
-    groups.add(themeGroupsByTheme[theme] ?? "other")
+    groups.add(themeGroupsByTheme.get(theme) ?? "other")
   }
 
   groups.delete("other")
@@ -894,7 +897,7 @@ function indexBy(
   )
 }
 
-async function writeJson(path: string, value: unknown): Promise<void> {
+async function writeJson<T>(path: string, value: T): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`)
 }
 

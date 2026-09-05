@@ -1,8 +1,6 @@
-import { createWriteStream, existsSync, mkdirSync } from "node:fs"
+import { existsSync, mkdirSync } from "node:fs"
+import { writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
-import { Readable } from "node:stream"
-import { pipeline } from "node:stream/promises"
-import type { ReadableStream as NodeReadableStream } from "node:stream/web"
 
 const sourceUrl = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
 const destination =
@@ -27,9 +25,6 @@ if (!response.ok || response.body === null) {
 console.log(`Downloading ${sourceUrl}`)
 console.log(`Writing ${destination}`)
 
-await pipeline(
-  Readable.fromWeb(response.body as unknown as NodeReadableStream<Uint8Array>),
-  createWriteStream(destination)
-)
+await writeFile(destination, response.body)
 
 console.log("Download complete.")

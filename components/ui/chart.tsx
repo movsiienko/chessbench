@@ -4,6 +4,8 @@ import * as React from "react"
 import * as RechartsPrimitive from "recharts"
 import type { TooltipValueType } from "recharts"
 
+import { z } from "zod"
+
 import { cn } from "@/lib/utils"
 
 // Format: { THEME_NAME: CSS_SELECTOR }
@@ -139,6 +141,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
+    // SAFETY: `theme` iterates the keys of THEMES, which is also the key type of ChartConfig.theme.
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ??
       itemConfig.color
@@ -192,10 +195,11 @@ function ChartTooltipContent({
 
     const [item] = payload
     const key = `${labelKey ?? item?.dataKey ?? item?.name ?? "value"}`
-    const itemConfig = getPayloadConfigFromPayload(config, item, key)
+    const itemConfig = config[key]
+    const labelText = labelKey ? undefined : z.string().safeParse(label).data
     const value =
-      !labelKey && typeof label === "string"
-        ? (config[label]?.label ?? label)
+      labelText !== undefined
+        ? (config[labelText]?.label ?? labelText)
         : itemConfig?.label
 
     if (labelFormatter) {
@@ -240,7 +244,7 @@ function ChartTooltipContent({
           .filter((item) => item.type !== "none")
           .map((item, index) => {
             const key = `${nameKey ?? item.name ?? item.dataKey ?? "value"}`
-            const itemConfig = getPayloadConfigFromPayload(config, item, key)
+            const itemConfig = config[key]
             const indicatorColor = color ?? item.payload?.fill ?? item.color
 
             return (
@@ -268,6 +272,7 @@ function ChartTooltipContent({
                             "my-0.5": nestLabel && indicator === "dashed",
                           })}
                           style={
+                            // SAFETY: custom properties are valid CSS that React.CSSProperties does not enumerate.
                             {
                               "--color-bg": indicatorColor,
                               "--color-border": indicatorColor,
@@ -290,9 +295,10 @@ function ChartTooltipContent({
                       </div>
                       {item.value != null && (
                         <span className="font-mono font-medium text-foreground tabular-nums">
-                          {typeof item.value === "number"
-                            ? item.value.toLocaleString()
-                            : String(item.value)}
+                          {z
+                            .number()
+                            .safeParse(item.value)
+                            .data?.toLocaleString() ?? String(item.value)}
                         </span>
                       )}
                     </div>
@@ -336,13 +342,10 @@ function ChartLegendContent({
         .filter((item) => item.type !== "none")
         .map((item, index) => {
           const key = `${nameKey ?? item.dataKey ?? "value"}`
-          const itemConfig = getPayloadConfigFromPayload(config, item, key)
+          const itemConfig = config[key]
           const fallbackLabel =
-            typeof item.dataKey === "string" || typeof item.dataKey === "number"
-              ? item.dataKey
-              : item.value != null
-                ? String(item.value)
-                : undefined
+            z.union([z.string(), z.number()]).safeParse(item.dataKey).data ??
+            (item.value != null ? String(item.value) : undefined)
 
           return (
             <div
@@ -367,42 +370,6 @@ function ChartLegendContent({
         })}
     </div>
   )
-}
-
-function getPayloadConfigFromPayload(
-  config: ChartConfig,
-  payload: unknown,
-  key: string
-) {
-  if (typeof payload !== "object" || payload === null) {
-    return undefined
-  }
-
-  const payloadPayload =
-    "payload" in payload &&
-    typeof payload.payload === "object" &&
-    payload.payload !== null
-      ? payload.payload
-      : undefined
-
-  let configLabelKey: string = key
-
-  if (
-    key in payload &&
-    typeof payload[key as keyof typeof payload] === "string"
-  ) {
-    configLabelKey = payload[key as keyof typeof payload] as string
-  } else if (
-    payloadPayload &&
-    key in payloadPayload &&
-    typeof payloadPayload[key as keyof typeof payloadPayload] === "string"
-  ) {
-    configLabelKey = payloadPayload[
-      key as keyof typeof payloadPayload
-    ] as string
-  }
-
-  return configLabelKey in config ? config[configLabelKey] : config[key]
 }
 
 export {
