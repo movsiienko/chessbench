@@ -35,6 +35,12 @@ The preparation step validates trigger and solution moves with `chess.js`,
 filters unstable or low-signal rows, excludes `mateIn1` puzzles to avoid
 alternate checkmate ambiguity, and writes the benchmark JSONL plus manifest.
 
+`sampleLichessPuzzles` in `lib/benchmarks/lichess-puzzle-sampler.ts` owns
+filtering, seeded membership, legality validation, and output order over a
+stream of CSV lines. The CLI handles source decompression and file output.
+Tests cover selection across input orders, illegal candidate replacement,
+all 500 tracked items, and the preparation command's output and manifest.
+
 ## Scoring
 
 Scoring lives in `runLichessPuzzleAttempt` in `lib/benchmarks/local-runner.ts`
