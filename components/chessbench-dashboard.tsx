@@ -1,5 +1,9 @@
 "use client"
 
+import {
+  attemptJson,
+  attemptTranscript,
+} from "@/lib/benchmarks/attempt-evidence"
 import * as React from "react"
 import { Chessground } from "@lichess-org/chessground"
 import type { Api as ChessgroundApi } from "@lichess-org/chessground/api"
@@ -383,35 +387,6 @@ function leaderboardCsv() {
 
 function attemptFilename(puzzleId: string, model: ModelId, extension: string) {
   return `chessbench-${puzzleId.replaceAll(":", "-")}-${model}.${extension}`
-}
-
-function attemptJson(puzzle: PuzzleItem, attempt: SolutionAttempt) {
-  const model = modelById(attempt.model)
-
-  return `${JSON.stringify(
-    {
-      benchmark: META.benchmarkId,
-      generated: META.lastUpdated,
-      puzzle: {
-        id: puzzle.id,
-        fen: puzzle.fen,
-        rating: puzzle.rating,
-        themes: puzzle.themes,
-        sideToMove: puzzle.side,
-        expectedPlayerMoves: puzzle.solution,
-      },
-      model: { id: model.id, name: model.name, vendor: model.vendor },
-      attempt: {
-        solved: attempt.correct,
-        playedMove: attempt.playedMove,
-        thinkingMs: attempt.thinkingMs,
-        thinkingTokens: attempt.thinkingTokens,
-        transcript: attempt.transcript,
-      },
-    },
-    null,
-    2
-  )}\n`
 }
 
 function average(values: number[]) {
@@ -2275,7 +2250,7 @@ function ProblemFocus({
 
   const hintId = React.useId()
   const attempts = puzzle.attempts
-  const solved = attempts.filter((attempt) => attempt.correct).length
+  const solved = attempts.filter((attempt) => attempt.solved).length
   const correctionArrows = React.useMemo(() => {
     if (!feedback || feedback.ok) {
       return []
@@ -2489,12 +2464,12 @@ function ProblemFocus({
                         <span
                           className={cn(
                             "grid size-6 place-items-center rounded-full",
-                            attempt.correct
+                            attempt.solved
                               ? "bg-move-correct text-move-correct-foreground"
                               : "border border-dashed border-move-incorrect text-move-incorrect"
                           )}
                         >
-                          {attempt.correct ? (
+                          {attempt.solved ? (
                             <Check className="size-3.5" />
                           ) : (
                             <X className="size-3.5" />
@@ -2511,27 +2486,32 @@ function ProblemFocus({
                         </span>
                         <span className="min-w-0">
                           <span className="block text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                            Played
+                            First move
                           </span>
                           <span
                             className={cn(
                               "font-mono text-sm",
-                              !attempt.correct &&
+                              attempt.firstMove.correct === false &&
                                 "text-muted-foreground line-through decoration-destructive/60"
                             )}
                           >
-                            {attempt.movePretty}
+                            {attempt.firstMove.label}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            {attempt.outcome}
                           </span>
                         </span>
                         <span className="justify-self-end font-mono text-xs text-muted-foreground tabular-nums">
-                          {attempt.thinkingTokens.toLocaleString()} tok -{" "}
-                          {(attempt.thinkingMs / 1000).toFixed(1)}s
+                          {attempt.thinkingTokens === null
+                            ? "Tokens not recorded"
+                            : `${attempt.thinkingTokens.toLocaleString()} tok`}{" "}
+                          - {(attempt.thinkingMs / 1000).toFixed(1)}s
                         </span>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
                       <pre className="max-h-72 overflow-auto rounded-md border bg-muted/50 p-3 font-mono text-xs leading-6 whitespace-pre-wrap">
-                        {attempt.transcript}
+                        {attemptTranscript(attempt)}
                       </pre>
                       <TranscriptActions puzzle={puzzle} attempt={attempt} />
                     </AccordionContent>
@@ -2557,7 +2537,7 @@ function ProblemFocus({
  */
 function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
   const model = modelById(attempt.model)
-  const state = attempt.correct ? "solved" : "missed"
+  const state = attempt.outcome
 
   return (
     <Tooltip>
@@ -2565,25 +2545,25 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
         aria-label={`${model.name}: ${state}`}
         className={cn(
           "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-          attempt.correct
+          attempt.solved
             ? "border border-move-correct/50"
             : "border border-dashed border-move-incorrect/70"
         )}
       >
         <ModelDot
           model={attempt.model}
-          className={cn(!attempt.correct && "opacity-50 grayscale")}
+          className={cn(!attempt.solved && "opacity-50 grayscale")}
         />
         <span
           aria-hidden="true"
           className={cn(
             "absolute -right-1 -bottom-1 grid size-3 place-items-center rounded-full",
-            attempt.correct
+            attempt.solved
               ? "bg-move-correct text-move-correct-foreground"
               : "bg-move-incorrect text-move-incorrect-foreground"
           )}
         >
-          {attempt.correct ? (
+          {attempt.solved ? (
             <Check className="size-2" strokeWidth={4} />
           ) : (
             <X className="size-2" strokeWidth={4} />
@@ -2707,6 +2687,7 @@ function TranscriptActions({
   attempt: SolutionAttempt
 }) {
   const [copied, setCopied] = React.useState(false)
+  const transcript = attemptTranscript(attempt)
 
   React.useEffect(() => {
     if (!copied) {
@@ -2720,7 +2701,7 @@ function TranscriptActions({
   return (
     <div className="mt-3 flex items-center justify-end gap-2">
       <span className="mr-auto font-mono text-xs text-muted-foreground">
-        {attempt.transcript.split("\n").length} lines
+        {transcript.split("\n").length} lines
       </span>
       <Button
         size="sm"
@@ -2728,7 +2709,7 @@ function TranscriptActions({
         onClick={() =>
           downloadFile(
             attemptFilename(puzzle.id, attempt.model, "json"),
-            attemptJson(puzzle, attempt),
+            attemptJson(attempt),
             "application/json"
           )
         }
@@ -2741,12 +2722,12 @@ function TranscriptActions({
         variant="ghost"
         onClick={async () => {
           try {
-            await navigator.clipboard.writeText(attempt.transcript)
+            await navigator.clipboard.writeText(transcript)
             setCopied(true)
           } catch {
             downloadFile(
               attemptFilename(puzzle.id, attempt.model, "txt"),
-              attempt.transcript,
+              transcript,
               "text/plain;charset=utf-8"
             )
           }

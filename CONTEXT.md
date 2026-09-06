@@ -16,3 +16,5 @@ _Avoid_: First-move accuracy (which measures only the first player move).
 **Benchmark run**: One invocation evaluating the selected models on the selected items under one run identity and generation configuration.
 
 **Canonical run**: A named, archived collection of real attempt records eligible to supply the published benchmark.
+
+**Attempt evidence**: The recorded turns, outcomes, reasoning, usage, and provenance of an attempt, shared by its summary, transcript, and download. A later failed turn does not make an earlier correct move wrong.
