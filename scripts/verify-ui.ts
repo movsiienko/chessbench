@@ -11,6 +11,10 @@
  *   bun run build && bun run start &
  *   bun run verify:ui
  */
+import { readFile } from "node:fs/promises"
+import { isDeepStrictEqual } from "node:util"
+import { parseAttemptRows } from "../lib/benchmarks/csv"
+import { MODELS } from "../lib/benchmarks/models"
 import { Chess } from "chess.js"
 import { chromium, type Page } from "playwright"
 
@@ -97,6 +101,11 @@ async function checkChartCollisions(page: Page) {
 
 /** Series colours must clear the 3:1 non-text floor against the card they sit on. */
 async function checkSeriesContrast(page: Page, theme: string) {
+  // The first chart animation can begin after networkidle; measure rendered bars.
+  await page
+    .locator(".recharts-bar-rectangle path")
+    .first()
+    .waitFor({ state: "visible" })
   const sample = await page.evaluate(() => {
     // The stylesheet is authored in oklch, so getComputedStyle hands back
     // `lab(...)`, not `rgb(...)`. Scraping digits out of that string and calling
@@ -256,6 +265,90 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     )
 }
 
+/** A failed attempt must not relabel its correct first move or discard evidence. */
+async function checkAttemptEvidence(page: Page) {
+  await page.goto(BASE, { waitUntil: "networkidle" })
+  await page.getByRole("tab", { name: /problems/i }).click()
+  await page.getByRole("button", { name: /Puzzle lichess:bHLqd,/ }).click()
+  for (const name of [
+    "GPT 5.5",
+    "DeepSeek V3.2 Thinking",
+    "Grok 4.1 Fast Reasoning",
+  ]) {
+    const trigger = page.getByRole("button", {
+      name: new RegExp(`${name}.*First move`),
+    })
+    const move = trigger.getByText("e6 to d7", { exact: true })
+    const crossedOut = await move.evaluate((element) =>
+      getComputedStyle(element).textDecorationLine.includes("line-through")
+    )
+    if (
+      crossedOut ||
+      !(await trigger.innerText()).includes("Wrong move on turn 2")
+    ) {
+      fail(
+        "attempt evidence",
+        `${name}: correct first move confused with later failure`
+      )
+    } else ok("attempt evidence", `${name}: first move correct; turn 2 wrong`)
+  }
+  await page.getByRole("button", { name: /GPT 5.5.*First move/ }).click()
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Raw JSON", exact: true }).click(),
+  ])
+  const path = await download.path()
+  const model = MODELS.find((model) => model.id === "gpt5")!
+  const records = parseAttemptRows(
+    await readFile(
+      `data/results/canonical/lichess-puzzles-v1/${model.file}`,
+      "utf8"
+    )
+  )
+  const expected = records.find((row) => row.itemId === "lichess:bHLqd")
+  if (
+    !path ||
+    !isDeepStrictEqual(JSON.parse(await readFile(path, "utf8")), expected)
+  ) {
+    fail(
+      "attempt download",
+      "Raw JSON differs from the recorded canonical attempt"
+    )
+  } else
+    ok("attempt download", "Raw JSON preserves the complete recorded attempt")
+
+  const gemini = MODELS.find((model) => model.id === "gem25")!
+  const geminiRecords = parseAttemptRows(
+    await readFile(
+      `data/results/canonical/lichess-puzzles-v1/${gemini.file}`,
+      "utf8"
+    )
+  )
+  const withReasoning = geminiRecords.find((row) =>
+    row.turns.some((turn) => turn.reasoningText)
+  )!
+  const reasoning = withReasoning.turns.find(
+    (turn) => turn.reasoningText
+  )!.reasoningText!
+  await page.goto(BASE, { waitUntil: "networkidle" })
+  await page.getByRole("tab", { name: /problems/i }).click()
+  await page
+    .getByRole("button", {
+      name: new RegExp(`Puzzle ${withReasoning.itemId},`),
+    })
+    .click()
+  await page
+    .getByRole("button", { name: /Gemini 3.5 Flash.*First move/ })
+    .click()
+  if (
+    !(await page.locator(".cb-model-attempts pre").innerText()).includes(
+      reasoning
+    )
+  ) {
+    fail("attempt reasoning", "Transcript omitted recorded reasoning")
+  } else ok("attempt reasoning", "Transcript retains recorded reasoning")
+}
+
 /** Structural guarantees: no third-party calls, charts named, tables present. */
 async function checkStructure(page: Page, external: string[]) {
   if (external.length)
@@ -339,6 +432,7 @@ for (const reduced of [false, true]) {
   }
 
   await checkBoardAndMotion(page, reduced)
+  if (!reduced) await checkAttemptEvidence(page)
   await page.close()
 }
 
