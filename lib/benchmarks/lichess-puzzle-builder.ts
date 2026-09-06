@@ -306,30 +306,6 @@ export function buildPuzzleItem({
   }
 }
 
-/**
- * Reservoir of the `capacity` smallest hash keys. Returns the index the key
- * should be written to, or -1 when it would not improve the retained set.
- */
-export function reservoirSlot(
-  retained: { hashKey: string }[],
-  hashKey: string,
-  capacity: number
-): number {
-  if (retained.length < capacity) {
-    return retained.length
-  }
-
-  let worst = 0
-
-  for (let index = 1; index < retained.length; index += 1) {
-    if (retained[index].hashKey > retained[worst].hashKey) {
-      worst = index
-    }
-  }
-
-  return hashKey < retained[worst].hashKey ? worst : -1
-}
-
 function splitTags(value: string): string[] {
   return value.trim() === "" ? [] : value.trim().split(/\s+/)
 }
