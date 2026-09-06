@@ -1,4 +1,4 @@
-import { readableMove } from "../chess/moves"
+import { buildAttemptEvidence } from "./attempt-evidence"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
 import type { LichessPuzzleAttemptRow } from "./local-runner"
 
@@ -270,60 +270,12 @@ function buildPuzzle(
         const row = rows[model.id]?.find(
           (candidate) => candidate.itemId === item.id
         )
-        return row ? buildAttempt(model.id, row) : null
+        return row ? buildAttemptEvidence(model.id, row) : null
       })
       .filter((attempt): attempt is NonNullable<typeof attempt> =>
         Boolean(attempt)
       ),
   }
-}
-
-function buildAttempt(model: string, row: LichessPuzzleAttemptRow) {
-  const playedMove = row.submittedPlayerMoves[0] ?? ""
-
-  return {
-    model,
-    correct: row.solved,
-    playedMove,
-    movePretty: readableMove(playedMove),
-    thinkingMs: row.latencyMsTotal,
-    thinkingTokens: row.reasoningTokens ?? row.totalTokens ?? 0,
-    transcript: buildTranscript(row),
-  }
-}
-
-function buildTranscript(row: LichessPuzzleAttemptRow): string {
-  const header = [
-    `# ${row.model} trace - ${row.itemId}`,
-    `Run: ${row.runId}`,
-    `Generation: ${row.generationId || "not recorded"}`,
-    `Served provider: ${row.servedProvider || "not recorded"}`,
-    `Status: ${row.status}`,
-    `Solved: ${row.solved}`,
-    `Expected player line: ${row.expectedPlayerLine.join(" ")}`,
-    `Submitted player moves: ${row.submittedPlayerMoves.join(" ")}`,
-    `Latency: ${row.latencyMsTotal}ms`,
-    `Tokens: ${row.totalTokens ?? "not recorded"}`,
-    `Reasoning effort: ${row.reasoningEffort || "not recorded"}`,
-    `Max output tokens: ${row.maxOutputTokens ?? "not recorded"}`,
-    `Reasoning tokens: ${row.reasoningTokens ?? "not recorded"}`,
-    `Cost USD: ${row.costUsd ?? "not recorded"}`,
-  ]
-
-  const turnText = row.turns.flatMap((turn) => [
-    "",
-    `Turn ${turn.turnIndex + 1}`,
-    "Prompt:",
-    turn.prompt,
-    "Raw answer:",
-    turn.rawAnswer || "(empty)",
-    `Parsed move: ${turn.parsedMove || "(none)"}`,
-    `Expected move: ${turn.expectedMove}`,
-    `Result: ${turn.result}`,
-    ...(turn.errorMessage ? [`Error: ${turn.errorMessage}`] : []),
-  ])
-
-  return [...header, ...turnText].join("\n")
 }
 
 function categoriesFor(item: LichessPuzzleBenchmarkItem): CategoryId[] {
