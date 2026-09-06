@@ -24,7 +24,7 @@ ChessBench evaluates model chess puzzle solving against a deterministic Lichess-
 
 ChessBench publishes puzzle-level evidence, not just scores. Every leaderboard number drills down into the actual position, the move each model played, its transcript, and its thinking time and token cost, so a failure is inspectable rather than aggregate. A competing benchmark can copy a solved-rate table; it cannot copy the evidence trail unless it also records and publishes per-puzzle model behavior.
 
-Supporting mechanisms, already true in the repository and available to state factually: the sample is seeded and stratified (100 puzzles from each of five rating bands, with rating, theme, and move-count indexes), and the local runner drives puzzles one move at a time, revealing the expected opponent reply after each correct move and stopping on the first wrong or invalid move.
+Supporting mechanisms, already true in the repository and available to state factually: the sample is seeded and stratified (100 puzzles from each of five rating bands), and the local runner drives puzzles one move at a time, revealing the expected opponent reply after each correct move and stopping on the first wrong or invalid move.
 
 ## Operating Context
 
@@ -40,7 +40,7 @@ Supporting mechanisms, already true in the repository and available to state fac
 - Dashboard data is generated (`lib/benchmarks/dashboard-data.ts` from `scripts/build-dashboard-data.ts`) and must not be hand-edited; the interface consumes whatever models, themes, and labs the canonical results contain.
 - The current dataset is `lichess-puzzles-v1`: 500 puzzles, quality-filtered, `mateIn1` excluded to avoid alternate-mate ambiguity. Dataset identity is versioned, so the interface should not hard-code a single dataset as permanent.
 - The primary metric is `solved_rate`, an exact match against either the full forcing line or the player-only move line. Secondary metrics are first-move accuracy, full-line prefix score, and player-move prefix score.
-- Model lab identity comes from models.dev, with logo routes preferring SVGL; the lab mapping is type-checked so a new lab id fails the build rather than rendering blank.
+- Model lab identity is the provider prefix of the Gateway model id, with vendored SVGL logos; the lab mapping is type-checked so a new lab id fails the build rather than rendering blank.
 - Terminology to use consistently: puzzle, item, attempt, solved rate, rating band, theme, ply, FEN, UCI, SAN, canonical run, lab, model.
 
 **Binding product fact: results are real runs only.** Every figure shown comes from tracked canonical CSVs of actual model runs. Illustrative, sampled, projected, or placeholder numbers must never appear in the interface, including in empty states, examples, and screenshots.
@@ -56,7 +56,7 @@ Supporting mechanisms, already true in the repository and available to state fac
 
 ## Evidence on Hand
 
-- Benchmark dataset: `data/benchmarks/lichess-puzzles-v1/items.jsonl`, `manifest.json`, and `indexes/` (by rating bucket, player move count, solution ply count, primary theme, theme).
+- Benchmark dataset: `data/benchmarks/lichess-puzzles-v1/items.jsonl` and `manifest.json`.
 - Real model results: tracked canonical CSVs in `data/results/canonical/lichess-puzzles-v1/` across OpenAI, Anthropic, Google, DeepSeek, xAI, Alibaba, Meta, and MiniMax models, plus run logs in `data/results/logs/`.
 - Source: the Lichess puzzle database, CC0, with page URL, download URL, checksum, and retrieval dates recorded in the manifest. Attribution and license must stay accurate.
 - Scoring implementation and tests: `lib/benchmarks/lichess-puzzles.ts`, `lib/benchmarks/local-runner.ts`, with accompanying test files.

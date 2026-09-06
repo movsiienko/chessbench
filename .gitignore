@@ -40,3 +40,8 @@ data/results/local/
 .env
 node_modules/
 data/
+
+# editor hooks with machine-local paths
+.codex/
+.cursor/
+.impeccable/live/sessions/

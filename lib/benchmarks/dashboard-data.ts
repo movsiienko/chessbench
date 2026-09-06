@@ -3,13 +3,9 @@
 
 export type DashboardModelId = "gpt5" | "claude45" | "gem25" | "ds35" | "grok4" | "qwen3"
 /**
- * Exactly the labs the configured models belong to, never the full models.dev
- * catalog: models.dev gains labs on its own schedule, and widening the union
- * from it would rewrite this file — and break the `satisfies
- * Record<DashboardLabId, ...>` check on `LAB_SVGS` — on any day a third party
- * shipped a lab nothing here uses. Derived this way the union only moves when
- * the model list moves, and the exhaustiveness check still fails the build when
- * a lab the dashboard *does* render has no logo.
+ * Exactly the labs the configured models belong to, so the `satisfies
+ * Record<DashboardLabId, ...>` check on `LAB_SVGS` fails the build when a lab
+ * the dashboard renders has no logo.
  */
 export type DashboardLabId = "alibaba" | "anthropic" | "deepseek" | "google" | "openai" | "xai"
 export type DashboardCategoryId = "mate" | "fork" | "pin" | "skewer" | "discoAtk" | "sacrifice" | "endgame" | "opening" | "middlegame" | "defense" | "zugzwang" | "promotion"
@@ -24,9 +20,9 @@ export type DashboardModel = {
   /**
    * Chart series color for the light theme. Derived from the lab's brand hex:
    * hue is kept (rotated only to break a collision with an earlier series) and
-   * lightness is moved until the color clears 3.5:1 against
-   * the light `--card` surface, so it satisfies WCAG 1.4.11 as a graphical
-   * object. Never assume the brand hex itself is safe on either surface.
+   * lightness is moved until the color clears 3.5:1 against the light
+   * `--card` surface, so it satisfies WCAG 1.4.11 as a graphical object.
+   * Never assume the brand hex itself is safe on either surface.
    */
   color: string
   /** Same series, fitted to the dark `--card` surface. */
@@ -103,60 +99,60 @@ export const MODELS: DashboardModel[] = [
     "id": "gpt5",
     "name": "GPT 5.5",
     "vendor": "OpenAI",
-    "lab": "openai",
     "color": "#009b78",
     "colorDark": "#10a37f",
     "releaseQ": "v3 low reasoning",
+    "lab": "openai",
     "shortName": "GPT"
   },
   {
     "id": "claude45",
     "name": "Claude Opus 4.8",
     "vendor": "Anthropic",
-    "lab": "anthropic",
     "color": "#cf6e4e",
     "colorDark": "#d97757",
     "releaseQ": "v3 low thinking",
+    "lab": "anthropic",
     "shortName": "Claude"
   },
   {
     "id": "gem25",
     "name": "Gemini 3.5 Flash",
     "vendor": "Google",
-    "lab": "google",
     "color": "#4285f4",
     "colorDark": "#4285f4",
     "releaseQ": "v3 low thinking",
+    "lab": "google",
     "shortName": "Gemini"
   },
   {
     "id": "ds35",
     "name": "DeepSeek V3.2 Thinking",
     "vendor": "DeepSeek",
-    "lab": "deepseek",
     "color": "#007d98",
     "colorDark": "#007d98",
     "releaseQ": "v3 low thinking",
+    "lab": "deepseek",
     "shortName": "DeepSeek"
   },
   {
     "id": "grok4",
     "name": "Grok 4.1 Fast Reasoning",
     "vendor": "xAI",
-    "lab": "xai",
     "color": "#111827",
     "colorDark": "#a4aec3",
     "releaseQ": "v3 low thinking",
+    "lab": "xai",
     "shortName": "Grok"
   },
   {
     "id": "qwen3",
     "name": "Qwen3 Max Thinking",
     "vendor": "Alibaba",
-    "lab": "alibaba",
     "color": "#9a56ed",
     "colorDark": "#9a56ed",
     "releaseQ": "v3 thinking model",
+    "lab": "alibaba",
     "shortName": "Qwen3"
   }
 ]

@@ -118,12 +118,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-  CATEGORY as REAL_CATEGORY,
-  CATEGORIES as REAL_CATEGORIES,
-  META as REAL_META,
-  MODELS as REAL_MODELS,
-  PUZZLES as REAL_PUZZLES,
-  SCOREBOARD as REAL_SCOREBOARD,
+  CATEGORY,
+  CATEGORIES,
+  META,
+  MODELS,
+  PUZZLES,
+  SCOREBOARD,
   type DashboardCategoryId,
   type DashboardLabId,
   type DashboardModelId,
@@ -153,8 +153,6 @@ type ModelId = DashboardModelId
 type CategoryId = DashboardCategoryId
 type PuzzleItem = DashboardPuzzleItem
 type SolutionAttempt = DashboardSolutionAttempt
-
-const MODELS = REAL_MODELS
 
 type LabIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
 type LabLogo = {
@@ -193,18 +191,6 @@ const LAB_SVGS = {
   openai: { label: "OpenAI", icon: { light: Openai, dark: OpenaiDark } },
   xai: { label: "xAI", icon: { light: XaiLight, dark: XaiDark } },
 } as const satisfies Record<DashboardLabId, LabLogo>
-
-const CATEGORIES = REAL_CATEGORIES
-
-const SCOREBOARD = REAL_SCOREBOARD
-
-const CATEGORY = REAL_CATEGORY
-
-const PUZZLES = REAL_PUZZLES
-
-const META = REAL_META
-
-const subscribeMounted = () => () => undefined
 
 /**
  * Series colors are theme-scoped, not fixed hex: the generator fits every
@@ -457,14 +443,6 @@ function compactTokens(value: number) {
 
 const NO_ARROWS: BoardArrow[] = []
 
-function useMounted() {
-  return React.useSyncExternalStore(
-    subscribeMounted,
-    () => true,
-    () => false
-  )
-}
-
 function boardAnimation(reducedMotion: boolean, small: boolean) {
   return reducedMotion
     ? { enabled: false, duration: 0 }
@@ -476,8 +454,8 @@ const MAIN_CONTENT_ID = "cb-main"
 export function ChessBenchDashboard() {
   const [view, setView] = React.useState<View>("leaderboard")
   const { resolvedTheme, setTheme } = useTheme()
-  const mounted = useMounted()
-  const isDark = mounted && resolvedTheme === "dark"
+  // resolvedTheme is undefined until next-themes hydrates, so this is SSR-safe.
+  const isDark = resolvedTheme === "dark"
   const shortcutLabel = useThemeShortcutLabel()
 
   return (

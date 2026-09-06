@@ -21,9 +21,7 @@ import {
 } from "@/lib/benchmarks/lichess-puzzle-builder"
 import type {
   LichessPuzzleBenchmarkItem,
-  PuzzleLength,
   RatingBandId,
-  ThemeGroupId,
 } from "@/lib/benchmarks/lichess-puzzles"
 
 type Candidate = {
@@ -77,14 +75,6 @@ const rejectionStat = {
 const passingFiltersByBand = new Map<RatingBandId, number>(
   ratingBands.map((band) => [band.id, 0])
 )
-const selectedThemeCounts = new Map<string, number>()
-const selectedPrimaryThemeCounts = new Map<string, number>()
-const selectedThemeGroupCounts = new Map<ThemeGroupId, number>()
-const selectedLengthCounts = new Map<PuzzleLength, number>()
-const selectedRatingBucketCounts = new Map<string, number>()
-const selectedSolutionPlyCounts = new Map<string, number>()
-const selectedPlayerMoveCounts = new Map<string, number>()
-const selectedOpponentReplyCounts = new Map<string, number>()
 
 let headerVerified = false
 
@@ -140,55 +130,7 @@ const items = ratingBands.flatMap((band) =>
     .map((candidate) => candidate.item)
 )
 
-for (const item of items) {
-  selectedRatingBucketCounts.set(
-    item.metadata.ratingBucket,
-    (selectedRatingBucketCounts.get(item.metadata.ratingBucket) ?? 0) + 1
-  )
-
-  for (const theme of item.metadata.themes) {
-    selectedThemeCounts.set(theme, (selectedThemeCounts.get(theme) ?? 0) + 1)
-  }
-
-  selectedPrimaryThemeCounts.set(
-    item.metadata.primaryTheme,
-    (selectedPrimaryThemeCounts.get(item.metadata.primaryTheme) ?? 0) + 1
-  )
-
-  for (const group of item.metadata.themeGroups) {
-    selectedThemeGroupCounts.set(
-      group,
-      (selectedThemeGroupCounts.get(group) ?? 0) + 1
-    )
-  }
-
-  selectedLengthCounts.set(
-    item.metadata.length,
-    (selectedLengthCounts.get(item.metadata.length) ?? 0) + 1
-  )
-
-  selectedSolutionPlyCounts.set(
-    String(item.metadata.moveCounts.solutionPlies),
-    (selectedSolutionPlyCounts.get(
-      String(item.metadata.moveCounts.solutionPlies)
-    ) ?? 0) + 1
-  )
-  selectedPlayerMoveCounts.set(
-    String(item.metadata.moveCounts.playerMoves),
-    (selectedPlayerMoveCounts.get(
-      String(item.metadata.moveCounts.playerMoves)
-    ) ?? 0) + 1
-  )
-  selectedOpponentReplyCounts.set(
-    String(item.metadata.moveCounts.opponentReplies),
-    (selectedOpponentReplyCounts.get(
-      String(item.metadata.moveCounts.opponentReplies)
-    ) ?? 0) + 1
-  )
-}
-
 mkdirSync(outDir, { recursive: true })
-mkdirSync(join(outDir, "indexes"), { recursive: true })
 
 const itemsPath = join(outDir, "items.jsonl")
 const manifestPath = join(outDir, "manifest.json")
@@ -202,8 +144,6 @@ await new Promise<void>((resolve, reject) => {
   itemsWriter.once("error", reject)
   itemsWriter.end(() => resolve())
 })
-
-await writeIndexes(outDir, items)
 
 const manifest = {
   id: benchmarkId,
@@ -228,13 +168,6 @@ const manifest = {
   format: {
     sourceColumns: columns,
     itemFile: "items.jsonl",
-    indexFiles: {
-      byRatingBucket: "indexes/by-rating-bucket.json",
-      byPlayerMoveCount: "indexes/by-player-move-count.json",
-      bySolutionPlyCount: "indexes/by-solution-ply-count.json",
-      byPrimaryTheme: "indexes/by-primary-theme.json",
-      byTheme: "indexes/by-theme.json",
-    },
     promptContract:
       "Runners build prompts at execution time from position.fen. The local runner asks for exactly one legal move token in UCI or standard algebraic (SAN) notation with no explanation or extra text, normalizes accepted answers to UCI, reveals expected opponent replies after correct moves, and stops on the first wrong or invalid move.",
     expectedAnswer:
@@ -303,33 +236,37 @@ const manifest = {
         items.reduce((sum, item) => sum + item.metadata.rating, 0) /
           items.length
       ),
-      buckets: sortedCountObject(selectedRatingBucketCounts),
+      buckets: countBy(items, (item) => [item.metadata.ratingBucket]),
     },
     moveCounts: {
-      solutionPlies: sortedNumericCountObject(selectedSolutionPlyCounts),
-      playerMoves: sortedNumericCountObject(selectedPlayerMoveCounts),
-      opponentReplies: sortedNumericCountObject(selectedOpponentReplyCounts),
+      solutionPlies: countBy(
+        items,
+        (item) => [item.metadata.moveCounts.solutionPlies],
+        numeric
+      ),
+      playerMoves: countBy(
+        items,
+        (item) => [item.metadata.moveCounts.playerMoves],
+        numeric
+      ),
+      opponentReplies: countBy(
+        items,
+        (item) => [item.metadata.moveCounts.opponentReplies],
+        numeric
+      ),
     },
-    themes: Object.fromEntries(
-      [...selectedThemeCounts.entries()].sort(
-        (left, right) => right[1] - left[1]
-      )
+    themes: countBy(items, (item) => item.metadata.themes, byCountDesc),
+    primaryThemes: countBy(
+      items,
+      (item) => [item.metadata.primaryTheme],
+      byCountDesc
     ),
-    primaryThemes: Object.fromEntries(
-      [...selectedPrimaryThemeCounts.entries()].sort(
-        (left, right) => right[1] - left[1]
-      )
+    themeGroups: countBy(
+      items,
+      (item) => item.metadata.themeGroups,
+      byCountDesc
     ),
-    themeGroups: Object.fromEntries(
-      [...selectedThemeGroupCounts.entries()].sort(
-        (left, right) => right[1] - left[1]
-      )
-    ),
-    lengths: Object.fromEntries(
-      [...selectedLengthCounts.entries()].sort((left, right) =>
-        left[0].localeCompare(right[0])
-      )
-    ),
+    lengths: countBy(items, (item) => [item.metadata.length]),
   },
 }
 
@@ -399,77 +336,32 @@ async function hashFile(path: string): Promise<string> {
   return hash.digest("hex")
 }
 
-async function writeIndexes(
-  outDirPath: string,
-  benchmarkItems: LichessPuzzleBenchmarkItem[]
-): Promise<void> {
-  await Promise.all([
-    writeJson(
-      join(outDirPath, "indexes/by-rating-bucket.json"),
-      indexBy(benchmarkItems, (item) => [item.metadata.ratingBucket])
-    ),
-    writeJson(
-      join(outDirPath, "indexes/by-player-move-count.json"),
-      indexBy(benchmarkItems, (item) => [
-        String(item.metadata.moveCounts.playerMoves),
-      ])
-    ),
-    writeJson(
-      join(outDirPath, "indexes/by-solution-ply-count.json"),
-      indexBy(benchmarkItems, (item) => [
-        String(item.metadata.moveCounts.solutionPlies),
-      ])
-    ),
-    writeJson(
-      join(outDirPath, "indexes/by-primary-theme.json"),
-      indexBy(benchmarkItems, (item) => [item.metadata.primaryTheme])
-    ),
-    writeJson(
-      join(outDirPath, "indexes/by-theme.json"),
-      indexBy(benchmarkItems, (item) => item.metadata.themes)
-    ),
-  ])
-}
+type Entry = [string, number]
 
-function indexBy(
+/** Key -> count over the items; each item may contribute several keys. */
+function countBy(
   benchmarkItems: LichessPuzzleBenchmarkItem[],
-  getKeys: (item: LichessPuzzleBenchmarkItem) => string[]
-): Record<string, string[]> {
-  const index = new Map<string, string[]>()
+  getKeys: (item: LichessPuzzleBenchmarkItem) => Array<string | number>,
+  order: (left: Entry, right: Entry) => number = (left, right) =>
+    left[0].localeCompare(right[0])
+): Record<string, number> {
+  const counts = new Map<string, number>()
 
   for (const item of benchmarkItems) {
     for (const key of getKeys(item)) {
-      const ids = index.get(key) ?? []
-      ids.push(item.id)
-      index.set(key, ids)
+      counts.set(String(key), (counts.get(String(key)) ?? 0) + 1)
     }
   }
 
-  return Object.fromEntries(
-    [...index.entries()].sort((left, right) => left[0].localeCompare(right[0]))
-  )
+  return Object.fromEntries([...counts.entries()].sort(order))
 }
 
-async function writeJson<T>(path: string, value: T): Promise<void> {
-  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`)
+function numeric([left]: Entry, [right]: Entry) {
+  return Number(left) - Number(right)
 }
 
-function sortedCountObject(
-  counts: Map<string, number>
-): Record<string, number> {
-  return Object.fromEntries(
-    [...counts.entries()].sort((left, right) => left[0].localeCompare(right[0]))
-  )
-}
-
-function sortedNumericCountObject(
-  counts: Map<string, number>
-): Record<string, number> {
-  return Object.fromEntries(
-    [...counts.entries()].sort(
-      (left, right) => Number(left[0]) - Number(right[0])
-    )
-  )
+function byCountDesc([, left]: Entry, [, right]: Entry) {
+  return right - left
 }
 
 function round(value: number): number {
