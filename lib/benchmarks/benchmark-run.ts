@@ -53,6 +53,19 @@ export async function runLichessPuzzleBenchmark(
       "--canonical must be a lowercase filename stem using letters, numbers, and hyphens"
     )
   }
+  if (options.canonical) {
+    const modelsByFilename = new Map<string, string>()
+    for (const model of options.models) {
+      const filename = sanitizeModelId(model)
+      const previous = modelsByFilename.get(filename)
+      if (previous !== undefined && previous !== model) {
+        throw new Error(
+          `Models "${previous}" and "${model}" share canonical filename "${filename}-${options.canonical}.csv"`
+        )
+      }
+      modelsByFilename.set(filename, model)
+    }
+  }
   if (!Number.isInteger(options.limit) || options.limit < 1) {
     throw new Error("--limit must be a positive integer")
   }

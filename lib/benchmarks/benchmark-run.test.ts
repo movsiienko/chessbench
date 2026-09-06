@@ -62,6 +62,32 @@ function response(text: string): LanguageModelV3GenerateResult {
 }
 
 describe("benchmark run", () => {
+  test("rejects colliding canonical filenames before generation or archival", async (t) => {
+    const options = await setup(t)
+    options.models = ["provider/model_a", "provider/model-a"]
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => response("not a move"),
+    })
+    await assert.rejects(
+      runLichessPuzzleBenchmark(options, { resolveModel: () => model }),
+      /share canonical filename "provider-model-a-test.csv"/
+    )
+    assert.equal(model.doGenerateCalls.length, 0)
+    assert.deepEqual(await readdir(options.dataDirectory!), ["benchmarks"])
+
+    // A local archive records model ids per row, so these ids are safe there.
+    const run = await runLichessPuzzleBenchmark(
+      { ...options, canonical: null },
+      { resolveModel: () => model }
+    )
+    assert.deepEqual(
+      parseAttemptRows(await readFile(run.localPath, "utf8")).map(
+        (row) => row.model
+      ),
+      options.models
+    )
+  })
+
   test("runs the real SDK and archives each model before reporting progress", async (t) => {
     const options = await setup(t)
     options.models.push("anthropic/test")
