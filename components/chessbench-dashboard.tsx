@@ -451,11 +451,26 @@ function boardAnimation(reducedMotion: boolean, small: boolean) {
 
 const MAIN_CONTENT_ID = "cb-main"
 
+const subscribeMounted = () => () => undefined
+
+/**
+ * False on the server and during hydration, true after. next-themes reads the
+ * stored theme in its first client render, so anything keyed off it must wait
+ * for mount or the toggle icon and label mismatch the server markup.
+ */
+function useMounted() {
+  return React.useSyncExternalStore(
+    subscribeMounted,
+    () => true,
+    () => false
+  )
+}
+
 export function ChessBenchDashboard() {
   const [view, setView] = React.useState<View>("leaderboard")
   const { resolvedTheme, setTheme } = useTheme()
-  // resolvedTheme is undefined until next-themes hydrates, so this is SSR-safe.
-  const isDark = resolvedTheme === "dark"
+  const mounted = useMounted()
+  const isDark = mounted && resolvedTheme === "dark"
   const shortcutLabel = useThemeShortcutLabel()
 
   return (

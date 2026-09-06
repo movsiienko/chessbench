@@ -61,14 +61,12 @@ export type DashboardModel = {
   vendor: string
   lab: DashboardLabId
   /**
-   * Chart series color for the light theme. Derived from the lab's brand hex:
-   * hue is kept (rotated only to break a collision with an earlier series) and
-   * lightness is moved until the color clears 3.5:1 against the light
-   * \`--card\` surface, so it satisfies WCAG 1.4.11 as a graphical object.
-   * Never assume the brand hex itself is safe on either surface.
+   * Chart series color for the light theme, copied from \`MODELS\` in
+   * lib/benchmarks/models.ts. Chosen by hand to clear 3.5:1 against the light
+   * \`--card\` surface (WCAG 1.4.11); not the raw brand hex.
    */
   color: string
-  /** Same series, fitted to the dark \`--card\` surface. */
+  /** Same series, chosen for the dark \`--card\` surface. */
   colorDark: string
   releaseQ: string
 }
