@@ -80,31 +80,6 @@ const ratingBandOrder: RatingBandId[] = [
 
 export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "uci-or-san-single-move-v3"
 
-const outputInstructions = [
-  "Output contract:",
-  "Return exactly one legal chess move for the side to move.",
-  "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
-  "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
-]
-
-export function buildLichessPuzzleInitialPrompt(
-  item: Pick<LichessPuzzleBenchmarkItem, "position">
-): string {
-  return [
-    `Position FEN: ${item.position.fen}`,
-    "Find the best move for the side to move.",
-    ...outputInstructions,
-  ].join("\n")
-}
-
-export function buildLichessPuzzleFollowupPrompt(opponentMove: string): string {
-  return [
-    `Opponent played: ${opponentMove}.`,
-    "Find the next move.",
-    ...outputInstructions,
-  ].join("\n")
-}
-
 export function selectDefaultLichessPuzzleItems(
   items: LichessPuzzleBenchmarkItem[],
   limit: number

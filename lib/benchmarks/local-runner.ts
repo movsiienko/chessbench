@@ -3,10 +3,15 @@ import { Chess } from "chess.js"
 import { applyUciMove, parseAcceptedMoveAnswer } from "../chess/moves"
 import {
   LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
-  buildLichessPuzzleFollowupPrompt,
-  buildLichessPuzzleInitialPrompt,
   type LichessPuzzleBenchmarkItem,
 } from "./lichess-puzzles"
+
+const outputInstructions = [
+  "Output contract:",
+  "Return exactly one legal chess move for the side to move.",
+  "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+  "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
+]
 
 export type BenchmarkMessage = {
   role: "user" | "assistant"
@@ -142,12 +147,18 @@ export async function runLichessPuzzleAttempt({
     playerMoveIndex += 1
   ) {
     const expectedMove = item.expected.playerUciMoves[playerMoveIndex]
-    const prompt =
-      playerMoveIndex === 0
-        ? buildLichessPuzzleInitialPrompt(item)
-        : buildLichessPuzzleFollowupPrompt(
-            item.expected.uciLine[playerMoveIndex * 2 - 1]
-          )
+    const prompt = [
+      ...(playerMoveIndex === 0
+        ? [
+            `Position FEN: ${item.position.fen}`,
+            "Find the best move for the side to move.",
+          ]
+        : [
+            `Opponent played: ${item.expected.uciLine[playerMoveIndex * 2 - 1]}.`,
+            "Find the next move.",
+          ]),
+      ...outputInstructions,
+    ].join("\n")
 
     messages.push({ role: "user", content: prompt })
 
