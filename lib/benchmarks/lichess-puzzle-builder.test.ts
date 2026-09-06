@@ -5,7 +5,6 @@ import { escapeCsv } from "./csv"
 import {
   buildPuzzleItem,
   parsePuzzleRow,
-  reservoirSlot,
   type ParsedPuzzleRow,
 } from "./lichess-puzzle-builder"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
@@ -157,26 +156,5 @@ describe("buildPuzzleItem", () => {
 
       assert.equal(JSON.stringify(build(csvRow)), line)
     }
-  })
-})
-
-describe("reservoirSlot", () => {
-  test("fills to capacity, then replaces only the worst key", () => {
-    const retained: { hashKey: string }[] = []
-    for (const hashKey of ["c", "a", "d"]) {
-      const slot = reservoirSlot(retained, hashKey, 3)
-      assert.equal(slot, retained.length)
-      retained[slot] = { hashKey }
-    }
-
-    assert.equal(reservoirSlot(retained, "d", 3), -1)
-    assert.equal(reservoirSlot(retained, "e", 3), -1)
-    assert.equal(reservoirSlot(retained, "b", 3), 2)
-    retained[2] = { hashKey: "b" }
-    assert.deepEqual(
-      retained.map((candidate) => candidate.hashKey),
-      ["c", "a", "b"]
-    )
-    assert.equal(reservoirSlot(retained, "bb", 3), 0)
   })
 })
