@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Chess, type Square } from "chess.js"
 import { Chessground } from "@lichess-org/chessground"
 import type { Api as ChessgroundApi } from "@lichess-org/chessground/api"
 import type { Config as ChessgroundConfig } from "@lichess-org/chessground/config"
@@ -134,6 +133,20 @@ import {
 } from "@/lib/benchmarks/dashboard-data"
 import { usePreferReducedMotion } from "@/hooks/use-prefers-reduced-motion"
 import { escapeCsv } from "@/lib/benchmarks/csv"
+import {
+  boardOnlyFen,
+  boardSummary,
+  isCheck,
+  legalDests,
+  moveArrow,
+  parseMoveInput,
+  piecesSummary,
+  playMove,
+  readableMove,
+  resolveMove,
+  turnColor,
+  type PlayedMove,
+} from "@/lib/chess/moves"
 import { cn } from "@/lib/utils"
 
 type View = "leaderboard" | "problems" | "docs"
@@ -511,97 +524,6 @@ function compactTokens(value: number) {
   return Math.round(value).toString()
 }
 
-function readableMove(uci: string) {
-  if (!uci) {
-    return ""
-  }
-
-  const from = uci.slice(0, 2)
-  const to = uci.slice(2, 4)
-  const promotion = uci[4] ? `, promote to ${uci[4].toUpperCase()}` : ""
-
-  if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) {
-    return uci
-  }
-
-  return `${from} to ${to}${promotion}`
-}
-
-function solutionsFor(puzzle: PuzzleItem): SolutionAttempt[] {
-  return puzzle.attempts
-}
-
-function safeSquare(square: string) {
-  // SAFETY: squares come from chess.js and Chessground, which only emit a1-h8.
-  return square as Square
-}
-
-function safeKey(square: string) {
-  // SAFETY: squares come from chess.js and Chessground, which only emit a1-h8.
-  return square as cg.Key
-}
-
-function boardOnlyFen(fen: string) {
-  return fen.split(" ")[0] ?? fen
-}
-
-function turnColor(fen: string): cg.Color {
-  try {
-    return new Chess(fen).turn() === "w" ? "white" : "black"
-  } catch {
-    return "white"
-  }
-}
-
-function isCheck(fen: string) {
-  try {
-    return new Chess(fen).isCheck()
-  } catch {
-    return false
-  }
-}
-
-function legalDests(fen: string): cg.Dests {
-  const dests: cg.Dests = new Map()
-
-  try {
-    const chess = new Chess(fen)
-    for (const move of chess.moves({ verbose: true })) {
-      const from = safeKey(move.from)
-      const to = safeKey(move.to)
-      const existing = dests.get(from)
-
-      if (existing) {
-        existing.push(to)
-      } else {
-        dests.set(from, [to])
-      }
-    }
-  } catch {
-    // Invalid positions render as view-only with no legal destinations.
-  }
-
-  return dests
-}
-
-function moveArrow(uci: string): BoardArrow | null {
-  const orig = uci.slice(0, 2)
-  const dest = uci.slice(2, 4)
-
-  if (!/^[a-h][1-8]$/.test(orig) || !/^[a-h][1-8]$/.test(dest)) {
-    return null
-  }
-
-  return {
-    orig: safeKey(orig),
-    dest: safeKey(dest),
-    brush: "red",
-    modifiers: {
-      lineWidth: 12,
-    },
-  }
-}
-
 const NO_ARROWS: BoardArrow[] = []
 
 function useMounted() {
@@ -616,160 +538,6 @@ function boardAnimation(reducedMotion: boolean, small: boolean) {
   return reducedMotion
     ? { enabled: false, duration: 0 }
     : { enabled: true, duration: small ? 80 : 160 }
-}
-
-type BoardPiece = NonNullable<ReturnType<Chess["board"]>[number][number]>
-
-const PIECE_NAMES = {
-  k: "king",
-  q: "queen",
-  r: "rook",
-  b: "bishop",
-  n: "knight",
-  p: "pawn",
-}
-
-const PIECE_ORDER = ["k", "q", "r", "b", "n", "p"] as const
-
-function describeSide(pieces: BoardPiece[]) {
-  const groups = PIECE_ORDER.map((type) => {
-    const squares = pieces
-      .filter((piece) => piece.type === type)
-      .map((piece) => piece.square)
-
-    if (squares.length === 0) {
-      return null
-    }
-
-    const name = PIECE_NAMES[type]
-    return `${squares.length > 1 ? `${name}s` : name} ${squares.join(", ")}`
-  }).filter((group): group is string => group !== null)
-
-  return groups.length > 0 ? groups.join("; ") : "no pieces"
-}
-
-/**
- * A text alternative for the board: assistive tech otherwise gets an empty box
- * where the position should be. Pieces are grouped by type so a full position
- * reads as a short list instead of 32 separate squares.
- */
-function piecesSummary(fen: string) {
-  let pieces: BoardPiece[]
-
-  try {
-    pieces = new Chess(fen)
-      .board()
-      .flat()
-      .filter((square): square is BoardPiece => square !== null)
-  } catch {
-    return "position unavailable"
-  }
-
-  const white = describeSide(pieces.filter((piece) => piece.color === "w"))
-  const black = describeSide(pieces.filter((piece) => piece.color === "b"))
-
-  return `White: ${white}. Black: ${black}.`
-}
-
-function boardSummary(fen: string) {
-  const color = turnColor(fen)
-  const check = isCheck(fen) ? ", in check" : ""
-
-  return `Chess position. ${color === "white" ? "White" : "Black"} to move${check}. ${piecesSummary(fen)}`
-}
-
-type PlayedMove = {
-  from: string
-  to: string
-  san: string
-  fen: string
-  promotion?: string
-}
-
-/**
- * Single source of truth for applying a move, shared by the drag/drop path and
- * the typed path so both produce the same SAN, FEN, and promotion default.
- */
-function playMove(
-  fen: string,
-  from: string,
-  to: string,
-  promotion?: string
-): PlayedMove | null {
-  try {
-    const chess = new Chess(fen)
-    const piece = chess.get(safeSquare(from))
-    const promotesTo =
-      promotion ??
-      (piece?.type === "p" && (to[1] === "8" || to[1] === "1")
-        ? "q"
-        : undefined)
-    const move = chess.move({ from, to, promotion: promotesTo })
-
-    if (!move) {
-      return null
-    }
-
-    return {
-      from: move.from,
-      to: move.to,
-      san: move.san,
-      fen: chess.fen(),
-      promotion: move.promotion,
-    }
-  } catch {
-    return null
-  }
-}
-
-const UCI_INPUT = /^([a-h][1-8])-?([a-h][1-8])([qrbn]?)$/
-const CASTLE_INPUT = /^[o0](?:-?[o0]){1,2}$/i
-
-/**
- * Accepts UCI (`g1f3`, `e7e8q`) and SAN (`Nf3`, `exd5`, `O-O`, `0-0-0`), and
- * resolves both through chess.js so an illegal or ambiguous entry is rejected
- * exactly the way the board rejects an illegal drag.
- */
-function parseMoveInput(fen: string, input: string): PlayedMove | null {
-  const text = input.trim().replace(/\s+/g, "")
-
-  if (!text) {
-    return null
-  }
-
-  const uci = UCI_INPUT.exec(text.toLowerCase())
-
-  if (uci) {
-    return playMove(fen, uci[1], uci[2], uci[3] || undefined)
-  }
-
-  const san = CASTLE_INPUT.test(text)
-    ? text.replace(/-/g, "").length === 3
-      ? "O-O-O"
-      : "O-O"
-    : text
-
-  // `bxc3` is a pawn capture and `Bxc3` a bishop capture, so the literal text is
-  // always tried first; the capitalised form is only a fallback for people who
-  // type `nf3`.
-  for (const candidate of [san, san.charAt(0).toUpperCase() + san.slice(1)]) {
-    try {
-      const chess = new Chess(fen)
-      const move = chess.move(candidate)
-
-      return {
-        from: move.from,
-        to: move.to,
-        san: move.san,
-        fen: chess.fen(),
-        promotion: move.promotion,
-      }
-    } catch {
-      // Try the next spelling, then give up.
-    }
-  }
-
-  return null
 }
 
 const MAIN_CONTENT_ID = "cb-main"
@@ -2584,7 +2352,7 @@ function ProblemFocus({
   } | null>(null)
 
   const hintId = React.useId()
-  const attempts = React.useMemo(() => solutionsFor(puzzle), [puzzle])
+  const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.correct).length
   const correctionArrows = React.useMemo(() => {
     if (!feedback || feedback.ok) {
@@ -2604,18 +2372,11 @@ function ProblemFocus({
       return ""
     }
 
-    const move = playMove(
-      puzzle.fen,
-      expected.slice(0, 2),
-      expected.slice(2, 4),
-      expected[4]
-    )
-
-    return move?.san ?? readableMove(expected)
+    return resolveMove(puzzle.fen, expected)?.san ?? readableMove(expected)
   }, [puzzle])
 
   const handleMove = (move: PlayedMove) => {
-    const played = `${move.from}${move.to}${move.promotion ?? ""}`
+    const played = move.uci
     const expected = puzzle.solution[0]
     if (!expected) {
       return
@@ -3291,8 +3052,9 @@ function ChessBoard({
       orientation: "white",
       turnColor: color,
       check: isCheck(initial.fen) ? color : false,
+      // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
       lastMove: initial.lastMove
-        ? [safeKey(initial.lastMove.from), safeKey(initial.lastMove.to)]
+        ? [initial.lastMove.from as cg.Key, initial.lastMove.to as cg.Key]
         : undefined,
       coordinates: !small,
       coordinatesOnSquares: false,
@@ -3378,8 +3140,9 @@ function ChessBoard({
       fen: boardOnlyFen(fen),
       turnColor: color,
       check: isCheck(fen) ? color : false,
+      // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
       lastMove: lastMove
-        ? [safeKey(lastMove.from), safeKey(lastMove.to)]
+        ? [lastMove.from as cg.Key, lastMove.to as cg.Key]
         : undefined,
       animation: boardAnimation(reducedMotion, small),
       movable: {

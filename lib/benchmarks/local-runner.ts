@@ -1,5 +1,6 @@
 import { Chess } from "chess.js"
 
+import { applyUciMove, parseAcceptedMoveAnswer } from "../chess/moves"
 import {
   LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
   buildLichessPuzzleFollowupPrompt,
@@ -101,8 +102,6 @@ export type LichessPuzzleAttemptRow = {
   generationId: string
   turns: LichessPuzzleAttemptTurn[]
 }
-
-const STRICT_UCI_PATTERN = /^[a-h][1-8][a-h][1-8][qrbn]?$/i
 
 export async function runLichessPuzzleAttempt({
   runId,
@@ -317,96 +316,6 @@ export async function runLichessPuzzleAttempt({
     generationId,
     turns,
   }
-}
-
-export function parseStrictUciMove(answer: string): string | null {
-  const trimmed = answer.trim()
-
-  if (!STRICT_UCI_PATTERN.test(trimmed)) {
-    return null
-  }
-
-  return trimmed.toLowerCase()
-}
-
-export function parseAcceptedMoveAnswer(
-  answer: string,
-  fen: string
-): string | null {
-  const normalized = normalizeMoveAnswer(answer)
-
-  if (!normalized) {
-    return null
-  }
-
-  const uciMove = parseStrictUciMove(normalized)
-
-  if (uciMove) {
-    return parseUciMove(uciMove, fen)
-  }
-
-  return parseSanMove(normalized, fen)
-}
-
-function parseUciMove(answer: string, fen: string): string | null {
-  try {
-    const chess = new Chess(fen)
-    const move = chess.move(uciToMoveObject(answer))
-    return `${move.from}${move.to}${move.promotion ?? ""}`.toLowerCase()
-  } catch {
-    return null
-  }
-}
-
-function parseSanMove(answer: string, fen: string): string | null {
-  try {
-    const chess = new Chess(fen)
-    const move = chess.move(answer)
-    return `${move.from}${move.to}${move.promotion ?? ""}`.toLowerCase()
-  } catch {
-    return null
-  }
-}
-
-function applyUciMove(chess: Chess, uci: string) {
-  chess.move(uciToMoveObject(uci))
-}
-
-function uciToMoveObject(uci: string) {
-  return {
-    from: uci.slice(0, 2),
-    to: uci.slice(2, 4),
-    promotion: uci[4],
-  }
-}
-
-function normalizeMoveAnswer(answer: string): string {
-  let normalized = answer
-    .trim()
-    .replaceAll("×", "x")
-    .replaceAll("–", "-")
-    .replaceAll("—", "-")
-
-  const fenced = normalized.match(
-    /^```(?:text|chess|pgn)?\s*([\s\S]*?)\s*```$/i
-  )
-  if (fenced?.[1]) {
-    normalized = fenced[1].trim()
-  }
-
-  const wrapped = normalized.match(/^`([^`\n]+)`$/)
-  if (wrapped?.[1]) {
-    normalized = wrapped[1].trim()
-  }
-
-  normalized = normalized.replace(/^\d+\.(?:\.\.)?\s*/, "")
-  normalized = normalized.replace(/[.!?]+$/g, "")
-
-  if (/^0-0(?:-0)?[+#]?$/i.test(normalized)) {
-    normalized = normalized.replaceAll("0", "O")
-  }
-
-  return /\s/.test(normalized) ? "" : normalized
 }
 
 function sameLine(actual: string[], expected: string[]): boolean {

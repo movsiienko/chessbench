@@ -11,6 +11,7 @@ import { writeFile } from "node:fs/promises"
 import { basename, join } from "node:path"
 import { createInterface } from "node:readline"
 import { Chess } from "chess.js"
+import { applyUciMove } from "@/lib/chess/moves"
 import type {
   LichessPuzzleBenchmarkItem,
   PuzzleMoveCounts,
@@ -701,17 +702,6 @@ function buildItem(
       openingTags: splitTags(row.OpeningTags),
     },
   }
-}
-
-function applyUciMove(chess: Chess, move: string): boolean {
-  const normalized = move.toLowerCase()
-  const result = chess.move({
-    from: normalized.slice(0, 2),
-    to: normalized.slice(2, 4),
-    promotion: normalized[4],
-  })
-
-  return result !== null
 }
 
 function findPuzzleLength(themes: string[]): PuzzleLength {

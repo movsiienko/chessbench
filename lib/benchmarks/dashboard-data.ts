@@ -431,7 +431,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "e3f4",
-        "movePretty": "e3 -> f4",
+        "movePretty": "e3 to f4",
         "thinkingMs": 86136,
         "thinkingTokens": 2737,
         "transcript": "# openai/gpt-5.5 trace - lichess:rYFDJ\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQBFKA85SCEVXN5H7JE9DD\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: c2c4 b3c4 e3e4\nSubmitted player moves: e3f4\nLatency: 86136ms\nTokens: 2889\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2737\nCost USD: 0.08312\n\nTurn 1\nPrompt:\nPosition FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne3f4\nParsed move: e3f4\nExpected move: c2c4\nResult: wrong_move"
@@ -440,7 +440,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "c2c3",
-        "movePretty": "c2 -> c3",
+        "movePretty": "c2 to c3",
         "thinkingMs": 76017,
         "thinkingTokens": 5144,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:rYFDJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTDZBD0TZJM12J6DMGBANDV1\nServed provider: anthropic\nStatus: wrong_move\nSolved: false\nExpected player line: c2c4 b3c4 e3e4\nSubmitted player moves: c2c3\nLatency: 76017ms\nTokens: 5332\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 5144\nCost USD: 0.12966\n\nTurn 1\nPrompt:\nPosition FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc2c3\nParsed move: c2c3\nExpected move: c2c4\nResult: wrong_move"
@@ -449,7 +449,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": true,
         "playedMove": "c2c4",
-        "movePretty": "c2 -> c4",
+        "movePretty": "c2 to c4",
         "thinkingMs": 21121,
         "thinkingTokens": 1407,
         "transcript": "# google/gemini-3.5-flash trace - lichess:rYFDJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0NJEFC78AQC84DQRJW954\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: c2c4 b3c4 e3e4\nSubmitted player moves: c2c4 b3c4 e3e4\nLatency: 21121ms\nTokens: 2140\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 1407\nCost USD: 0.01386\n\nTurn 1\nPrompt:\nPosition FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc2c4+\nParsed move: c2c4\nExpected move: c2c4\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: b5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb3xc4+\nParsed move: b3c4\nExpected move: b3c4\nResult: correct\n\nTurn 3\nPrompt:\nOpponent played: d5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nKxe4\nParsed move: e3e4\nExpected move: e3e4\nResult: correct"
@@ -467,7 +467,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": true,
         "playedMove": "c2c4",
-        "movePretty": "c2 -> c4",
+        "movePretty": "c2 to c4",
         "thinkingMs": 237484,
         "thinkingTokens": 26316,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:rYFDJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE133FHA3CGSX61EHS798GX\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: c2c4 b3c4 e3e4\nSubmitted player moves: c2c4 b3c4 e3e4\nLatency: 237484ms\nTokens: 29022\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 26316\nCost USD: 0.01335255\n\nTurn 1\nPrompt:\nPosition FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc2c4\nParsed move: c2c4\nExpected move: c2c4\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: b5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb3c4\nParsed move: b3c4\nExpected move: b3c4\nResult: correct\n\nTurn 3\nPrompt:\nOpponent played: d5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne3e4\nParsed move: e3e4\nExpected move: e3e4\nResult: correct"
@@ -476,7 +476,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "qwen3",
         "correct": false,
         "playedMove": "h4h5",
-        "movePretty": "h4 -> h5",
+        "movePretty": "h4 to h5",
         "thinkingMs": 2122,
         "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:rYFDJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22H3FFZQ2A48V7DDBRRJX\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: c2c4 b3c4 e3e4\nSubmitted player moves: h4h5\nLatency: 2122ms\nTokens: 149\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.000198\n\nTurn 1\nPrompt:\nPosition FEN: 8/p5pp/5p2/1p1k4/4b1PB/1P2K3/P1P4P/8 w - - 0 31\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh4h5\nParsed move: h4h5\nExpected move: c2c4\nResult: wrong_move"
@@ -504,7 +504,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "e2e5",
-        "movePretty": "e2 -> e5",
+        "movePretty": "e2 to e5",
         "thinkingMs": 69692,
         "thinkingTokens": 2652,
         "transcript": "# openai/gpt-5.5 trace - lichess:xcx9M\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQE3HHKT5XNJ9MR9HQERA4\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: f2f1 e2f1q\nSubmitted player moves: e2e5\nLatency: 69692ms\nTokens: 2804\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2652\nCost USD: 0.08057\n\nTurn 1\nPrompt:\nPosition FEN: r1b5/p5k1/1b5p/4R1pQ/1Np5/8/PPP1prPP/R6K b - - 0 24\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne2e5\nParsed move: e2e5\nExpected move: f2f1\nResult: wrong_move"
@@ -513,7 +513,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": true,
         "playedMove": "f2f1",
-        "movePretty": "f2 -> f1",
+        "movePretty": "f2 to f1",
         "thinkingMs": 75770,
         "thinkingTokens": 5942,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:xcx9M\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTDZFN5HK1C5ZZ6FM2NYWQDZ\nServed provider: anthropic\nStatus: ok\nSolved: true\nExpected player line: f2f1 e2f1q\nSubmitted player moves: f2f1 e2f1q\nLatency: 75770ms\nTokens: 6462\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 5942\nCost USD: 0.15141000000000002\n\nTurn 1\nPrompt:\nPosition FEN: r1b5/p5k1/1b5p/4R1pQ/1Np5/8/PPP1prPP/R6K b - - 0 24\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nf2f1\nParsed move: f2f1\nExpected move: f2f1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: a1f1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne2f1q\nParsed move: e2f1q\nExpected move: e2f1q\nResult: correct"
@@ -522,7 +522,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": true,
         "playedMove": "f2f1",
-        "movePretty": "f2 -> f1",
+        "movePretty": "f2 to f1",
         "thinkingMs": 14567,
         "thinkingTokens": 1295,
         "transcript": "# google/gemini-3.5-flash trace - lichess:xcx9M\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0P2857D5CZX8JTQRDSWFN\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: f2f1 e2f1q\nSubmitted player moves: f2f1 e2f1q\nLatency: 14567ms\nTokens: 1680\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 1295\nCost USD: 0.012292500000000001\n\nTurn 1\nPrompt:\nPosition FEN: r1b5/p5k1/1b5p/4R1pQ/1Np5/8/PPP1prPP/R6K b - - 0 24\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf1+\nParsed move: f2f1\nExpected move: f2f1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: a1f1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nexf1=Q+\nParsed move: e2f1q\nExpected move: e2f1q\nResult: correct"
@@ -540,7 +540,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": true,
         "playedMove": "f2f1",
-        "movePretty": "f2 -> f1",
+        "movePretty": "f2 to f1",
         "thinkingMs": 67619,
         "thinkingTokens": 10159,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:xcx9M\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE14PQ1R4JRCGQTJDWKKXAB\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: f2f1 e2f1q\nSubmitted player moves: f2f1 e2f1q\nLatency: 67619ms\nTokens: 11859\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 10159\nCost USD: 0.0052052999999999995\n\nTurn 1\nPrompt:\nPosition FEN: r1b5/p5k1/1b5p/4R1pQ/1Np5/8/PPP1prPP/R6K b - - 0 24\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nf2f1\nParsed move: f2f1\nExpected move: f2f1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: a1f1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne2f1q\nParsed move: e2f1q\nExpected move: e2f1q\nResult: correct"
@@ -549,7 +549,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "qwen3",
         "correct": false,
         "playedMove": "f2f1",
-        "movePretty": "f2 -> f1",
+        "movePretty": "f2 to f1",
         "thinkingMs": 4428,
         "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:xcx9M\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22MM9SNCQ1T06MY6ZCEG9\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: f2f1 e2f1q\nSubmitted player moves: f2f1\nLatency: 4428ms\nTokens: 409\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0005292\n\nTurn 1\nPrompt:\nPosition FEN: r1b5/p5k1/1b5p/4R1pQ/1Np5/8/PPP1prPP/R6K b - - 0 24\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf1+\nParsed move: f2f1\nExpected move: f2f1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: a1f1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxf1+\nParsed move: (none)\nExpected move: e2f1q\nResult: invalid_format"
@@ -577,7 +577,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "a2e6",
-        "movePretty": "a2 -> e6",
+        "movePretty": "a2 to e6",
         "thinkingMs": 108770,
         "thinkingTokens": 4320,
         "transcript": "# openai/gpt-5.5 trace - lichess:wAIrQ\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQG7KANA83D247W1SDH04F\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: h7g7 a2e6 f6e6\nSubmitted player moves: a2e6\nLatency: 108770ms\nTokens: 4479\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 4320\nCost USD: 0.130645\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/3qr1rR/2p1pQb1/ppP1Pp2/3P4/P1P5/B5PP/6K1 w - - 0 36\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\na2e6\nParsed move: a2e6\nExpected move: h7g7\nResult: wrong_move"
@@ -595,7 +595,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": true,
         "playedMove": "h7g7",
-        "movePretty": "h7 -> g7",
+        "movePretty": "h7 to g7",
         "thinkingMs": 23209,
         "thinkingTokens": 1568,
         "transcript": "# google/gemini-3.5-flash trace - lichess:wAIrQ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0PST0Z5Y6598EXSDGZV6Y\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: h7g7 a2e6 f6e6\nSubmitted player moves: h7g7 a2e6 f6e6\nLatency: 23209ms\nTokens: 2312\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 1568\nCost USD: 0.015318000000000002\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/3qr1rR/2p1pQb1/ppP1Pp2/3P4/P1P5/B5PP/6K1 w - - 0 36\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxg7+\nParsed move: h7g7\nExpected move: h7g7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: e7g7.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nBxe6+\nParsed move: a2e6\nExpected move: a2e6\nResult: correct\n\nTurn 3\nPrompt:\nOpponent played: d7e6.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxe6+\nParsed move: f6e6\nExpected move: f6e6\nResult: correct"
@@ -613,7 +613,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "h7g7",
-        "movePretty": "h7 -> g7",
+        "movePretty": "h7 to g7",
         "thinkingMs": 207661,
         "thinkingTokens": 34059,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:wAIrQ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1AM5QYZ11JRVDB77825J8\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: h7g7 a2e6 f6e6\nSubmitted player moves: h7g7 f6e6\nLatency: 207661ms\nTokens: 35765\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 34059\nCost USD: 0.0171547\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/3qr1rR/2p1pQb1/ppP1Pp2/3P4/P1P5/B5PP/6K1 w - - 0 36\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxg7\nParsed move: h7g7\nExpected move: h7g7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: e7g7.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxe6\nParsed move: f6e6\nExpected move: a2e6\nResult: wrong_move"
@@ -622,7 +622,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "qwen3",
         "correct": false,
         "playedMove": "f6g6",
-        "movePretty": "f6 -> g6",
+        "movePretty": "f6 to g6",
         "thinkingMs": 2489,
         "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:wAIrQ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22QGM14XH0PBNB516PF21\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: h7g7 a2e6 f6e6\nSubmitted player moves: f6g6\nLatency: 2489ms\nTokens: 155\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0002052\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/3qr1rR/2p1pQb1/ppP1Pp2/3P4/P1P5/B5PP/6K1 w - - 0 36\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxg6\nParsed move: f6g6\nExpected move: h7g7\nResult: wrong_move"
@@ -648,7 +648,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": true,
         "playedMove": "h5d1",
-        "movePretty": "h5 -> d1",
+        "movePretty": "h5 to d1",
         "thinkingMs": 43962,
         "thinkingTokens": 1572,
         "transcript": "# openai/gpt-5.5 trace - lichess:Aw4iZ\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQMER65H0W1XE6Y6P6BD5E\nServed provider: openai\nStatus: ok\nSolved: true\nExpected player line: h5d1 c6d4\nSubmitted player moves: h5d1 c6d4\nLatency: 43962ms\nTokens: 1996\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 1572\nCost USD: 0.04978\n\nTurn 1\nPrompt:\nPosition FEN: r1b1kbnr/pp3ppp/2n1p3/7q/2BN4/8/PPPN1PPP/R1BQ1RK1 b kq - 0 8\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh5d1\nParsed move: h5d1\nExpected move: h5d1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: f1d1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc6d4\nParsed move: c6d4\nExpected move: c6d4\nResult: correct"
@@ -657,7 +657,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "g8f6",
-        "movePretty": "g8 -> f6",
+        "movePretty": "g8 to f6",
         "thinkingMs": 83183,
         "thinkingTokens": 5771,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:Aw4iZ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTDZR762NX4Q3SKG19WJGTRC\nServed provider: anthropic\nStatus: wrong_move\nSolved: false\nExpected player line: h5d1 c6d4\nSubmitted player moves: g8f6\nLatency: 83183ms\nTokens: 5973\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 5771\nCost USD: 0.145405\n\nTurn 1\nPrompt:\nPosition FEN: r1b1kbnr/pp3ppp/2n1p3/7q/2BN4/8/PPPN1PPP/R1BQ1RK1 b kq - 0 8\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nNf6\nParsed move: g8f6\nExpected move: h5d1\nResult: wrong_move"
@@ -666,7 +666,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": true,
         "playedMove": "h5d1",
-        "movePretty": "h5 -> d1",
+        "movePretty": "h5 to d1",
         "thinkingMs": 18120,
         "thinkingTokens": 2188,
         "transcript": "# google/gemini-3.5-flash trace - lichess:Aw4iZ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0Q8V4APPK7FK0Q337ZS3Y\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: h5d1 c6d4\nSubmitted player moves: h5d1 c6d4\nLatency: 18120ms\nTokens: 2573\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2188\nCost USD: 0.0203145\n\nTurn 1\nPrompt:\nPosition FEN: r1b1kbnr/pp3ppp/2n1p3/7q/2BN4/8/PPPN1PPP/R1BQ1RK1 b kq - 0 8\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxd1\nParsed move: h5d1\nExpected move: h5d1\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: f1d1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nNxd4\nParsed move: c6d4\nExpected move: c6d4\nResult: correct"
@@ -684,7 +684,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "c6d4",
-        "movePretty": "c6 -> d4",
+        "movePretty": "c6 to d4",
         "thinkingMs": 28509,
         "thinkingTokens": 5539,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:Aw4iZ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1BW6XCRQ6ZTDFKNMYHJK2\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: h5d1 c6d4\nSubmitted player moves: c6d4\nLatency: 28509ms\nTokens: 6338\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 5539\nCost USD: 0.00283105\n\nTurn 1\nPrompt:\nPosition FEN: r1b1kbnr/pp3ppp/2n1p3/7q/2BN4/8/PPPN1PPP/R1BQ1RK1 b kq - 0 8\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nNxd4\nParsed move: c6d4\nExpected move: h5d1\nResult: wrong_move"
@@ -724,7 +724,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": true,
         "playedMove": "b8b5",
-        "movePretty": "b8 -> b5",
+        "movePretty": "b8 to b5",
         "thinkingMs": 163527,
         "thinkingTokens": 5642,
         "transcript": "# openai/gpt-5.5 trace - lichess:xxsYf\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQRSVR4MPSTA3SSE09YYGF\nServed provider: openai\nStatus: ok\nSolved: true\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: b8b5 c7c6 c6b5 d7e8 e8f8\nLatency: 163527ms\nTokens: 7487\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 5642\nCost USD: 0.179735\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb8b5\nParsed move: b8b5\nExpected move: b8b5\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: a5b5.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc7c6\nParsed move: c7c6\nExpected move: c7c6\nResult: correct\n\nTurn 3\nPrompt:\nOpponent played: d5e4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc6b5\nParsed move: c6b5\nExpected move: c6b5\nResult: correct\n\nTurn 4\nPrompt:\nOpponent played: e4f5.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nd7e8\nParsed move: d7e8\nExpected move: d7e8\nResult: correct\n\nTurn 5\nPrompt:\nOpponent played: f5g6.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne8f8\nParsed move: e8f8\nExpected move: e8f8\nResult: correct"
@@ -733,7 +733,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "b8f8",
-        "movePretty": "b8 -> f8",
+        "movePretty": "b8 to f8",
         "thinkingMs": 157752,
         "thinkingTokens": 11426,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:xxsYf\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTDZTR8QRTG1SP91WYAH19BK\nServed provider: anthropic\nStatus: wrong_move\nSolved: false\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: b8f8\nLatency: 157752ms\nTokens: 11614\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 11426\nCost USD: 0.28671\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: b8f8\nExpected move: b8b5\nResult: wrong_move"
@@ -742,7 +742,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": false,
         "playedMove": "b8f8",
-        "movePretty": "b8 -> f8",
+        "movePretty": "b8 to f8",
         "thinkingMs": 10120,
         "thinkingTokens": 921,
         "transcript": "# google/gemini-3.5-flash trace - lichess:xxsYf\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0QFT9RJPC6HT6YNNK9M59\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: b8f8\nLatency: 10120ms\nTokens: 1060\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 921\nCost USD: 0.0085125\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: b8f8\nExpected move: b8b5\nResult: wrong_move"
@@ -751,7 +751,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "ds35",
         "correct": false,
         "playedMove": "c8e8",
-        "movePretty": "c8 -> e8",
+        "movePretty": "c8 to e8",
         "thinkingMs": 14505,
         "thinkingTokens": 146,
         "transcript": "# deepseek/deepseek-v3.2-thinking trace - lichess:xxsYf\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0VN2XK0QW2A5X763ZC1GH\nServed provider: bedrock\nStatus: wrong_move\nSolved: false\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: c8e8\nLatency: 14505ms\nTokens: 146\nReasoning effort: high\nMax output tokens: not recorded\nReasoning tokens: not recorded\nCost USD: 0.00009667\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc8e8\nParsed move: c8e8\nExpected move: b8b5\nResult: wrong_move"
@@ -760,7 +760,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "b8f8",
-        "movePretty": "b8 -> f8",
+        "movePretty": "b8 to f8",
         "thinkingMs": 138066,
         "thinkingTokens": 27220,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:xxsYf\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1CR1WEJ626N3XKAAB66WT\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: b8f8\nLatency: 138066ms\nTokens: 28015\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 27220\nCost USD: 0.01367075\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: b8f8\nExpected move: b8b5\nResult: wrong_move"
@@ -769,7 +769,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "qwen3",
         "correct": false,
         "playedMove": "d6d5",
-        "movePretty": "d6 -> d5",
+        "movePretty": "d6 to d5",
         "thinkingMs": 2173,
         "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:xxsYf\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22TY712492A3KJ243013B\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: b8b5 c7c6 c6b5 d7e8 e8f8\nSubmitted player moves: d6d5\nLatency: 2173ms\nTokens: 150\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0001992\n\nTurn 1\nPrompt:\nPosition FEN: 1r6/2pk4/3p1P2/RP1Kp1p1/6P1/6P1/8/8 b - - 0 46\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nd6d5\nParsed move: d6d5\nExpected move: b8b5\nResult: wrong_move"
@@ -796,7 +796,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": true,
         "playedMove": "b2b4",
-        "movePretty": "b2 -> b4",
+        "movePretty": "b2 to b4",
         "thinkingMs": 106853,
         "thinkingTokens": 4014,
         "transcript": "# openai/gpt-5.5 trace - lichess:6RXXg\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQVH424J7P4YS1J82XCZN4\nServed provider: openai\nStatus: ok\nSolved: true\nExpected player line: b2b4 h6c6\nSubmitted player moves: b2b4 h6c6\nLatency: 106853ms\nTokens: 4426\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 4014\nCost USD: 0.12298\n\nTurn 1\nPrompt:\nPosition FEN: 4r3/8/p6R/1pkp4/8/2P3r1/PP1K1p2/4n3 w - - 0 44\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb2b4\nParsed move: b2b4\nExpected move: b2b4\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: c5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh6c6\nParsed move: h6c6\nExpected move: h6c6\nResult: correct"
@@ -805,7 +805,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": true,
         "playedMove": "b2b4",
-        "movePretty": "b2 -> b4",
+        "movePretty": "b2 to b4",
         "thinkingMs": 106954,
         "thinkingTokens": 7715,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:6RXXg\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE010GYZHZW88D7R89J4V77\nServed provider: anthropic\nStatus: ok\nSolved: true\nExpected player line: b2b4 h6c6\nSubmitted player moves: b2b4 h6c6\nLatency: 106954ms\nTokens: 8228\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 7715\nCost USD: 0.19568\n\nTurn 1\nPrompt:\nPosition FEN: 4r3/8/p6R/1pkp4/8/2P3r1/PP1K1p2/4n3 w - - 0 44\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb2b4\nParsed move: b2b4\nExpected move: b2b4\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: c5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh6c6\nParsed move: h6c6\nExpected move: h6c6\nResult: correct"
@@ -814,7 +814,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": true,
         "playedMove": "b2b4",
-        "movePretty": "b2 -> b4",
+        "movePretty": "b2 to b4",
         "thinkingMs": 23011,
         "thinkingTokens": 2385,
         "transcript": "# google/gemini-3.5-flash trace - lichess:6RXXg\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0R64YVEBGPQJDWJKVXXPC\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: b2b4 h6c6\nSubmitted player moves: b2b4 h6c6\nLatency: 23011ms\nTokens: 2766\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2385\nCost USD: 0.0220815\n\nTurn 1\nPrompt:\nPosition FEN: 4r3/8/p6R/1pkp4/8/2P3r1/PP1K1p2/4n3 w - - 0 44\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb4+\nParsed move: b2b4\nExpected move: b2b4\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: c5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRc6#\nParsed move: h6c6\nExpected move: h6c6\nResult: correct"
@@ -832,7 +832,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": true,
         "playedMove": "b2b4",
-        "movePretty": "b2 -> b4",
+        "movePretty": "b2 to b4",
         "thinkingMs": 172070,
         "thinkingTokens": 22115,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:6RXXg\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1KYN6095XV1NNPS4YBKF1\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: b2b4 h6c6\nSubmitted player moves: b2b4 h6c6\nLatency: 172070ms\nTokens: 23812\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 22115\nCost USD: 0.0111824\n\nTurn 1\nPrompt:\nPosition FEN: 4r3/8/p6R/1pkp4/8/2P3r1/PP1K1p2/4n3 w - - 0 44\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nb2b4\nParsed move: b2b4\nExpected move: b2b4\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: c5c4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh6c6\nParsed move: h6c6\nExpected move: h6c6\nResult: correct"
@@ -841,7 +841,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "qwen3",
         "correct": false,
         "playedMove": "h6a6",
-        "movePretty": "h6 -> a6",
+        "movePretty": "h6 to a6",
         "thinkingMs": 953,
         "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:6RXXg\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE22X1VJMXNCF1DNCYPNZSN\nServed provider: alibaba\nStatus: wrong_move\nSolved: false\nExpected player line: b2b4 h6c6\nSubmitted player moves: h6a6\nLatency: 953ms\nTokens: 148\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.000192\n\nTurn 1\nPrompt:\nPosition FEN: 4r3/8/p6R/1pkp4/8/2P3r1/PP1K1p2/4n3 w - - 0 44\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxa6\nParsed move: h6a6\nExpected move: b2b4\nResult: wrong_move"
@@ -868,7 +868,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "e6d7",
-        "movePretty": "e6 -> d7",
+        "movePretty": "e6 to d7",
         "thinkingMs": 76699,
         "thinkingTokens": 2480,
         "transcript": "# openai/gpt-5.5 trace - lichess:bHLqd\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQZ1V6Q8VKDGNPB6SWS6QJ\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: e6d7 c1d2\nSubmitted player moves: e6d7 g3e1\nLatency: 76699ms\nTokens: 2914\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2480\nCost USD: 0.07707\n\nTurn 1\nPrompt:\nPosition FEN: 1r2r1k1/3q4/1p2P1p1/p1p3Pp/1nP5/6QN/1P6/2K1R3 w - - 0 33\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne6d7\nParsed move: e6d7\nExpected move: e6d7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: e8e1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ng3e1\nParsed move: g3e1\nExpected move: c1d2\nResult: wrong_move"
@@ -877,7 +877,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "h3f4",
-        "movePretty": "h3 -> f4",
+        "movePretty": "h3 to f4",
         "thinkingMs": 80233,
         "thinkingTokens": 5664,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:bHLqd\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE02TSFBPB6SQKJ0TP6860Z\nServed provider: anthropic\nStatus: wrong_move\nSolved: false\nExpected player line: e6d7 c1d2\nSubmitted player moves: h3f4\nLatency: 80233ms\nTokens: 5862\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 5664\nCost USD: 0.14271\n\nTurn 1\nPrompt:\nPosition FEN: 1r2r1k1/3q4/1p2P1p1/p1p3Pp/1nP5/6QN/1P6/2K1R3 w - - 0 33\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nNf4\nParsed move: h3f4\nExpected move: e6d7\nResult: wrong_move"
@@ -886,7 +886,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": true,
         "playedMove": "e6d7",
-        "movePretty": "e6 -> d7",
+        "movePretty": "e6 to d7",
         "thinkingMs": 20428,
         "thinkingTokens": 1597,
         "transcript": "# google/gemini-3.5-flash trace - lichess:bHLqd\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0RVWTG0WE0B1SSVYYTBBA\nServed provider: vertex\nStatus: ok\nSolved: true\nExpected player line: e6d7 c1d2\nSubmitted player moves: e6d7 c1d2\nLatency: 20428ms\nTokens: 1995\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 1597\nCost USD: 0.0150075\n\nTurn 1\nPrompt:\nPosition FEN: 1r2r1k1/3q4/1p2P1p1/p1p3Pp/1nP5/6QN/1P6/2K1R3 w - - 0 33\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nexd7\nParsed move: e6d7\nExpected move: e6d7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: e8e1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nKd2\nParsed move: c1d2\nExpected move: c1d2\nResult: correct"
@@ -895,7 +895,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "ds35",
         "correct": false,
         "playedMove": "e6d7",
-        "movePretty": "e6 -> d7",
+        "movePretty": "e6 to d7",
         "thinkingMs": 1342,
         "thinkingTokens": 414,
         "transcript": "# deepseek/deepseek-v3.2-thinking trace - lichess:bHLqd\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0W4T22C644SH3RX738CKE\nServed provider: bedrock\nStatus: wrong_move\nSolved: false\nExpected player line: e6d7 c1d2\nSubmitted player moves: e6d7 g3e1\nLatency: 1342ms\nTokens: 414\nReasoning effort: high\nMax output tokens: not recorded\nReasoning tokens: not recorded\nCost USD: 0.00026652\n\nTurn 1\nPrompt:\nPosition FEN: 1r2r1k1/3q4/1p2P1p1/p1p3Pp/1nP5/6QN/1P6/2K1R3 w - - 0 33\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nexd7\nParsed move: e6d7\nExpected move: e6d7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: e8e1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxe1\nParsed move: g3e1\nExpected move: c1d2\nResult: wrong_move"
@@ -904,7 +904,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "e6d7",
-        "movePretty": "e6 -> d7",
+        "movePretty": "e6 to d7",
         "thinkingMs": 130086,
         "thinkingTokens": 9425,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:bHLqd\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1RX7SG2M06S0SZJGA5QHA\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: e6d7 c1d2\nSubmitted player moves: e6d7 g3e1\nLatency: 130086ms\nTokens: 11141\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 9425\nCost USD: 0.00483865\n\nTurn 1\nPrompt:\nPosition FEN: 1r2r1k1/3q4/1p2P1p1/p1p3Pp/1nP5/6QN/1P6/2K1R3 w - - 0 33\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nexd7\nParsed move: e6d7\nExpected move: e6d7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: e8e1.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQxe1\nParsed move: g3e1\nExpected move: c1d2\nResult: wrong_move"
@@ -940,7 +940,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "c2c8",
-        "movePretty": "c2 -> c8",
+        "movePretty": "c2 to c8",
         "thinkingMs": 125749,
         "thinkingTokens": 4468,
         "transcript": "# openai/gpt-5.5 trace - lichess:i8DfM\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCQZFQRK500F4PEE4PHSJEX\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: g6h7 f1f8\nSubmitted player moves: c2c8\nLatency: 125749ms\nTokens: 4627\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 4468\nCost USD: 0.13506\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/6p1/p3p1B1/1p2q1b1/7p/1P5P/P1Qr2P1/5R1K w - - 1 35\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQc8+\nParsed move: c2c8\nExpected move: g6h7\nResult: wrong_move"
@@ -949,7 +949,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "c2c8",
-        "movePretty": "c2 -> c8",
+        "movePretty": "c2 to c8",
         "thinkingMs": 53083,
         "thinkingTokens": 3668,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:i8DfM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0594FJFZ70DXJ2EKQGBM1\nServed provider: anthropic\nStatus: wrong_move\nSolved: false\nExpected player line: g6h7 f1f8\nSubmitted player moves: c2c8\nLatency: 53083ms\nTokens: 3864\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 3668\nCost USD: 0.09282\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/6p1/p3p1B1/1p2q1b1/7p/1P5P/P1Qr2P1/5R1K w - - 1 35\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nQc8+\nParsed move: c2c8\nExpected move: g6h7\nResult: wrong_move"
@@ -958,7 +958,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": false,
         "playedMove": "g6h7",
-        "movePretty": "g6 -> h7",
+        "movePretty": "g6 to h7",
         "thinkingMs": 25262,
         "thinkingTokens": 2699,
         "transcript": "# google/gemini-3.5-flash trace - lichess:i8DfM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0SHCWKXVNM1C9R4M0Z4TY\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: g6h7 f1f8\nSubmitted player moves: g6h7 h7g6\nLatency: 25262ms\nTokens: 3097\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2699\nCost USD: 0.0249255\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/6p1/p3p1B1/1p2q1b1/7p/1P5P/P1Qr2P1/5R1K w - - 1 35\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nBh7+\nParsed move: g6h7\nExpected move: g6h7\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: g8h8.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nBg6+\nParsed move: h7g6\nExpected move: f1f8\nResult: wrong_move"
@@ -976,7 +976,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "g6f7",
-        "movePretty": "g6 -> f7",
+        "movePretty": "g6 to f7",
         "thinkingMs": 136907,
         "thinkingTokens": 20742,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:i8DfM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1T6038DQK6JH467ZNB9GA\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: g6h7 f1f8\nSubmitted player moves: g6f7\nLatency: 136907ms\nTokens: 21547\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 20742\nCost USD: 0.01043375\n\nTurn 1\nPrompt:\nPosition FEN: 6k1/6p1/p3p1B1/1p2q1b1/7p/1P5P/P1Qr2P1/5R1K w - - 1 35\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ng6f7\nParsed move: g6f7\nExpected move: g6h7\nResult: wrong_move"
@@ -1012,7 +1012,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "e7b4",
-        "movePretty": "e7 -> b4",
+        "movePretty": "e7 to b4",
         "thinkingMs": 74126,
         "thinkingTokens": 2816,
         "transcript": "# openai/gpt-5.5 trace - lichess:t42fM\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCR3AHV0D0PHFYX9A92DQ62\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: c4c3 f8c8 c8c4\nSubmitted player moves: e7b4\nLatency: 74126ms\nTokens: 2982\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2816\nCost USD: 0.08556\n\nTurn 1\nPrompt:\nPosition FEN: r4q1r/1k2bp2/4p1p1/1p1pP3/1PpP1PB1/4B2P/1Q1K4/R4R2 b - - 0 40\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne7b4\nParsed move: e7b4\nExpected move: c4c3\nResult: wrong_move"
@@ -1021,7 +1021,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "c4c3",
-        "movePretty": "c4 -> c3",
+        "movePretty": "c4 to c3",
         "thinkingMs": 27348,
         "thinkingTokens": 1925,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:t42fM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE06WZY9G62ATZM86D9YZTF\nServed provider: anthropic\nStatus: error\nSolved: false\nExpected player line: c4c3 f8c8 c8c4\nSubmitted player moves: c4c3\nLatency: 27348ms\nTokens: 2127\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 1925\nCost USD: 0.049255\n\nTurn 1\nPrompt:\nPosition FEN: r4q1r/1k2bp2/4p1p1/1p1pP3/1PpP1PB1/4B2P/1Q1K4/R4R2 b - - 0 40\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc4c3\nParsed move: c4c3\nExpected move: c4c3\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: d2c3.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\n(empty)\nParsed move: (none)\nExpected move: f8c8\nResult: error\nError: Invalid error response format: Gateway request failed: The operation timed out."
@@ -1030,7 +1030,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": false,
         "playedMove": "e7b4",
-        "movePretty": "e7 -> b4",
+        "movePretty": "e7 to b4",
         "thinkingMs": 8886,
         "thinkingTokens": 962,
         "transcript": "# google/gemini-3.5-flash trace - lichess:t42fM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0SWSGR21TCB3K0YHAXBW4\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: c4c3 f8c8 c8c4\nSubmitted player moves: e7b4\nLatency: 8886ms\nTokens: 1117\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 962\nCost USD: 0.0089205\n\nTurn 1\nPrompt:\nPosition FEN: r4q1r/1k2bp2/4p1p1/1p1pP3/1PpP1PB1/4B2P/1Q1K4/R4R2 b - - 0 40\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nBxb4+\nParsed move: e7b4\nExpected move: c4c3\nResult: wrong_move"
@@ -1039,7 +1039,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "ds35",
         "correct": false,
         "playedMove": "a8a1",
-        "movePretty": "a8 -> a1",
+        "movePretty": "a8 to a1",
         "thinkingMs": 541,
         "thinkingTokens": 158,
         "transcript": "# deepseek/deepseek-v3.2-thinking trace - lichess:t42fM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0W63EKT22PPFXXP3B157D\nServed provider: bedrock\nStatus: wrong_move\nSolved: false\nExpected player line: c4c3 f8c8 c8c4\nSubmitted player moves: a8a1\nLatency: 541ms\nTokens: 158\nReasoning effort: high\nMax output tokens: not recorded\nReasoning tokens: not recorded\nCost USD: 0.00010288\n\nTurn 1\nPrompt:\nPosition FEN: r4q1r/1k2bp2/4p1p1/1p1pP3/1PpP1PB1/4B2P/1Q1K4/R4R2 b - - 0 40\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxa1\nParsed move: a8a1\nExpected move: c4c3\nResult: wrong_move"
@@ -1048,7 +1048,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "e7b4",
-        "movePretty": "e7 -> b4",
+        "movePretty": "e7 to b4",
         "thinkingMs": 38351,
         "thinkingTokens": 6680,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:t42fM\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1YBPSDB31HT4PBPJRSF9G\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: c4c3 f8c8 c8c4\nSubmitted player moves: e7b4\nLatency: 38351ms\nTokens: 7490\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 6680\nCost USD: 0.00340435\n\nTurn 1\nPrompt:\nPosition FEN: r4q1r/1k2bp2/4p1p1/1p1pP3/1PpP1PB1/4B2P/1Q1K4/R4R2 b - - 0 40\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\ne7b4\nParsed move: e7b4\nExpected move: c4c3\nResult: wrong_move"
@@ -1084,7 +1084,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gpt5",
         "correct": false,
         "playedMove": "c5b6",
-        "movePretty": "c5 -> b6",
+        "movePretty": "c5 to b6",
         "thinkingMs": 114560,
         "thinkingTokens": 3624,
         "transcript": "# openai/gpt-5.5 trace - lichess:NblXJ\nRun: 20260605T202450Z-83a64d4e\nGeneration: gen_01KTCR5JXX51HHEHWJ4WXFSTP1\nServed provider: openai\nStatus: wrong_move\nSolved: false\nExpected player line: h8f8 f8f5 f5d5\nSubmitted player moves: c5b6\nLatency: 114560ms\nTokens: 3777\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 3624\nCost USD: 0.109735\n\nTurn 1\nPrompt:\nPosition FEN: 7R/3p3P/2p5/1pPb1p2/1P3k1r/2KB4/8/8 w - - 0 45\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nc5b6\nParsed move: c5b6\nExpected move: h8f8\nResult: wrong_move"
@@ -1093,7 +1093,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "claude45",
         "correct": false,
         "playedMove": "d3f5",
-        "movePretty": "d3 -> f5",
+        "movePretty": "d3 to f5",
         "thinkingMs": 171705,
         "thinkingTokens": 12082,
         "transcript": "# anthropic/claude-opus-4.8 trace - lichess:NblXJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0FX2NPHTVAH8H9C6VRX18\nServed provider: anthropic\nStatus: wrong_move\nSolved: false\nExpected player line: h8f8 f8f5 f5d5\nSubmitted player moves: d3f5\nLatency: 171705ms\nTokens: 12269\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 12082\nCost USD: 0.303105\n\nTurn 1\nPrompt:\nPosition FEN: 7R/3p3P/2p5/1pPb1p2/1P3k1r/2KB4/8/8 w - - 0 45\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nd3f5\nParsed move: d3f5\nExpected move: h8f8\nResult: wrong_move"
@@ -1102,7 +1102,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "gem25",
         "correct": false,
         "playedMove": "h8f8",
-        "movePretty": "h8 -> f8",
+        "movePretty": "h8 to f8",
         "thinkingMs": 30608,
         "thinkingTokens": 2230,
         "transcript": "# google/gemini-3.5-flash trace - lichess:NblXJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE0TQTSXGSJSX4664FD5E6A\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: h8f8 f8f5 f5d5\nSubmitted player moves: h8f8 f8f5 f5f1\nLatency: 30608ms\nTokens: 2954\nReasoning effort: low\nMax output tokens: not recorded\nReasoning tokens: 2230\nCost USD: 0.021231\n\nTurn 1\nPrompt:\nPosition FEN: 7R/3p3P/2p5/1pPb1p2/1P3k1r/2KB4/8/8 w - - 0 45\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nh8f8\nParsed move: h8f8\nExpected move: h8f8\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: h4h7.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRxf5+\nParsed move: f8f5\nExpected move: f8f5\nResult: correct\n\nTurn 3\nPrompt:\nOpponent played: f4g4.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf1\nParsed move: f5f1\nExpected move: f5d5\nResult: wrong_move"
@@ -1120,7 +1120,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "grok4",
         "correct": false,
         "playedMove": "c3d4",
-        "movePretty": "c3 -> d4",
+        "movePretty": "c3 to d4",
         "thinkingMs": 98217,
         "thinkingTokens": 19639,
         "transcript": "# xai/grok-4.1-fast-reasoning trace - lichess:NblXJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE1ZH5HRWDXT79K1D1CJYNS\nServed provider: vertex\nStatus: wrong_move\nSolved: false\nExpected player line: h8f8 f8f5 f5d5\nSubmitted player moves: c3d4\nLatency: 98217ms\nTokens: 20435\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 19639\nCost USD: 0.00988045\n\nTurn 1\nPrompt:\nPosition FEN: 7R/3p3P/2p5/1pPb1p2/1P3k1r/2KB4/8/8 w - - 0 45\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nKd4\nParsed move: c3d4\nExpected move: h8f8\nResult: wrong_move"
@@ -1129,7 +1129,7 @@ export const PUZZLES: DashboardPuzzleItem[] = [
         "model": "qwen3",
         "correct": false,
         "playedMove": "h8f8",
-        "movePretty": "h8 -> f8",
+        "movePretty": "h8 to f8",
         "thinkingMs": 2859,
         "thinkingTokens": 0,
         "transcript": "# alibaba/qwen3-max-thinking trace - lichess:NblXJ\nRun: 20260606T080351Z-097b1682\nGeneration: gen_01KTE23656TA2AJQFW9X6CMK6E\nServed provider: alibaba\nStatus: invalid_format\nSolved: false\nExpected player line: h8f8 f8f5 f5d5\nSubmitted player moves: h8f8\nLatency: 2859ms\nTokens: 408\nReasoning effort: model-thinking\nMax output tokens: not recorded\nReasoning tokens: 0\nCost USD: 0.0005184\n\nTurn 1\nPrompt:\nPosition FEN: 7R/3p3P/2p5/1pPb1p2/1P3k1r/2KB4/8/8 w - - 0 45\nFind the best move for the side to move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: h8f8\nExpected move: h8f8\nResult: correct\n\nTurn 2\nPrompt:\nOpponent played: h4h7.\nFind the next move.\nOutput contract:\nReturn exactly one legal chess move for the side to move.\nAccepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.\nYour entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.\nRaw answer:\nRf8\nParsed move: (none)\nExpected move: f8f5\nResult: invalid_format"
