@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import {
   createReadStream,
@@ -10,35 +10,21 @@ import {
 import { writeFile } from "node:fs/promises"
 import { basename, join } from "node:path"
 import { createInterface } from "node:readline"
-import { Chess } from "chess.js"
-import { applyUciMove } from "@/lib/chess/moves"
+import { parseCsvRecords } from "@/lib/benchmarks/csv"
+import {
+  buildPuzzleItem,
+  LICHESS_PUZZLE_COLUMNS as columns,
+  parsePuzzleRow,
+  QUALITY_FILTERS,
+  RATING_BANDS as ratingBands,
+  reservoirSlot,
+} from "@/lib/benchmarks/lichess-puzzle-builder"
 import type {
   LichessPuzzleBenchmarkItem,
-  PuzzleMoveCounts,
   PuzzleLength,
   RatingBandId,
   ThemeGroupId,
 } from "@/lib/benchmarks/lichess-puzzles"
-
-type LichessPuzzleCsvRow = {
-  PuzzleId: string
-  FEN: string
-  Moves: string
-  Rating: string
-  RatingDeviation: string
-  Popularity: string
-  NbPlays: string
-  Themes: string
-  GameUrl: string
-  OpeningTags: string
-}
-
-type RatingBand = {
-  id: RatingBandId
-  label: string
-  min: number
-  max: number
-}
 
 type Candidate = {
   hashKey: string
@@ -50,21 +36,7 @@ const sourcePath =
 const outDir = readOption("--out") ?? "data/benchmarks/lichess-puzzles-v1"
 const perBand = Number(readOption("--per-band") ?? 100)
 const seed = readOption("--seed") ?? "lichess-puzzles-v1"
-const columns = [
-  "PuzzleId",
-  "FEN",
-  "Moves",
-  "Rating",
-  "RatingDeviation",
-  "Popularity",
-  "NbPlays",
-  "Themes",
-  "GameUrl",
-  "OpeningTags",
-] as const
-const minPopularity = 80
-const minPlays = 300
-const maxRatingDeviation = 110
+const { minPopularity, minPlays, maxRatingDeviation } = QUALITY_FILTERS
 const benchmarkId = "lichess-puzzles-v1"
 const sourceUrl = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
 const sourcePageUrl = "https://database.lichess.org/#puzzles"
@@ -72,136 +44,15 @@ const sourcePageLastUpdated = "2026-05-02"
 const sourceDownloadLastModified = "2026-05-01T09:33:23Z"
 const sourceDownloadContentLength = 296291296
 
-const ratingBands: RatingBand[] = [
-  { id: "under-1200", label: "<1200", min: 0, max: 1199 },
-  { id: "1200-1599", label: "1200-1599", min: 1200, max: 1599 },
-  { id: "1600-1999", label: "1600-1999", min: 1600, max: 1999 },
-  { id: "2000-2399", label: "2000-2399", min: 2000, max: 2399 },
-  { id: "2400-plus", label: "2400+", min: 2400, max: Number.POSITIVE_INFINITY },
-]
-
-const structuralThemes = new Set([
-  "short",
-  "long",
-  "veryLong",
-  "opening",
-  "middlegame",
-  "endgame",
-  "master",
-  "masterVsMaster",
-  "superGM",
-])
-
-const outcomeThemes = new Set(["advantage", "crushing"])
-
-const themePriority = new Set([
-  "mateIn2",
-  "mateIn3",
-  "mateIn4",
-  "mateIn5",
-  "mate",
-  "fork",
-  "pin",
-  "skewer",
-  "discoveredAttack",
-  "discoveredCheck",
-  "doubleCheck",
-  "deflection",
-  "decoy",
-  "attraction",
-  "clearance",
-  "interference",
-  "xRayAttack",
-  "capturingDefender",
-  "hangingPiece",
-  "trappedPiece",
-  "sacrifice",
-  "promotion",
-  "advancedPawn",
-  "quietMove",
-  "defensiveMove",
-  "zugzwang",
-  "backRankMate",
-  "smotheredMate",
-  "anastasiaMate",
-  "arabianMate",
-  "hookMate",
-  "operaMate",
-  "cornerMate",
-  "morphysMate",
-  "epauletteMate",
-  "triangleMate",
-  "bishopEndgame",
-  "knightEndgame",
-  "pawnEndgame",
-  "queenEndgame",
-  "queenRookEndgame",
-  "rookEndgame",
-  "kingsideAttack",
-  "queensideAttack",
-  "attackingF2F7",
-  "crushing",
-  "advantage",
-])
-
-const themeGroupsByTheme = new Map<string, ThemeGroupId>(
-  Object.entries({
-    advancedPawn: "special",
-    anastasiaMate: "checkmate",
-    arabianMate: "checkmate",
-    attackingF2F7: "attack",
-    attraction: "tactic",
-    backRankMate: "checkmate",
-    bishopEndgame: "endgame",
-    capturingDefender: "material",
-    clearance: "tactic",
-    collinearMove: "tactic",
-    cornerMate: "checkmate",
-    crushing: "positional",
-    decoy: "tactic",
-    defensiveMove: "defense",
-    deflection: "tactic",
-    discoveredAttack: "tactic",
-    discoveredCheck: "tactic",
-    doubleCheck: "tactic",
-    endgame: "endgame",
-    enPassant: "special",
-    epauletteMate: "checkmate",
-    exposedKing: "attack",
-    fork: "tactic",
-    hangingPiece: "material",
-    hookMate: "checkmate",
-    interference: "tactic",
-    kingsideAttack: "attack",
-    knightEndgame: "endgame",
-    mate: "checkmate",
-    mateIn2: "checkmate",
-    mateIn3: "checkmate",
-    mateIn4: "checkmate",
-    mateIn5: "checkmate",
-    morphysMate: "checkmate",
-    operaMate: "checkmate",
-    pawnEndgame: "endgame",
-    pin: "tactic",
-    promotion: "special",
-    queenEndgame: "endgame",
-    queenRookEndgame: "endgame",
-    queensideAttack: "attack",
-    quietMove: "positional",
-    rookEndgame: "endgame",
-    sacrifice: "material",
-    skewer: "tactic",
-    smotheredMate: "checkmate",
-    trappedPiece: "material",
-    triangleMate: "checkmate",
-    xRayAttack: "tactic",
-    zugzwang: "positional",
-  } as const)
-)
-
 if (!existsSync(sourcePath)) {
   throw new Error(
     `Missing ${sourcePath}. Run "bun run datasets:lichess:download" first.`
+  )
+}
+
+if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
+  throw new Error(
+    "zstdcat not found on PATH. Install zstd (brew install zstd)."
   )
 }
 
@@ -218,6 +69,11 @@ const sourceStats = {
   rowsRejectedAsMateInOne: 0,
   rowsRejectedAsIllegal: 0,
 }
+const rejectionStat = {
+  invalidColumns: "rowsWithInvalidColumns",
+  quality: "rowsRejectedByQuality",
+  mateIn1: "rowsRejectedAsMateInOne",
+} as const
 const passingFiltersByBand = new Map<RatingBandId, number>(
   ratingBands.map((band) => [band.id, 0])
 )
@@ -234,56 +90,40 @@ let headerVerified = false
 
 for await (const line of readLines(sourcePath)) {
   if (!headerVerified) {
-    verifyHeader(line)
+    if (parseCsvRecords(line)[0]?.join(",") !== columns.join(",")) {
+      throw new Error(`Unexpected CSV header: ${line}`)
+    }
     headerVerified = true
     continue
   }
 
   sourceStats.rowsSeen += 1
 
-  const row = parseRow(line)
+  const parsed = parsePuzzleRow(line)
 
-  if (row === null) {
-    sourceStats.rowsWithInvalidColumns += 1
+  if ("rejected" in parsed) {
+    if (parsed.rejected !== "invalidColumns") {
+      sourceStats.rowsParsed += 1
+    }
+    sourceStats[rejectionStat[parsed.rejected]] += 1
     continue
   }
 
   sourceStats.rowsParsed += 1
 
-  const quality = parseQuality(row)
-
-  if (!quality) {
-    sourceStats.rowsRejectedByQuality += 1
-    continue
-  }
-
-  const band = findRatingBand(quality.rating)
-
-  if (!band) {
-    sourceStats.rowsRejectedByQuality += 1
-    continue
-  }
-
-  const themes = splitTags(row.Themes)
-
-  if (themes.includes("mateIn1")) {
-    sourceStats.rowsRejectedAsMateInOne += 1
-    continue
-  }
-
+  const bandId = parsed.band.id
   sourceStats.rowsPassingFilters += 1
-  passingFiltersByBand.set(
-    band.id,
-    (passingFiltersByBand.get(band.id) ?? 0) + 1
-  )
+  passingFiltersByBand.set(bandId, (passingFiltersByBand.get(bandId) ?? 0) + 1)
 
-  const hashKey = stableHash(`${seed}:${row.PuzzleId}`)
+  const candidates = selectedByBand.get(bandId) ?? []
+  const hashKey = stableHash(`${seed}:${parsed.row.PuzzleId}`)
+  const slot = reservoirSlot(candidates, hashKey, perBand)
 
-  if (!couldImproveSelection(band.id, hashKey)) {
+  if (slot < 0) {
     continue
   }
 
-  const item = buildItem(row, quality, band, themes)
+  const item = buildPuzzleItem(parsed)
 
   if (item === null) {
     sourceStats.rowsRejectedAsIllegal += 1
@@ -291,7 +131,7 @@ for await (const line of readLines(sourcePath)) {
   }
 
   sourceStats.rowsBuilt += 1
-  maybeKeepCandidate(band.id, { hashKey, item })
+  candidates[slot] = { hashKey, item }
 }
 
 const items = ratingBands.flatMap((band) =>
@@ -542,283 +382,6 @@ async function* readLines(path: string): AsyncGenerator<string> {
   for await (const line of lines) {
     yield line
   }
-}
-
-function verifyHeader(line: string): void {
-  const actual = parseCsvLine(line)
-
-  if (actual.join(",") !== columns.join(",")) {
-    throw new Error(`Unexpected CSV header: ${line}`)
-  }
-}
-
-function parseRow(line: string): LichessPuzzleCsvRow | null {
-  const values = parseCsvLine(line)
-
-  if (values.length !== columns.length) {
-    return null
-  }
-
-  // SAFETY: values.length === columns.length was checked above, and `columns` lists every LichessPuzzleCsvRow key.
-  return Object.fromEntries(
-    columns.map((column, index) => [column, values[index]])
-  ) as LichessPuzzleCsvRow
-}
-
-function parseCsvLine(line: string): string[] {
-  const fields: string[] = []
-  let current = ""
-  let quoted = false
-
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index]
-    const next = line[index + 1]
-
-    if (quoted && char === '"' && next === '"') {
-      current += '"'
-      index += 1
-      continue
-    }
-
-    if (char === '"') {
-      quoted = !quoted
-      continue
-    }
-
-    if (!quoted && char === ",") {
-      fields.push(current)
-      current = ""
-      continue
-    }
-
-    current += char
-  }
-
-  fields.push(current)
-  return fields
-}
-
-function parseQuality(row: LichessPuzzleCsvRow):
-  | {
-      rating: number
-      ratingDeviation: number
-      popularity: number
-      nbPlays: number
-    }
-  | false {
-  const rating = Number(row.Rating)
-  const ratingDeviation = Number(row.RatingDeviation)
-  const popularity = Number(row.Popularity)
-  const nbPlays = Number(row.NbPlays)
-
-  if (
-    !Number.isFinite(rating) ||
-    !Number.isFinite(ratingDeviation) ||
-    !Number.isFinite(popularity) ||
-    !Number.isFinite(nbPlays) ||
-    ratingDeviation > maxRatingDeviation ||
-    popularity < minPopularity ||
-    nbPlays < minPlays
-  ) {
-    return false
-  }
-
-  return { rating, ratingDeviation, popularity, nbPlays }
-}
-
-function findRatingBand(rating: number): RatingBand | undefined {
-  return ratingBands.find((band) => rating >= band.min && rating <= band.max)
-}
-
-function splitTags(value: string): string[] {
-  return value.trim() === "" ? [] : value.trim().split(/\s+/)
-}
-
-function buildItem(
-  row: LichessPuzzleCsvRow,
-  quality: {
-    rating: number
-    ratingDeviation: number
-    popularity: number
-    nbPlays: number
-  },
-  band: RatingBand,
-  themes: string[]
-): LichessPuzzleBenchmarkItem | null {
-  const moves = splitTags(row.Moves)
-
-  if (moves.length < 2) {
-    return null
-  }
-
-  const chess = new Chess(row.FEN)
-  const triggerMove = moves[0]
-
-  if (!applyUciMove(chess, triggerMove)) {
-    return null
-  }
-
-  const fen = chess.fen()
-  const sideToMove = chess.turn()
-  const solutionMoves = moves.slice(1).map((move) => move.toLowerCase())
-  const playerUciMoves = solutionMoves.filter((_, index) => index % 2 === 0)
-  const moveCounts = getMoveCounts(solutionMoves, playerUciMoves)
-  const primaryTheme = findPrimaryTheme(themes)
-
-  for (const move of solutionMoves) {
-    if (!applyUciMove(chess, move)) {
-      return null
-    }
-  }
-
-  return {
-    id: `lichess:${row.PuzzleId}`,
-    benchmark: benchmarkId,
-    position: {
-      triggerFen: row.FEN,
-      triggerMove,
-      fen,
-      sideToMove,
-    },
-    expected: {
-      uciLine: solutionMoves,
-      playerUciMoves,
-      finalFen: chess.fen(),
-    },
-    metadata: {
-      lichessPuzzleId: row.PuzzleId,
-      lichessGameUrl: row.GameUrl,
-      rating: quality.rating,
-      ratingDeviation: quality.ratingDeviation,
-      popularity: quality.popularity,
-      nbPlays: quality.nbPlays,
-      ratingBand: band.id,
-      ratingBucket: findRatingBucket(quality.rating),
-      length: findPuzzleLength(themes),
-      moveCounts,
-      primaryTheme,
-      themeGroups: findThemeGroups(themes, primaryTheme),
-      themes,
-      openingTags: splitTags(row.OpeningTags),
-    },
-  }
-}
-
-function findPuzzleLength(themes: string[]): PuzzleLength {
-  if (themes.includes("veryLong")) {
-    return "veryLong"
-  }
-
-  if (themes.includes("long")) {
-    return "long"
-  }
-
-  if (themes.includes("short")) {
-    return "short"
-  }
-
-  return "unknown"
-}
-
-function getMoveCounts(
-  solutionMoves: string[],
-  playerUciMoves: string[]
-): PuzzleMoveCounts {
-  return {
-    solutionPlies: solutionMoves.length,
-    playerMoves: playerUciMoves.length,
-    opponentReplies: solutionMoves.length - playerUciMoves.length,
-  }
-}
-
-function findRatingBucket(rating: number): string {
-  const start = Math.floor(rating / 100) * 100
-  const end = start + 99
-
-  return `${formatRating(start)}-${formatRating(end)}`
-}
-
-function formatRating(rating: number): string {
-  return String(rating).padStart(4, "0")
-}
-
-function findPrimaryTheme(themes: string[]): string {
-  return (
-    themes.find(
-      (theme) =>
-        themePriority.has(theme) &&
-        !structuralThemes.has(theme) &&
-        !outcomeThemes.has(theme)
-    ) ??
-    themes.find(
-      (theme) => !structuralThemes.has(theme) && !outcomeThemes.has(theme)
-    ) ??
-    themes.find((theme) => outcomeThemes.has(theme)) ??
-    themes.find((theme) => !structuralThemes.has(theme)) ??
-    themes[0] ??
-    "unknown"
-  )
-}
-
-function findThemeGroups(
-  themes: string[],
-  primaryTheme: string
-): ThemeGroupId[] {
-  const groups = new Set<ThemeGroupId>()
-
-  for (const theme of [primaryTheme, ...themes]) {
-    groups.add(themeGroupsByTheme.get(theme) ?? "other")
-  }
-
-  groups.delete("other")
-
-  return groups.size > 0 ? [...groups].sort() : ["other"]
-}
-
-function maybeKeepCandidate(bandId: RatingBandId, candidate: Candidate): void {
-  const candidates = selectedByBand.get(bandId)
-
-  if (!candidates) {
-    throw new Error(`Unknown rating band: ${bandId}`)
-  }
-
-  if (candidates.length < perBand) {
-    candidates.push(candidate)
-    return
-  }
-
-  let worstIndex = 0
-
-  for (let index = 1; index < candidates.length; index += 1) {
-    if (candidates[index].hashKey > candidates[worstIndex].hashKey) {
-      worstIndex = index
-    }
-  }
-
-  if (candidate.hashKey < candidates[worstIndex].hashKey) {
-    candidates[worstIndex] = candidate
-  }
-}
-
-function couldImproveSelection(bandId: RatingBandId, hashKey: string): boolean {
-  const candidates = selectedByBand.get(bandId)
-
-  if (!candidates) {
-    throw new Error(`Unknown rating band: ${bandId}`)
-  }
-
-  if (candidates.length < perBand) {
-    return true
-  }
-
-  return (
-    hashKey <
-    candidates.reduce(
-      (worst, candidate) =>
-        candidate.hashKey > worst ? candidate.hashKey : worst,
-      candidates[0].hashKey
-    )
-  )
 }
 
 function stableHash(value: string): string {
