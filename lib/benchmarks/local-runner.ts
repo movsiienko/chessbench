@@ -129,14 +129,12 @@ export async function runLichessPuzzleAttempt({
   let invalidTurnIndex: number | null = null
   let errorMessage = ""
   let latencyMsTotal = 0
-  let inputTokens = 0
-  let outputTokens = 0
-  let totalTokens = 0
-  let reasoningTokens = 0
-  let costUsd = 0
-  let hasUsage = false
-  let hasReasoningUsage = false
-  let hasCost = false
+  // null until a turn reports the figure, then a running total.
+  let inputTokens: number | null = null
+  let outputTokens: number | null = null
+  let totalTokens: number | null = null
+  let reasoningTokens: number | null = null
+  let costUsd: number | null = null
   let servedProvider = ""
   let generationId = ""
   const position = new Chess(item.position.fen)
@@ -167,20 +165,18 @@ export async function runLichessPuzzleAttempt({
       latencyMsTotal += response.latencyMs
 
       if (response.usage) {
-        hasUsage = true
-        inputTokens += response.usage.inputTokens ?? 0
-        outputTokens += response.usage.outputTokens ?? 0
-        totalTokens += response.usage.totalTokens ?? 0
+        inputTokens = (inputTokens ?? 0) + (response.usage.inputTokens ?? 0)
+        outputTokens = (outputTokens ?? 0) + (response.usage.outputTokens ?? 0)
+        totalTokens = (totalTokens ?? 0) + (response.usage.totalTokens ?? 0)
 
         if (response.usage.reasoningTokens !== undefined) {
-          hasReasoningUsage = true
-          reasoningTokens += response.usage.reasoningTokens
+          reasoningTokens =
+            (reasoningTokens ?? 0) + response.usage.reasoningTokens
         }
       }
 
       if (response.costUsd !== undefined) {
-        hasCost = true
-        costUsd += response.costUsd
+        costUsd = (costUsd ?? 0) + response.costUsd
       }
 
       if (response.servedProvider) {
@@ -318,11 +314,11 @@ export async function runLichessPuzzleAttempt({
     invalidTurnIndex,
     errorMessage,
     latencyMsTotal,
-    inputTokens: hasUsage ? inputTokens : null,
-    outputTokens: hasUsage ? outputTokens : null,
-    totalTokens: hasUsage ? totalTokens : null,
-    reasoningTokens: hasReasoningUsage ? reasoningTokens : null,
-    costUsd: hasCost ? costUsd : null,
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    reasoningTokens,
+    costUsd,
     servedProvider,
     generationId,
     turns,

@@ -113,16 +113,6 @@ Granular fields:
   `checkmate`, `endgame`, `attack`, `defense`, `material`, `positional`, and
   `special`.
 
-## Indexes
-
-The `indexes` directory contains item-id indexes for common benchmark slices:
-
-- `by-rating-bucket.json`
-- `by-player-move-count.json`
-- `by-solution-ply-count.json`
-- `by-primary-theme.json`
-- `by-theme.json`
-
 ## Scoring
 
 The local runner asks for exactly one legal move token at a time in UCI or

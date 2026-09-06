@@ -373,7 +373,7 @@ function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0)
 }
 
-export function unique<T>(values: T[]) {
+function unique<T>(values: T[]) {
   return [...new Set(values)]
 }
 

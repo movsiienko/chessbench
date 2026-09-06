@@ -24,9 +24,6 @@ Each item also carries granular benchmark strata:
 - solution move counts in plies, player moves, and opponent replies
 - full Lichess `themes`, a derived `primaryTheme`, and broad `themeGroups`
 
-The same strata are available as JSON indexes under
-`data/benchmarks/lichess-puzzles-v1/indexes`.
-
 ## Dataset Commands
 
 ```bash
@@ -91,11 +88,8 @@ visitor traffic to hosts the visitor did not choose.
 `DashboardLabId` to a label and a mark. A lab with no vendored mark may omit
 `icon` and falls back to a monogram, which still never touches the network.
 
-`scripts/build-dashboard-data.ts` derives `DashboardModel.lab` from
-`https://models.dev/models.json`. It first looks for a matching canonical
-model key such as `openai/gpt-5.5`; when a benchmark model id is a
-Gateway-specific variant, it validates the provider prefix against the
-models.dev lab prefix set and uses that lab id.
+`DashboardModel.lab` is the provider prefix of the model's Gateway id, for
+example `openai` from `openai/gpt-5.5`.
 
 The emitted `DashboardLabId` union covers only the labs the configured models
 belong to, not the whole remote catalog, so a lab added upstream cannot rewrite

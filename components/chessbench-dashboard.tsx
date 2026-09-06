@@ -118,12 +118,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-  CATEGORY as REAL_CATEGORY,
-  CATEGORIES as REAL_CATEGORIES,
-  META as REAL_META,
-  MODELS as REAL_MODELS,
-  PUZZLES as REAL_PUZZLES,
-  SCOREBOARD as REAL_SCOREBOARD,
+  CATEGORY,
+  CATEGORIES,
+  META,
+  MODELS,
+  PUZZLES,
+  SCOREBOARD,
   type DashboardCategoryId,
   type DashboardLabId,
   type DashboardModelId,
@@ -153,8 +153,6 @@ type ModelId = DashboardModelId
 type CategoryId = DashboardCategoryId
 type PuzzleItem = DashboardPuzzleItem
 type SolutionAttempt = DashboardSolutionAttempt
-
-const MODELS = REAL_MODELS
 
 type LabIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
 type LabLogo = {
@@ -193,18 +191,6 @@ const LAB_SVGS = {
   openai: { label: "OpenAI", icon: { light: Openai, dark: OpenaiDark } },
   xai: { label: "xAI", icon: { light: XaiLight, dark: XaiDark } },
 } as const satisfies Record<DashboardLabId, LabLogo>
-
-const CATEGORIES = REAL_CATEGORIES
-
-const SCOREBOARD = REAL_SCOREBOARD
-
-const CATEGORY = REAL_CATEGORY
-
-const PUZZLES = REAL_PUZZLES
-
-const META = REAL_META
-
-const subscribeMounted = () => () => undefined
 
 /**
  * Series colors are theme-scoped, not fixed hex: the generator fits every
@@ -457,14 +443,6 @@ function compactTokens(value: number) {
 
 const NO_ARROWS: BoardArrow[] = []
 
-function useMounted() {
-  return React.useSyncExternalStore(
-    subscribeMounted,
-    () => true,
-    () => false
-  )
-}
-
 function boardAnimation(reducedMotion: boolean, small: boolean) {
   return reducedMotion
     ? { enabled: false, duration: 0 }
@@ -472,6 +450,21 @@ function boardAnimation(reducedMotion: boolean, small: boolean) {
 }
 
 const MAIN_CONTENT_ID = "cb-main"
+
+const subscribeMounted = () => () => undefined
+
+/**
+ * False on the server and during hydration, true after. next-themes reads the
+ * stored theme in its first client render, so anything keyed off it must wait
+ * for mount or the toggle icon and label mismatch the server markup.
+ */
+function useMounted() {
+  return React.useSyncExternalStore(
+    subscribeMounted,
+    () => true,
+    () => false
+  )
+}
 
 export function ChessBenchDashboard() {
   const [view, setView] = React.useState<View>("leaderboard")

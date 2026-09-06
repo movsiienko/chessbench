@@ -3,7 +3,12 @@ import type { ProviderOptions } from "@ai-sdk/provider-utils"
 /**
  * The one place a benchmarked model is declared. The build derives
  * `DashboardModelId` from `id`, reads results from `file`, and the dashboard
- * gets `name`/`vendor`/`releaseQ` through the generated data file.
+ * gets the rest through the generated data file.
+ *
+ * `color`/`colorDark` are chart series colors fitted to the light and dark
+ * `--card` surfaces (3.5:1 minimum, WCAG 1.4.11), not raw brand hexes: xAI
+ * ships a near-black and Google/DeepSeek two blues 3 degrees apart. Pick a new
+ * model's pair by hand with a contrast checker.
  */
 export const MODELS = [
   {
@@ -12,8 +17,8 @@ export const MODELS = [
     file: "openai-gpt-5-5-single-move-v3-effort-only-20260605.csv",
     name: "GPT 5.5",
     vendor: "OpenAI",
-    /** Brand hex, exactly as the lab publishes it. Never rendered unchanged. */
-    brand: "#10a37f",
+    color: "#009b78",
+    colorDark: "#10a37f",
     releaseQ: "v3 low reasoning",
   },
   {
@@ -22,7 +27,8 @@ export const MODELS = [
     file: "anthropic-claude-opus-4-8-single-move-v3-thinking-low-20260606.csv",
     name: "Claude Opus 4.8",
     vendor: "Anthropic",
-    brand: "#d97757",
+    color: "#cf6e4e",
+    colorDark: "#d97757",
     releaseQ: "v3 low thinking",
   },
   {
@@ -31,7 +37,8 @@ export const MODELS = [
     file: "google-gemini-3-5-flash-single-move-v3-thinking-low-20260606.csv",
     name: "Gemini 3.5 Flash",
     vendor: "Google",
-    brand: "#4285f4",
+    color: "#4285f4",
+    colorDark: "#4285f4",
     releaseQ: "v3 low thinking",
   },
   {
@@ -40,7 +47,8 @@ export const MODELS = [
     file: "deepseek-deepseek-v3-2-thinking-single-move-v3-thinking-low-20260606.csv",
     name: "DeepSeek V3.2 Thinking",
     vendor: "DeepSeek",
-    brand: "#2563eb",
+    color: "#007d98",
+    colorDark: "#007d98",
     releaseQ: "v3 low thinking",
   },
   {
@@ -49,7 +57,8 @@ export const MODELS = [
     file: "xai-grok-4-1-fast-reasoning-single-move-v3-thinking-low-20260606.csv",
     name: "Grok 4.1 Fast Reasoning",
     vendor: "xAI",
-    brand: "#111827",
+    color: "#111827",
+    colorDark: "#a4aec3",
     releaseQ: "v3 low thinking",
   },
   {
@@ -58,7 +67,8 @@ export const MODELS = [
     file: "alibaba-qwen3-max-thinking-single-move-v3-thinking-low-20260606.csv",
     name: "Qwen3 Max Thinking",
     vendor: "Alibaba",
-    brand: "#8b5cf6",
+    color: "#9a56ed",
+    colorDark: "#9a56ed",
     releaseQ: "v3 thinking model",
   },
 ] as const
@@ -176,34 +186,37 @@ function activeReasoningEffort(
   return effort === "none" ? null : effort
 }
 
-function reasoningEffortForXai(
-  effort: ActiveReasoningEffort | null
-): "low" | "high" | null {
-  if (!effort) {
-    return null
-  }
+// Each lab's effort scale, indexed by our minimal..xhigh ladder.
+const EFFORT_LADDER: ActiveReasoningEffort[] = [
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+]
+const LAB_EFFORTS = {
+  xai: ["low", "low", "low", "high", "high"],
+  anthropic: ["low", "low", "medium", "high", "max"],
+  google: ["low", "low", "medium", "high", "high"],
+} as const
 
-  return effort === "high" || effort === "xhigh" ? "high" : "low"
+function labEffort<L extends keyof typeof LAB_EFFORTS>(
+  lab: L,
+  effort: ActiveReasoningEffort
+): (typeof LAB_EFFORTS)[L][number] {
+  return LAB_EFFORTS[lab][EFFORT_LADDER.indexOf(effort)]
 }
 
-function reasoningEffortForAnthropic(
-  effort: ActiveReasoningEffort
-): "low" | "medium" | "high" | "max" {
-  if (effort === "xhigh") {
-    return "max"
-  }
-
-  return effort === "high" || effort === "medium" ? effort : "low"
+function reasoningEffortForXai(effort: ActiveReasoningEffort | null) {
+  return effort && labEffort("xai", effort)
 }
 
-function reasoningEffortForGoogle(
-  effort: ActiveReasoningEffort
-): "low" | "medium" | "high" {
-  if (effort === "high" || effort === "xhigh") {
-    return "high"
-  }
+function reasoningEffortForAnthropic(effort: ActiveReasoningEffort) {
+  return labEffort("anthropic", effort)
+}
 
-  return effort === "medium" ? "medium" : "low"
+function reasoningEffortForGoogle(effort: ActiveReasoningEffort) {
+  return labEffort("google", effort)
 }
 
 function reasoningEffortForDeepSeek(effort: ReasoningEffort): string {
