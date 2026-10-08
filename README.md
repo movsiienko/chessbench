@@ -65,6 +65,10 @@ only the expected opponent move and asks for the next move in the same
 conversation. It stops a puzzle on the first wrong move, invalid format, or
 provider error.
 
+Run selection, generation configuration, metadata normalization, and incremental
+archival are owned by `lib/benchmarks/benchmark-run.ts`. Its tests exercise the
+real AI SDK with local model responses and temporary archives.
+
 Every invocation writes a local CSV archive under ignored
 `data/results/local/lichess-puzzles-v1/`. To also write tracked canonical
 per-model snapshots, pass a canonical name:
