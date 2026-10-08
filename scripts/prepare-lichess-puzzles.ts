@@ -10,24 +10,12 @@ import {
 import { writeFile } from "node:fs/promises"
 import { basename, join } from "node:path"
 import { createInterface } from "node:readline"
-import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import {
-  buildPuzzleItem,
   LICHESS_PUZZLE_COLUMNS as columns,
-  parsePuzzleRow,
   QUALITY_FILTERS,
-  RATING_BANDS as ratingBands,
-  reservoirSlot,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
-import type {
-  LichessPuzzleBenchmarkItem,
-  RatingBandId,
-} from "@/lib/benchmarks/lichess-puzzles"
-
-type Candidate = {
-  hashKey: string
-  item: LichessPuzzleBenchmarkItem
-}
+import { sampleLichessPuzzles } from "@/lib/benchmarks/lichess-puzzle-sampler"
+import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
 
 const sourcePath =
   readOption("--source") ?? "data/raw/lichess/lichess_db_puzzle.csv.zst"
@@ -54,80 +42,9 @@ if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
   )
 }
 
-const selectedByBand = new Map<RatingBandId, Candidate[]>(
-  ratingBands.map((band) => [band.id, []])
-)
-const sourceStats = {
-  rowsSeen: 0,
-  rowsParsed: 0,
-  rowsPassingFilters: 0,
-  rowsBuilt: 0,
-  rowsWithInvalidColumns: 0,
-  rowsRejectedByQuality: 0,
-  rowsRejectedAsMateInOne: 0,
-  rowsRejectedAsIllegal: 0,
-}
-const rejectionStat = {
-  invalidColumns: "rowsWithInvalidColumns",
-  quality: "rowsRejectedByQuality",
-  mateIn1: "rowsRejectedAsMateInOne",
-} as const
-const passingFiltersByBand = new Map<RatingBandId, number>(
-  ratingBands.map((band) => [band.id, 0])
-)
-
-let headerVerified = false
-
-for await (const line of readLines(sourcePath)) {
-  if (!headerVerified) {
-    if (parseCsvRecords(line)[0]?.join(",") !== columns.join(",")) {
-      throw new Error(`Unexpected CSV header: ${line}`)
-    }
-    headerVerified = true
-    continue
-  }
-
-  sourceStats.rowsSeen += 1
-
-  const parsed = parsePuzzleRow(line)
-
-  if ("rejected" in parsed) {
-    if (parsed.rejected !== "invalidColumns") {
-      sourceStats.rowsParsed += 1
-    }
-    sourceStats[rejectionStat[parsed.rejected]] += 1
-    continue
-  }
-
-  sourceStats.rowsParsed += 1
-
-  const bandId = parsed.band.id
-  sourceStats.rowsPassingFilters += 1
-  passingFiltersByBand.set(bandId, (passingFiltersByBand.get(bandId) ?? 0) + 1)
-
-  const candidates = selectedByBand.get(bandId) ?? []
-  const hashKey = stableHash(`${seed}:${parsed.row.PuzzleId}`)
-  const slot = reservoirSlot(candidates, hashKey, perBand)
-
-  if (slot < 0) {
-    continue
-  }
-
-  const item = buildPuzzleItem(parsed)
-
-  if (item === null) {
-    sourceStats.rowsRejectedAsIllegal += 1
-    continue
-  }
-
-  sourceStats.rowsBuilt += 1
-  candidates[slot] = { hashKey, item }
-}
-
-const items = ratingBands.flatMap((band) =>
-  [...(selectedByBand.get(band.id) ?? [])]
-    .sort((left, right) => left.hashKey.localeCompare(right.hashKey))
-    .map((candidate) => candidate.item)
+const { items, sourceStats, ratingBands } = await sampleLichessPuzzles(
+  readLines(sourcePath),
+  { seed, perBand }
 )
 
 mkdirSync(outDir, { recursive: true })
@@ -185,14 +102,7 @@ const manifest = {
       legalLineValidation:
         "Every trigger and solution move is applied with chess.js.",
     },
-    ratingBands: ratingBands.map((band) => ({
-      id: band.id,
-      label: band.label,
-      min: band.min,
-      max: Number.isFinite(band.max) ? band.max : null,
-      eligible: passingFiltersByBand.get(band.id) ?? 0,
-      selected: selectedByBand.get(band.id)?.length ?? 0,
-    })),
+    ratingBands,
   },
   scoring: {
     primaryMetric: "solved_rate",
@@ -319,10 +229,6 @@ async function* readLines(path: string): AsyncGenerator<string> {
   for await (const line of lines) {
     yield line
   }
-}
-
-function stableHash(value: string): string {
-  return createHash("sha256").update(value).digest("hex")
 }
 
 async function hashFile(path: string): Promise<string> {
