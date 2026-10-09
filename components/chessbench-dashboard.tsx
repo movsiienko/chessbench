@@ -121,19 +121,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import {
-  CATEGORY,
-  CATEGORIES,
-  META,
-  MODELS,
-  PUZZLES,
-  SCOREBOARD,
-  type DashboardCategoryId,
-  type DashboardLabId,
-  type DashboardModelId,
-  type DashboardPuzzleItem,
-  type DashboardSolutionAttempt,
-} from "@/lib/benchmarks/dashboard-data"
+import type { CategoryId } from "@/lib/benchmarks/dashboard-build"
+import type { DashboardData } from "@/lib/benchmarks/dashboard-load"
+import type { LichessPuzzleAttemptRow } from "@/lib/benchmarks/local-runner"
+import type { LabId } from "@/lib/benchmarks/models"
 import { usePreferReducedMotion } from "@/hooks/use-prefers-reduced-motion"
 import { escapeCsv } from "@/lib/benchmarks/csv"
 import {
@@ -153,10 +144,11 @@ import {
 import { cn } from "@/lib/utils"
 
 type View = "leaderboard" | "problems" | "docs"
-type ModelId = DashboardModelId
-type CategoryId = DashboardCategoryId
-type PuzzleItem = DashboardPuzzleItem
-type SolutionAttempt = DashboardSolutionAttempt
+/** A scoreboard entry id: one model at one reasoning level. */
+type ModelId = string
+type Score = DashboardData["scoreboard"][number]
+type PuzzleItem = DashboardData["puzzles"][number]
+type SolutionAttempt = PuzzleItem["attempts"][number]
 
 type LabIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
 type LabLogo = {
@@ -194,21 +186,7 @@ const LAB_SVGS = {
   google: { label: "Google", icon: { light: Gemini, dark: Gemini } },
   openai: { label: "OpenAI", icon: { light: Openai, dark: OpenaiDark } },
   xai: { label: "xAI", icon: { light: XaiLight, dark: XaiDark } },
-} as const satisfies Record<DashboardLabId, LabLogo>
-
-/**
- * Series colors are theme-scoped, not fixed hex: the generator fits every
- * model's brand color to the light and the dark `--card` surface separately
- * (see `DashboardModel.color`). Handing both to `ChartStyle` lets CSS pick,
- * so nothing here has to know which theme is mounted.
- */
-const modelChartConfig = MODELS.reduce<ChartConfig>((config, model) => {
-  config[model.id] = {
-    label: model.name,
-    theme: { light: model.color, dark: model.colorDark },
-  }
-  return config
-}, {})
+} as const satisfies Record<LabId, LabLogo>
 
 /**
  * `ChartContainer` scopes `--color-<model>` to its own subtree, which leaves
@@ -242,47 +220,165 @@ const SERIES_MARKS: Array<{
   { dash: "4 3 1 3", stroke: "dash-dot-dot", symbol: "cross" },
 ]
 
-function seriesMark(model: ModelId) {
-  const index = Math.max(
-    0,
-    MODELS.findIndex((entry) => entry.id === model)
-  )
+/**
+ * Everything derived from the loaded data. Components read it through
+ * `useDashboard()` under the names these values had as module constants.
+ */
+function deriveDashboard(data: DashboardData) {
+  const MODELS = data.models
+  const SCOREBOARD = data.scoreboard
+  const CATEGORY = data.category
+  const CATEGORIES = data.categories
+  const PUZZLES = data.puzzles
+  const META = data.meta
 
-  return SERIES_MARKS[index % SERIES_MARKS.length]
+  /**
+   * Series colors are theme-scoped, not fixed hex: the generator fits every
+   * model's brand color to the light and the dark `--card` surface separately
+   * (see `DashboardModel.color`). Handing both to `ChartStyle` lets CSS pick,
+   * so nothing here has to know which theme is mounted.
+   */
+  const modelChartConfig = MODELS.reduce<ChartConfig>((config, model) => {
+    config[model.id] = {
+      label: model.name,
+      theme: { light: model.color, dark: model.colorDark },
+    }
+    return config
+  }, {})
+
+  function seriesMark(model: ModelId) {
+    const index = Math.max(
+      0,
+      MODELS.findIndex((entry) => entry.id === model)
+    )
+
+    return SERIES_MARKS[index % SERIES_MARKS.length]
+  }
+
+  /** Spoken form of the dash patterns, for a chart's `desc`. */
+  function describeStrokes(models: ModelId[]) {
+    return (
+      models
+        // Naming the actual pattern, not just "dashed": five of the six series are
+        // dashed, so collapsing them left a description that could not be used to
+        // tell one line from another.
+        .map((model) => `${modelById(model).name} ${seriesMark(model).stroke}`)
+        .join(", ")
+    )
+  }
+
+  function modelById(id: ModelId) {
+    return MODELS.find((model) => model.id === id) ?? MODELS[0]
+  }
+
+  function categoryById(id: CategoryId) {
+    return CATEGORIES.find((category) => category.id === id)
+  }
+
+  // Scores come from a small per-model puzzle sample, so derived values are
+  // rendered at the precision that sample supports and stay marked as estimates
+  // until the sample is large enough to carry more digits.
+  const MIN_SAMPLE = META.sampleSize.min
+  const SAMPLE_LABEL =
+    META.sampleSize.min === META.sampleSize.max
+      ? `${META.sampleSize.min}`
+      : `${META.sampleSize.min}-${META.sampleSize.max}`
+
+  /** Largest measured bucket size across the given models. */
+  function bucketSize(category: CategoryId, models: ModelId[]) {
+    return models.reduce(
+      (largest, model) => Math.max(largest, CATEGORY[model][category].n),
+      0
+    )
+  }
+
+  function categoryAxisLabel(
+    category: DashboardData["categories"][number],
+    models: ModelId[]
+  ) {
+    return `${category.label} · n=${bucketSize(category.id, models)}`
+  }
+
+  const RATING_STEP = META.ratingStep
+  const RATING_BOUNDS = META.ratingBounds
+
+  function leaderboardCsv() {
+    const header = [
+      "model_id",
+      "model_name",
+      "vendor",
+      "puzzles_evaluated",
+      "solved_rate_measured",
+      "legal_move_rate_measured",
+      "avg_total_tokens_measured",
+      "avg_move_seconds_measured",
+      "elo_estimated",
+      "usd_per_1k_puzzles_extrapolated",
+    ]
+    const rows = [...SCOREBOARD]
+      .sort((a, b) => b.accuracy - a.accuracy)
+      .map((score) => {
+        const model = modelById(score.model)
+        return [
+          score.model,
+          model.name,
+          model.vendor,
+          score.n,
+          score.accuracy,
+          score.legalRate,
+          score.avgTokens,
+          score.avgMoveTime,
+          score.elo,
+          score.cost,
+        ]
+      })
+
+    return [header, ...rows]
+      .map((row) => row.map(escapeCsv).join(","))
+      .concat("")
+      .join("\n")
+  }
+
+  return {
+    MODELS,
+    SCOREBOARD,
+    CATEGORY,
+    CATEGORIES,
+    PUZZLES,
+    META,
+    modelChartConfig,
+    seriesMark,
+    describeStrokes,
+    modelById,
+    categoryById,
+    MIN_SAMPLE,
+    SAMPLE_LABEL,
+    bucketSize,
+    categoryAxisLabel,
+    RATING_STEP,
+    RATING_BOUNDS,
+    leaderboardCsv,
+  }
 }
 
-/** Spoken form of the dash patterns, for a chart's `desc`. */
-function describeStrokes(models: ModelId[]) {
-  return (
-    models
-      // Naming the actual pattern, not just "dashed": five of the six series are
-      // dashed, so collapsing them left a description that could not be used to
-      // tell one line from another.
-      .map((model) => `${modelById(model).name} ${seriesMark(model).stroke}`)
-      .join(", ")
-  )
-}
+const DashboardContext = React.createContext<ReturnType<
+  typeof deriveDashboard
+> | null>(null)
 
-function modelById(id: ModelId) {
-  return MODELS.find((model) => model.id === id) ?? MODELS[0]
-}
+function useDashboard() {
+  const value = React.useContext(DashboardContext)
 
-function categoryById(id: CategoryId) {
-  return CATEGORIES.find((category) => category.id === id)
+  if (!value) {
+    throw new Error("useDashboard needs ChessBenchDashboard above it")
+  }
+
+  return value
 }
 
 function pct(value: number, digits = 1) {
   return `${(value * 100).toFixed(digits)}%`
 }
 
-// Scores come from a small per-model puzzle sample, so derived values are
-// rendered at the precision that sample supports and stay marked as estimates
-// until the sample is large enough to carry more digits.
-const MIN_SAMPLE = META.sampleSize.min
-const SAMPLE_LABEL =
-  META.sampleSize.min === META.sampleSize.max
-    ? `${META.sampleSize.min}`
-    : `${META.sampleSize.min}-${META.sampleSize.max}`
 const FULL_PRECISION_SAMPLE = 100
 
 function isPrecise(n: number) {
@@ -316,24 +412,6 @@ function moveTimeText(seconds: number, n: number) {
   return isPrecise(n) ? `${seconds.toFixed(1)}s` : `~${seconds.toFixed(0)}s`
 }
 
-/** Largest measured bucket size across the given models. */
-function bucketSize(category: CategoryId, models: ModelId[]) {
-  return models.reduce(
-    (largest, model) => Math.max(largest, CATEGORY[model][category].n),
-    0
-  )
-}
-
-function categoryAxisLabel(
-  category: (typeof CATEGORIES)[number],
-  models: ModelId[]
-) {
-  return `${category.label} · n=${bucketSize(category.id, models)}`
-}
-
-const RATING_STEP = META.ratingStep
-const RATING_BOUNDS = META.ratingBounds
-
 function downloadFile(filename: string, contents: string, type: string) {
   const url = URL.createObjectURL(new Blob([contents], { type }))
   const link = document.createElement("a")
@@ -346,43 +424,6 @@ function downloadFile(filename: string, contents: string, type: string) {
   // Some browsers resolve the download asynchronously, after this task ends,
   // and fail if the object URL has already been revoked.
   window.setTimeout(() => URL.revokeObjectURL(url), 0)
-}
-
-function leaderboardCsv() {
-  const header = [
-    "model_id",
-    "model_name",
-    "vendor",
-    "puzzles_evaluated",
-    "solved_rate_measured",
-    "legal_move_rate_measured",
-    "avg_total_tokens_measured",
-    "avg_move_seconds_measured",
-    "elo_estimated",
-    "usd_per_1k_puzzles_extrapolated",
-  ]
-  const rows = [...SCOREBOARD]
-    .sort((a, b) => b.accuracy - a.accuracy)
-    .map((score) => {
-      const model = modelById(score.model)
-      return [
-        score.model,
-        model.name,
-        model.vendor,
-        score.n,
-        score.accuracy,
-        score.legalRate,
-        score.avgTokens,
-        score.avgMoveTime,
-        score.elo,
-        score.cost,
-      ]
-    })
-
-  return [header, ...rows]
-    .map((row) => row.map(escapeCsv).join(","))
-    .concat("")
-    .join("\n")
 }
 
 function attemptFilename(puzzleId: string, model: ModelId, extension: string) {
@@ -441,7 +482,17 @@ function useMounted() {
   )
 }
 
-export function ChessBenchDashboard() {
+export function ChessBenchDashboard({ data }: { data: DashboardData }) {
+  const dashboard = React.useMemo(() => deriveDashboard(data), [data])
+
+  return (
+    <DashboardContext.Provider value={dashboard}>
+      <DashboardShell />
+    </DashboardContext.Provider>
+  )
+}
+
+function DashboardShell() {
   const [view, setView] = React.useState<View>("leaderboard")
   const { resolvedTheme, setTheme } = useTheme()
   const mounted = useMounted()
@@ -552,6 +603,15 @@ export function ChessBenchDashboard() {
 }
 
 function LeaderboardView() {
+  const {
+    SCOREBOARD,
+    MODELS,
+    META,
+    modelById,
+    MIN_SAMPLE,
+    SAMPLE_LABEL,
+    leaderboardCsv,
+  } = useDashboard()
   const sorted = [...SCOREBOARD].sort((a, b) => b.accuracy - a.accuracy)
   const leader = sorted[0]
   const runnerUp = sorted[1]
@@ -839,6 +899,7 @@ function SeriesScope({
   className?: string
   children: React.ReactNode
 }) {
+  const { modelChartConfig } = useDashboard()
   // The style tag is a sibling of the layout container rather than a child of
   // it, so a `space-y` rhythm on `className` does not count it as a row.
   return (
@@ -857,6 +918,7 @@ function SeriesSwatch({
   model: ModelId
   variant: "bar" | "line" | "point"
 }) {
+  const { seriesMark } = useDashboard()
   const mark = seriesMark(model)
   const color = seriesColor(model)
 
@@ -911,6 +973,7 @@ function SeriesLegend({
   variant: "bar" | "line" | "point"
   note?: string
 }) {
+  const { modelById } = useDashboard()
   return (
     <div className="space-y-1.5">
       <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
@@ -970,7 +1033,8 @@ function ChartTable({
   )
 }
 
-function OverallAccuracyChart({ sorted }: { sorted: typeof SCOREBOARD }) {
+function OverallAccuracyChart({ sorted }: { sorted: Score[] }) {
+  const { modelById, MIN_SAMPLE, SAMPLE_LABEL } = useDashboard()
   const data = sorted.map((score) => {
     const model = modelById(score.model)
     return {
@@ -1071,6 +1135,15 @@ function OverallAccuracyChart({ sorted }: { sorted: typeof SCOREBOARD }) {
 }
 
 function CategoryBars() {
+  const {
+    SCOREBOARD,
+    CATEGORY,
+    CATEGORIES,
+    modelChartConfig,
+    modelById,
+    bucketSize,
+    categoryAxisLabel,
+  } = useDashboard()
   const sorted = [...SCOREBOARD].sort((a, b) => b.accuracy - a.accuracy)
   const shownModels = sorted.map((score) => score.model)
   const data = CATEGORIES.map((category) => {
@@ -1203,7 +1276,16 @@ function CategoryBars() {
   )
 }
 
-function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
+function CapabilityRadar({ sorted }: { sorted: Score[] }) {
+  const {
+    CATEGORY,
+    CATEGORIES,
+    modelChartConfig,
+    seriesMark,
+    describeStrokes,
+    modelById,
+    categoryAxisLabel,
+  } = useDashboard()
   const shownModels = sorted.map((score) => score.model)
   // A radar closes its polygon through every axis, so an unmeasured axis would
   // read as 0%. Unmeasured themes are dropped from the chart and named below.
@@ -1347,7 +1429,8 @@ function CapabilityRadar({ sorted }: { sorted: typeof SCOREBOARD }) {
   )
 }
 
-function EloEstimateChart({ sorted }: { sorted: typeof SCOREBOARD }) {
+function EloEstimateChart({ sorted }: { sorted: Score[] }) {
+  const { modelById, MIN_SAMPLE, SAMPLE_LABEL } = useDashboard()
   const data = [...sorted]
     .sort((a, b) => b.elo - a.elo)
     .map((score) => {
@@ -1483,6 +1566,7 @@ type TradeoffPoint = {
 }
 
 function TradeoffScatter() {
+  const { SCOREBOARD, modelById, SAMPLE_LABEL } = useDashboard()
   const data: TradeoffPoint[] = SCOREBOARD.map((score) => ({
     id: score.model,
     model: modelById(score.model).name,
@@ -1552,6 +1636,7 @@ function TradeoffPlot({
   data: TradeoffPoint[]
   note: React.ReactNode
 }) {
+  const { seriesMark, MIN_SAMPLE } = useDashboard()
   const isCost = metric === "cost"
   const heading = isCost
     ? "Cost / 1k puzzles · extrapolated"
@@ -1728,7 +1813,8 @@ function TradeoffPlot({
   )
 }
 
-function ResultsTable({ sorted }: { sorted: typeof SCOREBOARD }) {
+function ResultsTable({ sorted }: { sorted: Score[] }) {
+  const { META, modelById } = useDashboard()
   return (
     <Table>
       {/*
@@ -1739,7 +1825,8 @@ function ResultsTable({ sorted }: { sorted: typeof SCOREBOARD }) {
       <TableCaption className="sr-only">
         Per-model benchmark results on {META.benchmarkId}, ranked by accuracy.
         Puzzles, accuracy, legal-move rate, average tokens and average time are
-        measured; Elo and cost per 1,000 puzzles are derived from them.
+        measured; Elo and cost per 1,000 puzzles are derived from them. Pending
+        puzzles ended in a provider error and are excluded until retried.
       </TableCaption>
       <TableHeader>
         <TableRow>
@@ -1791,6 +1878,11 @@ function ResultsTable({ sorted }: { sorted: typeof SCOREBOARD }) {
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
                 {score.n}
+                {score.pending > 0 && (
+                  <span className="block text-xs">
+                    +{score.pending} pending
+                  </span>
+                )}
               </TableCell>
               <TableCell className="text-right font-medium">
                 {accuracyText(score.accuracy, score.n)}
@@ -1822,6 +1914,7 @@ function ResultsTable({ sorted }: { sorted: typeof SCOREBOARD }) {
 }
 
 function ProblemsView() {
+  const { PUZZLES, META, categoryById, RATING_BOUNDS } = useDashboard()
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [selectedThemes, setSelectedThemes] = React.useState<CategoryId[]>([])
   const [side, setSide] = React.useState<"any" | "w" | "b">("any")
@@ -1853,7 +1946,7 @@ function ProblemsView() {
       }
       return b.popularity - a.popularity
     })
-  }, [ratingRange, selectedThemes, side, sort])
+  }, [PUZZLES, ratingRange, selectedThemes, side, sort])
 
   const activeIndex = filtered.findIndex((puzzle) => puzzle.id === activeId)
   const activePuzzle = activeIndex >= 0 ? filtered[activeIndex] : null
@@ -2037,6 +2130,7 @@ function FiltersPopover({
   setRatingRange: (range: [number, number]) => void
   onClear: () => void
 }) {
+  const { CATEGORIES, PUZZLES, RATING_STEP, RATING_BOUNDS } = useDashboard()
   const filterCount =
     selectedThemes.length +
     (side !== "any" ? 1 : 0) +
@@ -2161,6 +2255,7 @@ function ProblemCard({
   puzzle: PuzzleItem
   onOpen: () => void
 }) {
+  const { categoryById } = useDashboard()
   // The card is the only focusable thing here, so its name has to carry the
   // position too. Meta first, position last, and the board itself is marked
   // decorative so the same squares are not read out twice.
@@ -2176,7 +2271,7 @@ function ProblemCard({
     ].filter((part): part is string => part !== null)
 
     return `${meta.join(", ")}. ${piecesSummary(puzzle.fen)}`
-  }, [puzzle])
+  }, [categoryById, puzzle])
 
   return (
     <Card
@@ -2236,6 +2331,7 @@ function ProblemFocus({
   onBack: () => void
   onStep: (direction: number) => void
 }) {
+  const { modelById, categoryById } = useDashboard()
   const [boardFen, setBoardFen] = React.useState(puzzle.fen)
   const [lastMove, setLastMove] = React.useState<{
     from: string
@@ -2510,10 +2606,7 @@ function ProblemFocus({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <pre className="max-h-72 overflow-auto rounded-md border bg-muted/50 p-3 font-mono text-xs leading-6 whitespace-pre-wrap">
-                        {attemptTranscript(attempt)}
-                      </pre>
-                      <TranscriptActions puzzle={puzzle} attempt={attempt} />
+                      <AttemptTrace puzzle={puzzle} attempt={attempt} />
                     </AccordionContent>
                   </AccordionItem>
                 )
@@ -2536,6 +2629,7 @@ function ProblemFocus({
  * the same `move-correct` / `move-incorrect` vocabulary as the rows below.
  */
 function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
+  const { modelById } = useDashboard()
   const model = modelById(attempt.model)
   const state = attempt.outcome
 
@@ -2675,6 +2769,66 @@ function MoveEntry({
 }
 
 /**
+ * The page carries attempt summaries only; the full record, with every turn's
+ * reasoning, is fetched when its transcript opens. Finished attempts never
+ * change, so the CDN serves each one after the first request.
+ */
+function AttemptTrace({
+  puzzle,
+  attempt,
+}: {
+  puzzle: PuzzleItem
+  attempt: SolutionAttempt
+}) {
+  const [loaded, setLoaded] = React.useState<{
+    id: string
+    record: LichessPuzzleAttemptRow | null
+  } | null>(null)
+
+  React.useEffect(() => {
+    let live = true
+
+    fetch(`/api/attempts/${attempt.attemptId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null)
+      .then((record: LichessPuzzleAttemptRow | null) => {
+        if (live) {
+          setLoaded({ id: attempt.attemptId, record })
+        }
+      })
+
+    return () => {
+      live = false
+    }
+  }, [attempt.attemptId])
+
+  if (loaded?.id !== attempt.attemptId) {
+    return <p className="text-xs text-muted-foreground">Loading trace…</p>
+  }
+
+  if (!loaded.record) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        The trace could not be loaded.
+      </p>
+    )
+  }
+
+  return (
+    <>
+      <pre className="max-h-72 overflow-auto rounded-md border bg-muted/50 p-3 font-mono text-xs leading-6 whitespace-pre-wrap">
+        {attemptTranscript(loaded.record)}
+      </pre>
+      <TranscriptActions
+        puzzle={puzzle}
+        attempt={attempt}
+        record={loaded.record}
+      />
+    </>
+  )
+}
+
+/**
  * The transcript above is the trace, so these actions take it away rather than
  * link to a viewer that does not exist: a JSON download of the recorded attempt
  * and a clipboard copy of the trace text.
@@ -2682,12 +2836,14 @@ function MoveEntry({
 function TranscriptActions({
   puzzle,
   attempt,
+  record,
 }: {
   puzzle: PuzzleItem
   attempt: SolutionAttempt
+  record: LichessPuzzleAttemptRow
 }) {
   const [copied, setCopied] = React.useState(false)
-  const transcript = attemptTranscript(attempt)
+  const transcript = attemptTranscript(record)
 
   React.useEffect(() => {
     if (!copied) {
@@ -2709,7 +2865,7 @@ function TranscriptActions({
         onClick={() =>
           downloadFile(
             attemptFilename(puzzle.id, attempt.model, "json"),
-            attemptJson(attempt),
+            attemptJson(record),
             "application/json"
           )
         }
@@ -2762,6 +2918,14 @@ function MetaCell({
 }
 
 function DocsView() {
+  const {
+    SCOREBOARD,
+    CATEGORIES,
+    META,
+    MIN_SAMPLE,
+    SAMPLE_LABEL,
+    RATING_BOUNDS,
+  } = useDashboard()
   const maxMoveTime = Math.max(...SCOREBOARD.map((score) => score.avgMoveTime))
 
   return (
@@ -3067,6 +3231,7 @@ function ChessBoard({
 }
 
 function ModelChip({ id }: { id: ModelId }) {
+  const { modelById } = useDashboard()
   const model = modelById(id)
   return (
     <span className="inline-flex items-center gap-2">
@@ -3083,6 +3248,7 @@ function ModelDot({
   model: ModelId
   className?: string
 }) {
+  const { modelById } = useDashboard()
   const lab = modelById(model).lab
 
   return (
@@ -3098,7 +3264,7 @@ function ModelDot({
   )
 }
 
-function LabSvg({ lab }: { lab: DashboardLabId }) {
+function LabSvg({ lab }: { lab: LabId }) {
   const logo: LabLogo = LAB_SVGS[lab]
 
   if (!logo.icon) {

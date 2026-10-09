@@ -8,6 +8,10 @@ const nextConfig = {
   turbopack: {
     root: appRoot,
   },
+  // Revalidation re-runs the page on a function, which reads the item set.
+  outputFileTracingIncludes: {
+    "/": ["./data/benchmarks/lichess-puzzles-v1/items.jsonl"],
+  },
 }
 
 export default nextConfig

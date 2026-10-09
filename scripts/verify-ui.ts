@@ -14,7 +14,6 @@
 import { readFile } from "node:fs/promises"
 import { isDeepStrictEqual } from "node:util"
 import { parseAttemptRows } from "../lib/benchmarks/csv"
-import { MODELS } from "../lib/benchmarks/models"
 import { Chess } from "chess.js"
 import { chromium, type Page } from "playwright"
 
@@ -298,10 +297,10 @@ async function checkAttemptEvidence(page: Page) {
     page.getByRole("button", { name: "Raw JSON", exact: true }).click(),
   ])
   const path = await download.path()
-  const model = MODELS.find((model) => model.id === "gpt5")!
+  // Imported into the database by drizzle/0001 as protocol v1.
   const records = parseAttemptRows(
     await readFile(
-      `data/results/canonical/lichess-puzzles-v1/${model.file}`,
+      "data/results/canonical/lichess-puzzles-v1/openai-gpt-5-5-single-move-v3-effort-only-20260605.csv",
       "utf8"
     )
   )
@@ -317,10 +316,9 @@ async function checkAttemptEvidence(page: Page) {
   } else
     ok("attempt download", "Raw JSON preserves the complete recorded attempt")
 
-  const gemini = MODELS.find((model) => model.id === "gem25")!
   const geminiRecords = parseAttemptRows(
     await readFile(
-      `data/results/canonical/lichess-puzzles-v1/${gemini.file}`,
+      "data/results/canonical/lichess-puzzles-v1/google-gemini-3-5-flash-single-move-v3-thinking-low-20260606.csv",
       "utf8"
     )
   )

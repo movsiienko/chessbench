@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { buildDashboardData } from "./dashboard-build"
+import type { DashboardAttemptRow } from "./dashboard-build"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
-import type { LichessPuzzleAttemptRow } from "./local-runner"
 
 function item(
   id: string,
@@ -44,8 +44,9 @@ function row(
   itemId: string,
   rating: number,
   solved: boolean
-): LichessPuzzleAttemptRow {
+): DashboardAttemptRow {
   return {
+    attemptId: `${model}-${itemId}`,
     runId: "run",
     createdAt: "2026-06-06T08:00:00.000Z",
     benchmark: "lichess-puzzles-v1",
@@ -76,14 +77,18 @@ function row(
     costUsd: 0.001,
     servedProvider: "test",
     generationId: "gen",
-    turns: [],
   }
 }
 
 const models = [
-  { id: "a", name: "GPT 5.5", vendor: "OpenAI", lab: "openai" },
-  { id: "b", name: "Claude Opus 4.8", vendor: "Anthropic", lab: "anthropic" },
-].map((model) => ({ ...model, color: "#000", colorDark: "#fff", releaseQ: "" }))
+  { id: "a", name: "GPT 5.5", vendor: "OpenAI", lab: "openai" as const },
+  {
+    id: "b",
+    name: "Claude Opus 4.8",
+    vendor: "Anthropic",
+    lab: "anthropic" as const,
+  },
+].map((model) => ({ ...model, color: "#000", colorDark: "#fff" }))
 
 const items = [
   item("p1", 1012, ["fork", "middlegame"]),
@@ -107,8 +112,8 @@ describe("buildDashboardData", () => {
         row("b", "p3", 1500, false),
       ],
     },
+    pending: { a: 1 },
     datasetSize: 3,
-    sourceFiles: ["a.csv", "b.csv"],
   })
 
   test("emits the elo estimate with its one-puzzle band", () => {
