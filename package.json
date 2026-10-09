@@ -17,15 +17,18 @@
     "benchmark:local": "bun scripts/run-benchmark.ts",
     "benchmark:cheap": "bun scripts/run-benchmark.ts --model google/gemini-3.1-flash-lite-preview --model openai/gpt-5-nano",
     "datasets:lichess:download": "bun scripts/download-lichess-puzzles.ts",
-    "datasets:lichess:prepare": "bun scripts/prepare-lichess-puzzles.ts"
+    "datasets:lichess:prepare": "bun scripts/prepare-lichess-puzzles.ts",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
     "@lichess-org/chessground": "^10.1.1",
+    "@neondatabase/serverless": "^1.2.0",
     "ai": "^6.0.177",
     "chess.js": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.8.0",
     "next": "16.1.7",
     "next-themes": "^0.4.6",
@@ -43,6 +46,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "drizzle-kit": "^0.31.11",
     "oxlint": "1.81.0",
     "playwright": "^1.62.1",
     "postcss": "^8",

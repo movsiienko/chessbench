@@ -86,6 +86,21 @@ bun run benchmark:local -- --model openai/gpt-5-nano --canonical sample
 Canonical files are written as
 `data/results/canonical/lichess-puzzles-v1/<model-id>-sample.csv`.
 
+## Results Database
+
+Attempts are recorded in Neon Postgres (schema in `lib/db/schema.ts`,
+migrations in `drizzle/`). Vercel applies migrations before every build;
+production and preview use `chessbench-db`, where each preview deployment gets
+its own branch of production data. Local development uses the separate
+`chessbench-dev-db`:
+
+```bash
+vercel env pull .env.local
+set -a && . ./.env.local && set +a && bun run db:migrate
+```
+
+Generate a migration after editing the schema with `bun x drizzle-kit generate`.
+
 ## Dashboard Lab Logos
 
 Dashboard model chips render lab marks that are **vendored into the repo** as
