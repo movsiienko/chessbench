@@ -57,7 +57,12 @@ prefix score.
 ## Benchmark Runs
 
 Runs execute on Vercel Workflows (`lib/benchmarks/benchmark-workflow.ts`), one
-step per turn, five attempts at a time. Start one through the admin endpoint:
+step per turn, five attempts at a time. Start one from GitHub: **Actions → Run
+benchmark → Run workflow**, with models, a puzzle limit, optional rating bands,
+a reasoning level, and a dry-run switch (on by default). The job summary shows
+the request and the plan or run ID. Only people with write access can dispatch
+it; it calls the admin endpoint with the `BENCHMARK_ADMIN_TOKEN` repository
+secret. The endpoint can also be called directly:
 
 ```bash
 curl -X POST https://<production-domain>/api/benchmark-runs \
