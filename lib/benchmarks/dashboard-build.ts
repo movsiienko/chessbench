@@ -19,6 +19,8 @@ export type CategoryId =
 /** A scoreboard entry: one registry model at one reasoning level. */
 export type DashboardModelInput = {
   id: string
+  /** The registry model's Gateway ID; several entries can share one. */
+  model: string
   name: string
   vendor: string
   lab: LabId
@@ -67,16 +69,27 @@ export function entriesFrom(stored: StoredAttempt[]) {
 
       models.push({
         id,
+        model: model.id,
         name: `${model.name} · ${level}`,
         vendor: model.vendor,
         lab: labOf(model.id),
         color: model.color,
         colorDark: model.colorDark,
       })
-      rows[id] = atLevel
-        .filter((attempt) => attempt.status !== "error")
-        .map((attempt) => ({ ...attempt.record, attemptId: attempt.attemptId }))
-      pending[id] = atLevel.length - rows[id].length
+      const finished = atLevel.filter((attempt) => attempt.status !== "error")
+      const finishedItems = new Set(finished.map((a) => a.record.itemId))
+
+      rows[id] = finished.map((attempt) => ({
+        ...attempt.record,
+        attemptId: attempt.attemptId,
+      }))
+      // Items whose every attempt so far was a provider error. An error row
+      // stays after a successful retry, so rows alone would overcount.
+      pending[id] = unique(
+        atLevel
+          .filter((attempt) => attempt.status === "error")
+          .map((attempt) => attempt.record.itemId)
+      ).filter((itemId) => !finishedItems.has(itemId)).length
     }
   }
 
@@ -278,7 +291,9 @@ function buildCategoryStats(
 
 function resolveSampleSize(counts: number[]) {
   // Entries are scored on their own item sets, so this is often a range.
-  return { min: Math.min(...counts), max: Math.max(...counts) }
+  return counts.length === 0
+    ? { min: 0, max: 0 }
+    : { min: Math.min(...counts), max: Math.max(...counts) }
 }
 
 function ratingBoundsOf(ratings: number[]): [number, number] {

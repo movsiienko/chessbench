@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { buildDashboardData } from "./dashboard-build"
+import { buildDashboardData, entriesFrom } from "./dashboard-build"
 import type { DashboardAttemptRow } from "./dashboard-build"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
 
@@ -88,7 +88,12 @@ const models = [
     vendor: "Anthropic",
     lab: "anthropic" as const,
   },
-].map((model) => ({ ...model, color: "#000", colorDark: "#fff" }))
+].map((model) => ({
+  ...model,
+  model: `${model.lab}/${model.id}`,
+  color: "#000",
+  colorDark: "#fff",
+}))
 
 const items = [
   item("p1", 1012, ["fork", "middlegame"]),
@@ -139,5 +144,43 @@ describe("buildDashboardData", () => {
       data.models.map((model) => model.shortName),
       ["GPT", "Claude"]
     )
+  })
+})
+
+describe("entriesFrom", () => {
+  const stored = (itemId: string, status: string) => ({
+    attemptId: `${itemId}-${status}`,
+    model: "openai/gpt-5.5",
+    reasoningLevel: "low",
+    status,
+    record: row("openai/gpt-5.5", itemId, 1500, status === "ok"),
+  })
+
+  test("pending counts unretried items once, not every error row", () => {
+    const { models, rows, pending } = entriesFrom([
+      stored("p1", "error"),
+      stored("p1", "ok"), // a retry finished p1
+      stored("p2", "error"),
+      stored("p2", "error"), // p2 failed twice and is still pending
+      stored("p3", "wrong_move"),
+    ])
+
+    assert.deepEqual(
+      models.map((model) => model.name),
+      ["GPT 5.5 · low"]
+    )
+    assert.equal(rows[models[0]!.id]?.length, 2)
+    assert.equal(pending[models[0]!.id], 1)
+  })
+
+  test("an empty protocol builds an empty dashboard instead of throwing", () => {
+    const data = buildDashboardData({
+      ...entriesFrom([]),
+      items,
+      datasetSize: 3,
+    })
+
+    assert.deepEqual(data.scoreboard, [])
+    assert.deepEqual(data.meta.sampleSize, { min: 0, max: 0 })
   })
 })

@@ -259,9 +259,9 @@ function deriveDashboard(data: DashboardData) {
   function describeStrokes(models: ModelId[]) {
     return (
       models
-        // Naming the actual pattern, not just "dashed": five of the six series are
-        // dashed, so collapsing them left a description that could not be used to
-        // tell one line from another.
+        // Naming the actual pattern, not just "dashed": most series are dashed,
+        // so collapsing them left a description that could not be used to tell
+        // one line from another.
         .map((model) => `${modelById(model).name} ${seriesMark(model).stroke}`)
         .join(", ")
     )
@@ -287,7 +287,7 @@ function deriveDashboard(data: DashboardData) {
   /** Largest measured bucket size across the given models. */
   function bucketSize(category: CategoryId, models: ModelId[]) {
     return models.reduce(
-      (largest, model) => Math.max(largest, CATEGORY[model][category].n),
+      (largest, model) => Math.max(largest, CATEGORY[model]?.[category].n ?? 0),
       0
     )
   }
@@ -615,7 +615,27 @@ function LeaderboardView() {
   const sorted = [...SCOREBOARD].sort((a, b) => b.accuracy - a.accuracy)
   const leader = sorted[0]
   const runnerUp = sorted[1]
+
+  // A protocol change starts with no results until the first run finishes.
+  if (!leader) {
+    return (
+      <section className="grid gap-2.5 border-b pb-4">
+        <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+          {META.benchmarkId}
+        </div>
+        <h1 className="max-w-sm text-4xl leading-none font-semibold tracking-normal sm:text-5xl">
+          Model chess benchmark.
+        </h1>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          No results under the current protocol yet. Entries appear here as
+          benchmark runs finish.
+        </p>
+      </section>
+    )
+  }
+
   const leaderModel = modelById(leader.model)
+  const modelCount = new Set(MODELS.map((model) => model.model)).size
   const avgTokens = average(sorted.map((score) => score.avgTokens))
   const medianMove = median(sorted.map((score) => score.avgMoveTime))
   const meanLegalRate = average(sorted.map((score) => score.legalRate))
@@ -630,7 +650,9 @@ function LeaderboardView() {
           Model chess benchmark.
         </h1>
         <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-sm text-muted-foreground">
-          <span>{MODELS.length} models</span>
+          <span>
+            {modelCount} models, {MODELS.length} entries
+          </span>
           <span aria-hidden="true">·</span>
           <span>
             {META.puzzleCount.toLocaleString()} of{" "}
@@ -644,10 +666,12 @@ function LeaderboardView() {
           </span>
         </div>
         <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-          Every model answered the same {SAMPLE_LABEL} puzzles. At that sample
-          size one puzzle is worth {puzzleWeight(MIN_SAMPLE).toFixed(0)}{" "}
-          percentage points, so accuracy, Elo, cost and token figures are shown
-          as estimates rather than exact measurements.
+          Each entry, a model at one reasoning level, is scored on the puzzles
+          it has finished: {SAMPLE_LABEL} so far, so entries with different
+          counts are not scored on identical sets. At that sample size one
+          puzzle is worth {puzzleWeight(MIN_SAMPLE).toFixed(0)} percentage
+          points, so accuracy, Elo, cost and token figures are shown as
+          estimates rather than exact measurements.
         </p>
       </section>
 
@@ -668,14 +692,14 @@ function LeaderboardView() {
           label="Avg thinking"
           value={compactTokens(avgTokens)}
           sub="tokens per attempted puzzle"
-          note={`mean of ${MODELS.length} models, n = ${SAMPLE_LABEL} each`}
+          note={`mean of ${MODELS.length} entries, n = ${SAMPLE_LABEL} each`}
         />
         <SummaryCard
           icon={Clock}
           label="Median move"
           value={`${medianMove.toFixed(1)}s`}
-          sub={`across ${MODELS.length} model families`}
-          note="median of per-model means"
+          sub={`across ${MODELS.length} entries`}
+          note="median of per-entry means"
         />
         <SummaryCard
           icon={BarChart3}
@@ -2926,7 +2950,10 @@ function DocsView() {
     SAMPLE_LABEL,
     RATING_BOUNDS,
   } = useDashboard()
-  const maxMoveTime = Math.max(...SCOREBOARD.map((score) => score.avgMoveTime))
+  const maxMoveTime = Math.max(
+    0,
+    ...SCOREBOARD.map((score) => score.avgMoveTime)
+  )
 
   return (
     <div className="space-y-8">
