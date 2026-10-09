@@ -48,6 +48,8 @@ jobs:
 
       - name: Build
         # The page prerenders from Postgres; CI uses the development database.
+        # Fork pull requests get no secrets, so they skip the build.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         run: bun run db:migrate && bun run build
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
