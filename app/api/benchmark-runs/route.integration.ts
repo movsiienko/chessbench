@@ -1,7 +1,7 @@
 import { customProvider } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 import { getRun, start } from "workflow/api"
-import { beforeAll, describe, expect, test } from "vitest"
+import { beforeAll, beforeEach, describe, expect, test } from "vitest"
 import { benchmarkRun } from "@/lib/benchmarks/benchmark-workflow"
 import { loadDashboardData } from "@/lib/benchmarks/dashboard-load"
 import {
@@ -50,6 +50,10 @@ function post(body: RunRequestBody, authorization = `Bearer ${token}`) {
 
 beforeAll(() => {
   process.env.BENCHMARK_ADMIN_TOKEN = token
+})
+
+beforeEach(() => {
+  globalThis.AI_SDK_DEFAULT_PROVIDER = undefined
 })
 
 describe("POST /api/benchmark-runs", () => {

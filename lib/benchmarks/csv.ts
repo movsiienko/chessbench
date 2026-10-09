@@ -100,7 +100,8 @@ const ATTEMPT_COLUMNS: [string, keyof LichessPuzzleAttemptRow, CellKind][] = [
   ["input_tokens", "inputTokens", "number"],
   ["output_tokens", "outputTokens", "number"],
   ["total_tokens", "totalTokens", "number"],
-  ["reasoning_effort", "reasoningEffort", "string"],
+  // Historical CSVs name the column for the provider control it once held.
+  ["reasoning_effort", "reasoningLevel", "string"],
   ["max_output_tokens", "maxOutputTokens", "number"],
   ["reasoning_tokens", "reasoningTokens", "number"],
   ["cost_usd", "costUsd", "number"],

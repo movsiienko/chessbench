@@ -44,7 +44,7 @@ const stored: StoredAttempt[] = records.map((record, index) => {
   return {
     attemptId: `attempt-${index}`,
     model: record.model,
-    reasoningLevel: record.reasoningEffort || "none",
+    reasoningLevel: record.reasoningLevel || "none",
     status: record.status,
     record: summary,
   }

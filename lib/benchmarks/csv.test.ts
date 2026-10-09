@@ -61,7 +61,7 @@ describe("attempt row codec", () => {
       inputTokens: 145,
       outputTokens: 4,
       totalTokens: 149,
-      reasoningEffort: "low",
+      reasoningLevel: "low",
       maxOutputTokens: 4096,
       reasoningTokens: 0,
       costUsd: 0.000198,

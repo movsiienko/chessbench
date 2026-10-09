@@ -80,7 +80,10 @@ curl -X POST https://<production-domain>/api/benchmark-runs \
   Otherwise the response is `202 {runId, toRun, skipped}`.
 
 Each model and item is claimed in Postgres before the paid call, so items an
-entry has already finished, or that another run is playing, are skipped. Claims
+entry has already finished, or that another run is playing, are skipped. A
+failed call is retried up to four times, after the provider's `retry-after` or
+an exponential backoff; a request the provider rejects as invalid is not
+retried. A turn still failing goes pending for the next run. Claims
 left by a run that died are released after two hours. A finished run
 regenerates the dashboard on the production domain.
 

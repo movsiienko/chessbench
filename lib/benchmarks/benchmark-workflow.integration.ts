@@ -1,5 +1,5 @@
 import type { LanguageModelV4CallOptions } from "@ai-sdk/provider"
-import { customProvider } from "ai"
+import { APICallError, customProvider } from "ai"
 import { MockLanguageModelV4 } from "ai/test"
 import { start } from "workflow/api"
 import { beforeEach, describe, expect, test } from "vitest"
@@ -251,6 +251,60 @@ describe("benchmark run", () => {
       (row) => row.model === "anthropic-claude-opus-4-8-low"
     )
     expect(low).toMatchObject({ n: 1, accuracy: 1 })
+  })
+
+  test("a rate-limited turn waits as the provider asks and still finishes", async () => {
+    const limited = (call: number) =>
+      call < 4
+        ? new APICallError({
+            message: "Rate limited",
+            url: "https://gateway.test",
+            requestBodyValues: {},
+            statusCode: 429,
+            responseHeaders: { "retry-after": "1" },
+            isRetryable: true,
+          })
+        : undefined
+    const model = scriptedModel(item.expected.playerUciMoves, limited)
+    useModels({ "google/gemini-3.5-flash": model })
+
+    await runToEnd({
+      models: ["google/gemini-3.5-flash"],
+      itemIds: [item.id],
+      reasoning: "minimal",
+    })
+
+    const data = await loadDashboardData()
+    const entry = data.scoreboard.find((row) => row.model.endsWith("-minimal"))
+    expect(entry).toMatchObject({ n: 1, accuracy: 1, pending: 0 })
+  }, 30_000)
+
+  test("a request the provider rejects as invalid goes pending without retries", async () => {
+    const model = scriptedModel(
+      [],
+      () =>
+        new APICallError({
+          message: "Invalid request",
+          url: "https://gateway.test",
+          requestBodyValues: {},
+          statusCode: 400,
+          isRetryable: false,
+        })
+    )
+    useModels({ "deepseek/deepseek-v3.2-thinking": model })
+
+    await runToEnd({
+      models: ["deepseek/deepseek-v3.2-thinking"],
+      itemIds: [item.id],
+      reasoning: "xhigh",
+    })
+
+    expect(model.doGenerateCalls).toHaveLength(1)
+    const data = await loadDashboardData()
+    const entry = data.scoreboard.find((row) =>
+      row.model.startsWith("deepseek")
+    )
+    expect(entry).toMatchObject({ n: 0, pending: 1 })
   })
 })
 

@@ -104,7 +104,7 @@ export type LichessPuzzleAttemptRow = {
   inputTokens: number | null
   outputTokens: number | null
   totalTokens: number | null
-  reasoningEffort?: string
+  reasoningLevel?: string
   maxOutputTokens?: number | null
   reasoningTokens: number | null
   costUsd: number | null

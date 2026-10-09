@@ -1,5 +1,7 @@
 import { join } from "node:path"
+import { APICallError } from "ai"
 import { and, eq, sql } from "drizzle-orm"
+import { FatalError, getStepMetadata, RetryableError } from "workflow"
 import { db } from "../db/client"
 import { attempts, runs } from "../db/schema"
 import { createGenerate } from "./generate"
@@ -143,7 +145,9 @@ async function playTurn(key: AttemptKey, previous: AttemptState | null) {
       abortSignal.aborted ||
       (error instanceof Error && error.name === "TimeoutError")
     if (!timedOut) {
-      throw error // A provider error: the workflow retries this turn.
+      throw providerFailure(
+        error instanceof Error ? error : new Error(String(error))
+      )
     }
     next = recordFailure(
       item,
@@ -157,6 +161,36 @@ async function playTurn(key: AttemptKey, previous: AttemptState | null) {
     await record(attemptId, key, item, next)
   }
   return next
+}
+
+// Five tries per turn. Rate limits wait as long as the provider asks.
+playTurn.maxRetries = 4
+
+/**
+ * Retries what can succeed later (rate limits, overload, network) after the
+ * provider's `retry-after` or an exponential backoff, and stops on the rest,
+ * such as an invalid request, which goes straight to pending.
+ */
+function providerFailure(error: Error) {
+  if (APICallError.isInstance(error) && !error.isRetryable) {
+    return new FatalError(error.message)
+  }
+
+  const asked = APICallError.isInstance(error)
+    ? retryAfterMs(error.responseHeaders?.["retry-after"])
+    : undefined
+  const backoff = Math.min(30_000, 2 ** getStepMetadata().attempt * 1_000)
+  return new RetryableError(error.message, { retryAfter: asked ?? backoff })
+}
+
+/** `retry-after` in seconds or as an HTTP date. */
+function retryAfterMs(header: string | undefined) {
+  if (!header) return undefined
+  const seconds = Number(header)
+  const ms = Number.isNaN(seconds)
+    ? Date.parse(header) - Date.now()
+    : seconds * 1_000
+  return Number.isFinite(ms) && ms > 0 ? ms : undefined
 }
 
 /** A turn failed through every retry: the attempt is pending for a later run. */
@@ -239,7 +273,7 @@ async function record(
       },
       state
     ),
-    reasoningEffort: key.reasoning,
+    reasoningLevel: key.reasoning,
     maxOutputTokens: null,
   }
 
@@ -256,7 +290,6 @@ async function record(
  * own run's claim again.
  */
 async function claim(key: AttemptKey) {
-  const reasoningLevel = key.reasoning
   const [inserted] = await db
     .insert(attempts)
     .values({
@@ -264,7 +297,7 @@ async function claim(key: AttemptKey) {
       benchmark: benchmarkId,
       protocol: PROTOCOL_ID,
       model: key.model,
-      reasoningLevel,
+      reasoningLevel: key.reasoning,
       itemId: key.itemId,
       status: "running",
       solved: false,
@@ -294,7 +327,7 @@ async function claim(key: AttemptKey) {
         eq(attempts.benchmark, benchmarkId),
         eq(attempts.protocol, PROTOCOL_ID),
         eq(attempts.model, key.model),
-        eq(attempts.reasoningLevel, reasoningLevel),
+        eq(attempts.reasoningLevel, key.reasoning),
         eq(attempts.itemId, key.itemId),
         eq(attempts.status, "running")
       )

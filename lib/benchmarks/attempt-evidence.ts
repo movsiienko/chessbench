@@ -68,7 +68,7 @@ export function attemptTranscript(row: LichessPuzzleAttemptRow): string {
     `Submitted player moves: ${row.submittedPlayerMoves.join(" ")}`,
     `Latency: ${row.latencyMsTotal}ms`,
     `Tokens: ${row.totalTokens ?? "not recorded"}`,
-    `Reasoning effort: ${row.reasoningEffort || "not recorded"}`,
+    `Reasoning level: ${row.reasoningLevel || "not recorded"}`,
     `Max output tokens: ${row.maxOutputTokens ?? "not recorded"}`,
     `Reasoning tokens: ${row.reasoningTokens ?? "not recorded"}`,
     `Cost USD: ${row.costUsd ?? "not recorded"}`,
