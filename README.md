@@ -43,48 +43,53 @@ all 500 tracked items, and the preparation command's output and manifest.
 
 ## Scoring
 
-Scoring lives in `runLichessPuzzleAttempt` in `lib/benchmarks/local-runner.ts`
-and runs as part of `bun run benchmark:local`.
+Scoring lives in `lib/benchmarks/local-runner.ts`, one turn at a time
+(`recordAnswer`, `recordFailure`).
 
 The primary metric is `solved_rate`: a puzzle is solved when the model plays
 every player move of the solution line correctly, one move per turn. The
-attempt stops at the first wrong move, invalid format, or provider error, and
-only a completed line counts as solved. Secondary metrics include first move
-accuracy and player-move prefix score.
+attempt stops at the first wrong move, invalid format, exceeded move time limit
+(270 seconds), or provider error, and only a completed line counts as solved.
+Provider errors are pending, not results: scores exclude them and the next run
+retries them. Secondary metrics include first move accuracy and player-move
+prefix score.
 
-## Local Benchmark Runs
+## Benchmark Runs
 
-Run local model benchmarks with AI SDK Gateway model IDs:
-
-```bash
-bun run benchmark:local -- --model openai/gpt-5-nano
-```
-
-The runner requires at least one `--model`. By default it evaluates a
-deterministic 10-puzzle sample spread across rating bands. Use `--limit 50` for
-a larger sample, or `--all` for the full 500-puzzle benchmark.
-
-The local runner asks for exactly one legal move token at a time in UCI or
-standard algebraic (SAN) notation, with no explanation or extra text. It
-normalizes accepted answers to UCI for scoring. On a correct move, it reveals
-only the expected opponent move and asks for the next move in the same
-conversation. It stops a puzzle on the first wrong move, invalid format, or
-provider error.
-
-Run selection, generation configuration, metadata normalization, and incremental
-archival are owned by `lib/benchmarks/benchmark-run.ts`. Its tests exercise the
-real AI SDK with local model responses and temporary archives.
-
-Every invocation writes a local CSV archive under ignored
-`data/results/local/lichess-puzzles-v1/`. To also write tracked canonical
-per-model snapshots, pass a canonical name:
+Runs execute on Vercel Workflows (`lib/benchmarks/benchmark-workflow.ts`), one
+step per turn, five attempts at a time. Start one through the admin endpoint:
 
 ```bash
-bun run benchmark:local -- --model openai/gpt-5-nano --canonical sample
+curl -X POST https://<production-domain>/api/benchmark-runs \
+  -H "Authorization: Bearer $BENCHMARK_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"models":["openai/gpt-5.5"],"items":{"limit":50},"reasoningEffort":"low","dryRun":true}'
 ```
 
-Canonical files are written as
-`data/results/canonical/lichess-puzzles-v1/<model-id>-sample.csv`.
+- `models`: Gateway IDs from `MODELS` in `lib/benchmarks/models.ts`.
+- `items`: `{"limit": n}` for the deterministic sample spread across rating
+  bands (a larger limit includes every smaller one), optionally narrowed with
+  `"bands"`, or `{"ids": [...]}`.
+- `dryRun: true` returns `{toRun, skipped}` without starting anything.
+  Otherwise the response is `202 {runId, toRun, skipped}`.
+
+Each model and item is claimed in Postgres before the paid call, so items an
+entry has already finished, or that another run is playing, are skipped. Claims
+left by a run that died are released after two hours. A finished run
+regenerates the dashboard on the production domain.
+
+The model is asked for exactly one legal move token at a time in UCI or
+standard algebraic (SAN) notation, with no explanation or extra text. Accepted
+answers are normalized to UCI for scoring. On a correct move, only the expected
+opponent move is revealed and the next move is asked for in the same
+conversation.
+
+### Tests
+
+`bun test` runs the unit tests. `bun x vitest run` runs the `*.integration.ts`
+tests: workflows execute in-process on the Workflow SDK's local world against an
+in-memory PGlite database migrated from `drizzle/`, with scripted models
+installed as the AI SDK's default provider. `bun run test` runs both.
 
 ## Results Database
 

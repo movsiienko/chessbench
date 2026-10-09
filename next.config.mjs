@@ -1,4 +1,5 @@
 import { dirname } from "node:path"
+import { withWorkflow } from "workflow/next"
 import { fileURLToPath } from "node:url"
 
 const appRoot = dirname(fileURLToPath(import.meta.url))
@@ -14,4 +15,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withWorkflow(nextConfig)

@@ -10,6 +10,14 @@ import {
 } from "drizzle-orm/pg-core"
 import type { LichessPuzzleAttemptRow } from "../benchmarks/local-runner"
 
+/** Attempt outcomes that are results; `error` is pending, `running` a claim. */
+export const FINISHED_STATUSES = [
+  "ok",
+  "wrong_move",
+  "invalid_format",
+  "timeout",
+]
+
 export const runs = pgTable("runs", {
   id: uuid().primaryKey().defaultRandom(),
   request: jsonb().notNull(),
@@ -31,7 +39,8 @@ export const attempts = pgTable(
     itemId: text().notNull(),
     status: text().notNull(),
     solved: boolean().notNull(),
-    record: jsonb().$type<LichessPuzzleAttemptRow>().notNull(),
+    // Null while the attempt is claimed (`running`) and not yet finished.
+    record: jsonb().$type<LichessPuzzleAttemptRow>(),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

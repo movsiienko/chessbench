@@ -46,6 +46,9 @@ jobs:
       - name: Test
         run: bun test
 
+      - name: Workflow integration tests
+        run: bun x vitest run
+
       - name: Build
         # The page prerenders from Postgres; CI reads the development database
         # but never migrates it, so an unmerged migration can't change the

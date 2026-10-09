@@ -1,10 +1,9 @@
 import { and, eq, inArray } from "drizzle-orm"
 import { db } from "@/lib/db/client"
-import { attempts } from "@/lib/db/schema"
+import { attempts, FINISHED_STATUSES } from "@/lib/db/schema"
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 // Only finished outcomes are cached forever; pending errors get retried.
-const finished = ["ok", "wrong_move", "invalid_format"]
 
 /** One attempt's full record, turns included. Finished attempts never change. */
 export async function GET(
@@ -16,7 +15,9 @@ export async function GET(
     ? await db
         .select({ record: attempts.record })
         .from(attempts)
-        .where(and(eq(attempts.id, id), inArray(attempts.status, finished)))
+        .where(
+          and(eq(attempts.id, id), inArray(attempts.status, FINISHED_STATUSES))
+        )
     : []
 
   if (!row) {

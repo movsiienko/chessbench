@@ -11,16 +11,15 @@
     "lint": "oxlint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test && vitest run",
     "verify:ui": "bun scripts/verify-ui.ts",
-    "benchmark:local": "bun scripts/run-benchmark.ts",
-    "benchmark:cheap": "bun scripts/run-benchmark.ts --model google/gemini-3.1-flash-lite-preview --model openai/gpt-5-nano",
     "datasets:lichess:download": "bun scripts/download-lichess-puzzles.ts",
     "datasets:lichess:prepare": "bun scripts/prepare-lichess-puzzles.ts",
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",
+    "@electric-sql/pglite": "^0.5.8",
     "@lichess-org/chessground": "^10.1.1",
     "@neondatabase/serverless": "^1.2.0",
     "ai": "^6.0.177",
@@ -37,6 +36,7 @@
     "shadcn": "^4.3.0",
     "tailwind-merge": "^3.5.0",
     "tw-animate-css": "^1.4.0",
+    "workflow": "^5.2.0",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -45,6 +45,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@workflow/vitest": "^5.0.3",
     "drizzle-kit": "^0.31.11",
     "oxlint": "1.81.0",
     "playwright": "^1.62.1",
@@ -52,6 +53,10 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4.2.1",
-    "typescript": "^5.9.3"
-  }
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "trustedDependencies": [
+    "@swc/core"
+  ]
 }

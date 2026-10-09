@@ -1,7 +1,7 @@
 import { join } from "node:path"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "../db/client"
-import { attempts } from "../db/schema"
+import { attempts, FINISHED_STATUSES } from "../db/schema"
 import type { AttemptSummary } from "./attempt-evidence"
 import { buildDashboardData, entriesFrom } from "./dashboard-build"
 import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
@@ -26,7 +26,9 @@ export async function loadDashboardData() {
     .where(
       and(
         eq(attempts.benchmark, benchmarkId),
-        eq(attempts.protocol, PROTOCOL_ID)
+        eq(attempts.protocol, PROTOCOL_ID),
+        // Finished results plus pending errors; claims in progress are skipped.
+        inArray(attempts.status, [...FINISHED_STATUSES, "error"])
       )
     )
 

@@ -134,6 +134,14 @@ export function providerOptionsFor(
   return providerOptions
 }
 
+/**
+ * The reasoning level the provider actually receives for a requested effort;
+ * results are keyed by it, so requests that collapse to one level share it.
+ */
+export function reasoningLevelFor(model: string, effort: ReasoningEffort) {
+  return reasoningEffortForModel(model, effort) || "none"
+}
+
 /** The `reasoning_effort` string recorded in the results CSV. */
 export function reasoningEffortForModel(
   model: string,

@@ -15,6 +15,13 @@
       "when": 1791537773742,
       "tag": "0001_import-published-results",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791559855271,
+      "tag": "0002_claim-attempts",
+      "breakpoints": true
     }
   ]
 }

@@ -87,6 +87,9 @@ export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "uci-or-san-single-move-v3"
  */
 export const PROTOCOL_ID = "v1"
 
+/** The protocol's move time limit; see docs/adr/0001. */
+export const MOVE_TIME_LIMIT_MS = 270_000
+
 export function selectDefaultLichessPuzzleItems(
   items: LichessPuzzleBenchmarkItem[],
   limit: number
@@ -104,10 +107,13 @@ export function selectDefaultLichessPuzzleItems(
     byBand.get(item.metadata.ratingBand)?.push(item)
   }
 
-  const basePerBand = Math.floor(limit / ratingBandOrder.length)
-  let remainder = limit % ratingBandOrder.length
+  // Split the limit across the bands present, so a pool narrowed to some
+  // bands still yields `limit` items.
+  const bands = ratingBandOrder.filter((band) => byBand.get(band)?.length)
+  const basePerBand = Math.floor(limit / bands.length)
+  let remainder = limit % bands.length
 
-  for (const band of ratingBandOrder) {
+  for (const band of bands) {
     const bandItems = byBand.get(band) ?? []
     const bandLimit = basePerBand + (remainder > 0 ? 1 : 0)
     remainder -= remainder > 0 ? 1 : 0
