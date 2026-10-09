@@ -22,7 +22,7 @@
     "@electric-sql/pglite": "^0.5.8",
     "@lichess-org/chessground": "^10.1.1",
     "@neondatabase/serverless": "^1.2.0",
-    "ai": "^6.0.177",
+    "ai": "^7.0.137",
     "chess.js": "^1.4.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

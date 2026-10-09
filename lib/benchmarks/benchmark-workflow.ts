@@ -1,5 +1,7 @@
 import { join } from "node:path"
+import { APICallError } from "ai"
 import { and, eq, sql } from "drizzle-orm"
+import { FatalError, getStepMetadata, RetryableError } from "workflow"
 import { db } from "../db/client"
 import { attempts, runs } from "../db/schema"
 import { createGenerate } from "./generate"
@@ -17,21 +19,21 @@ import {
   startAttempt,
   type AttemptState,
 } from "./local-runner"
-import { reasoningLevelFor, type ReasoningEffort } from "./models"
+import type { ReasoningLevel } from "./models"
 
 const benchmarkId = "lichess-puzzles-v1"
 
 export type BenchmarkRunRequest = {
   models: string[]
   itemIds: string[]
-  reasoningEffort: ReasoningEffort
+  reasoning: ReasoningLevel
 }
 
 type AttemptKey = {
   runId: string
   model: string
   itemId: string
-  reasoningEffort: ReasoningEffort
+  reasoning: ReasoningLevel
 }
 
 // ponytail: fixed batches wait for their slowest attempt; a sliding window
@@ -48,7 +50,7 @@ export async function benchmarkRun(request: BenchmarkRunRequest) {
       runId,
       model,
       itemId,
-      reasoningEffort: request.reasoningEffort,
+      reasoning: request.reasoning,
     }))
   )
 
@@ -124,7 +126,7 @@ async function playTurn(key: AttemptKey, previous: AttemptState | null) {
   const item = await itemById(key.itemId)
   const state = previous ?? startAttempt()
   const generate = createGenerate({
-    reasoningEffort: key.reasoningEffort,
+    reasoning: key.reasoning,
     maxOutputTokens: null,
     gatewayTags: [`benchmark:${benchmarkId}`, `run:${key.runId}`],
   })
@@ -143,7 +145,9 @@ async function playTurn(key: AttemptKey, previous: AttemptState | null) {
       abortSignal.aborted ||
       (error instanceof Error && error.name === "TimeoutError")
     if (!timedOut) {
-      throw error // A provider error: the workflow retries this turn.
+      throw providerFailure(
+        error instanceof Error ? error : new Error(String(error))
+      )
     }
     next = recordFailure(
       item,
@@ -157,6 +161,36 @@ async function playTurn(key: AttemptKey, previous: AttemptState | null) {
     await record(attemptId, key, item, next)
   }
   return next
+}
+
+// Five tries per turn. Rate limits wait as long as the provider asks.
+playTurn.maxRetries = 4
+
+/**
+ * Retries what can succeed later (rate limits, overload, network) after the
+ * provider's `retry-after` or an exponential backoff, and stops on the rest,
+ * such as an invalid request, which goes straight to pending.
+ */
+function providerFailure(error: Error) {
+  if (APICallError.isInstance(error) && !error.isRetryable) {
+    return new FatalError(error.message)
+  }
+
+  const asked = APICallError.isInstance(error)
+    ? retryAfterMs(error.responseHeaders?.["retry-after"])
+    : undefined
+  const backoff = Math.min(30_000, 2 ** getStepMetadata().attempt * 1_000)
+  return new RetryableError(error.message, { retryAfter: asked ?? backoff })
+}
+
+/** `retry-after` in seconds or as an HTTP date. */
+function retryAfterMs(header: string | undefined) {
+  if (!header) return undefined
+  const seconds = Number(header)
+  const ms = Number.isNaN(seconds)
+    ? Date.parse(header) - Date.now()
+    : seconds * 1_000
+  return Number.isFinite(ms) && ms > 0 ? ms : undefined
 }
 
 /** A turn failed through every retry: the attempt is pending for a later run. */
@@ -223,10 +257,6 @@ async function itemById(itemId: string) {
   return item
 }
 
-function reasoningLevelOf(key: AttemptKey) {
-  return reasoningLevelFor(key.model, key.reasoningEffort)
-}
-
 async function record(
   attemptId: string,
   key: AttemptKey,
@@ -243,7 +273,7 @@ async function record(
       },
       state
     ),
-    reasoningEffort: reasoningLevelOf(key),
+    reasoningLevel: key.reasoning,
     maxOutputTokens: null,
   }
 
@@ -260,7 +290,6 @@ async function record(
  * own run's claim again.
  */
 async function claim(key: AttemptKey) {
-  const reasoningLevel = reasoningLevelOf(key)
   const [inserted] = await db
     .insert(attempts)
     .values({
@@ -268,7 +297,7 @@ async function claim(key: AttemptKey) {
       benchmark: benchmarkId,
       protocol: PROTOCOL_ID,
       model: key.model,
-      reasoningLevel,
+      reasoningLevel: key.reasoning,
       itemId: key.itemId,
       status: "running",
       solved: false,
@@ -298,7 +327,7 @@ async function claim(key: AttemptKey) {
         eq(attempts.benchmark, benchmarkId),
         eq(attempts.protocol, PROTOCOL_ID),
         eq(attempts.model, key.model),
-        eq(attempts.reasoningLevel, reasoningLevel),
+        eq(attempts.reasoningLevel, key.reasoning),
         eq(attempts.itemId, key.itemId),
         eq(attempts.status, "running")
       )

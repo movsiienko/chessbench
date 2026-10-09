@@ -1,6 +1,6 @@
-import type { LanguageModelV3CallOptions } from "@ai-sdk/provider"
-import { customProvider } from "ai"
-import { MockLanguageModelV3 } from "ai/test"
+import type { LanguageModelV4CallOptions } from "@ai-sdk/provider"
+import { APICallError, customProvider } from "ai"
+import { MockLanguageModelV4 } from "ai/test"
 import { start } from "workflow/api"
 import { beforeEach, describe, expect, test } from "vitest"
 import { benchmarkRun } from "./benchmark-workflow"
@@ -23,8 +23,8 @@ function scriptedModel(
   fail: (call: number) => Error | undefined = () => undefined
 ) {
   let calls = 0
-  return new MockLanguageModelV3({
-    doGenerate: async ({ prompt }: LanguageModelV3CallOptions) => {
+  return new MockLanguageModelV4({
+    doGenerate: async ({ prompt }: LanguageModelV4CallOptions) => {
       const error = fail(calls++)
       if (error) throw error
       const turn =
@@ -42,7 +42,7 @@ function scriptedModel(
   })
 }
 
-function useModels(models: Record<string, MockLanguageModelV3>) {
+function useModels(models: Record<string, MockLanguageModelV4>) {
   globalThis.AI_SDK_DEFAULT_PROVIDER = customProvider({
     languageModels: models,
   })
@@ -60,7 +60,7 @@ describe("benchmark run", () => {
       {
         models: ["openai/gpt-5.5"],
         itemIds: [item.id],
-        reasoningEffort: "low",
+        reasoning: "low",
       },
     ])
     await run.returnValue
@@ -76,7 +76,7 @@ describe("benchmark run", () => {
     await runToEnd({
       models: ["openai/gpt-5.5"],
       itemIds: [item.id],
-      reasoningEffort: "medium",
+      reasoning: "medium",
     })
 
     const second = scriptedModel(item.expected.playerUciMoves)
@@ -84,7 +84,7 @@ describe("benchmark run", () => {
     await runToEnd({
       models: ["openai/gpt-5.5"],
       itemIds: [item.id],
-      reasoningEffort: "medium",
+      reasoning: "medium",
     })
 
     expect(second.doGenerateCalls).toHaveLength(0)
@@ -99,7 +99,7 @@ describe("benchmark run", () => {
     const request = {
       models: ["anthropic/claude-opus-4.8"],
       itemIds: [item.id],
-      reasoningEffort: "high" as const,
+      reasoning: "high" as const,
     }
 
     await Promise.all([runToEnd(request), runToEnd(request)])
@@ -123,7 +123,7 @@ describe("benchmark run", () => {
     await runToEnd({
       models: ["google/gemini-3.5-flash"],
       itemIds: [item.id],
-      reasoningEffort: "low",
+      reasoning: "low",
     })
 
     const data = await loadDashboardData()
@@ -139,7 +139,7 @@ describe("benchmark run", () => {
     const request = {
       models: ["xai/grok-4.1-fast-reasoning"],
       itemIds: [item.id],
-      reasoningEffort: "low" as const,
+      reasoning: "low" as const,
     }
     const down = scriptedModel([], () => new Error("503 upstream"))
     useModels({ "xai/grok-4.1-fast-reasoning": down })
@@ -171,7 +171,7 @@ describe("benchmark run", () => {
     await runToEnd({
       models: ["alibaba/qwen3-max-thinking"],
       itemIds: [item.id],
-      reasoningEffort: "low",
+      reasoning: "low",
     })
 
     expect(slow.doGenerateCalls).toHaveLength(1)
@@ -189,7 +189,7 @@ describe("benchmark run", () => {
     let inFlight = 0
     let release!: () => void
     const bothStarted = new Promise<void>((resolve) => (release = resolve))
-    const model = new MockLanguageModelV3({
+    const model = new MockLanguageModelV4({
       doGenerate: async () => {
         // Answers only once two calls are open at the same time; a run that
         // plays items one after another never gets here and times out.
@@ -211,7 +211,7 @@ describe("benchmark run", () => {
     await runToEnd({
       models: ["openai/gpt-5.5"],
       itemIds: [a!.id, b!.id],
-      reasoningEffort: "high",
+      reasoning: "high",
     })
 
     const data = await loadDashboardData()
@@ -242,7 +242,7 @@ describe("benchmark run", () => {
     await runToEnd({
       models: ["anthropic/claude-opus-4.8"],
       itemIds: [item.id],
-      reasoningEffort: "low",
+      reasoning: "low",
     })
 
     expect(model.doGenerateCalls.length).toBeGreaterThan(0)
@@ -251,6 +251,60 @@ describe("benchmark run", () => {
       (row) => row.model === "anthropic-claude-opus-4-8-low"
     )
     expect(low).toMatchObject({ n: 1, accuracy: 1 })
+  })
+
+  test("a rate-limited turn waits as the provider asks and still finishes", async () => {
+    const limited = (call: number) =>
+      call < 4
+        ? new APICallError({
+            message: "Rate limited",
+            url: "https://gateway.test",
+            requestBodyValues: {},
+            statusCode: 429,
+            responseHeaders: { "retry-after": "1" },
+            isRetryable: true,
+          })
+        : undefined
+    const model = scriptedModel(item.expected.playerUciMoves, limited)
+    useModels({ "google/gemini-3.5-flash": model })
+
+    await runToEnd({
+      models: ["google/gemini-3.5-flash"],
+      itemIds: [item.id],
+      reasoning: "minimal",
+    })
+
+    const data = await loadDashboardData()
+    const entry = data.scoreboard.find((row) => row.model.endsWith("-minimal"))
+    expect(entry).toMatchObject({ n: 1, accuracy: 1, pending: 0 })
+  }, 30_000)
+
+  test("a request the provider rejects as invalid goes pending without retries", async () => {
+    const model = scriptedModel(
+      [],
+      () =>
+        new APICallError({
+          message: "Invalid request",
+          url: "https://gateway.test",
+          requestBodyValues: {},
+          statusCode: 400,
+          isRetryable: false,
+        })
+    )
+    useModels({ "deepseek/deepseek-v3.2-thinking": model })
+
+    await runToEnd({
+      models: ["deepseek/deepseek-v3.2-thinking"],
+      itemIds: [item.id],
+      reasoning: "xhigh",
+    })
+
+    expect(model.doGenerateCalls).toHaveLength(1)
+    const data = await loadDashboardData()
+    const entry = data.scoreboard.find((row) =>
+      row.model.startsWith("deepseek")
+    )
+    expect(entry).toMatchObject({ n: 0, pending: 1 })
   })
 })
 

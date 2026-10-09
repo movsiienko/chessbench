@@ -19,8 +19,8 @@ _Avoid_: Short IDs such as `claude45`
 **Protocol**: The benchmark-wide rules every attempt follows: prompt template, answer parsing and scoring, max output tokens, and move time limit. Changing any of them, including fixing a scoring bug, starts a fresh result set, and only current-protocol results are published.
 _Avoid_: Configuration, settings
 
-**Reasoning level**: The reasoning setting the provider actually receives, in that provider's terms (such as `low`, `max`, or `model-thinking`). Requested levels that reach the provider as the same setting are the same reasoning level.
-_Avoid_: Requested effort
+**Reasoning level**: The provider-neutral level a model is asked to reason at: `provider-default`, `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Each provider turns it into its own control, an effort setting or a thinking-token budget.
+_Avoid_: Effort, thinking budget (provider-specific controls a level maps to)
 
 **Move time limit**: The protocol's longest time a model may take to answer one turn. Exceeding it fails the turn like a wrong move.
 

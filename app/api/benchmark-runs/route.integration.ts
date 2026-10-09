@@ -1,7 +1,7 @@
 import { customProvider } from "ai"
-import { MockLanguageModelV3 } from "ai/test"
+import { MockLanguageModelV4 } from "ai/test"
 import { getRun, start } from "workflow/api"
-import { beforeAll, describe, expect, test } from "vitest"
+import { beforeAll, beforeEach, describe, expect, test } from "vitest"
 import { benchmarkRun } from "@/lib/benchmarks/benchmark-workflow"
 import { loadDashboardData } from "@/lib/benchmarks/dashboard-load"
 import {
@@ -15,7 +15,7 @@ const sample = selectDefaultLichessPuzzleItems(items, 2)
 
 /** A model that always answers with an illegal move: one call per attempt. */
 function wrongModel() {
-  return new MockLanguageModelV3({
+  return new MockLanguageModelV4({
     doGenerate: async () => ({
       content: [{ type: "text", text: "a1a1" }],
       finishReason: { unified: "stop", raw: "stop" },
@@ -34,7 +34,7 @@ const token = "t".repeat(48)
 type RunRequestBody = {
   models: string[]
   items: { limit?: number; ids?: string[]; bands?: string[] }
-  reasoningEffort: string
+  reasoning: string
   dryRun?: boolean
 }
 
@@ -52,13 +52,17 @@ beforeAll(() => {
   process.env.BENCHMARK_ADMIN_TOKEN = token
 })
 
+beforeEach(() => {
+  globalThis.AI_SDK_DEFAULT_PROVIDER = undefined
+})
+
 describe("POST /api/benchmark-runs", () => {
   test("hides itself from requests without the admin token", async () => {
     const response = await post(
       {
         models: ["openai/gpt-5.5"],
         items: { limit: 1 },
-        reasoningEffort: "low",
+        reasoning: "low",
       },
       "Bearer wrong"
     )
@@ -69,7 +73,7 @@ describe("POST /api/benchmark-runs", () => {
     const unknown = await post({
       models: ["openai/gpt-unlisted"],
       items: { limit: 1 },
-      reasoningEffort: "low",
+      reasoning: "low",
     })
     expect(unknown.status).toBe(400)
     expect(await unknown.text()).toContain("openai/gpt-unlisted")
@@ -77,7 +81,7 @@ describe("POST /api/benchmark-runs", () => {
     const malformed = await post({
       models: [],
       items: {},
-      reasoningEffort: "max",
+      reasoning: "max",
     })
     expect(malformed.status).toBe(400)
   })
@@ -91,7 +95,7 @@ describe("POST /api/benchmark-runs", () => {
       {
         models: ["openai/gpt-5.5"],
         itemIds: [sample[0]!.id],
-        reasoningEffort: "low",
+        reasoning: "low",
       },
     ])
     await seeded.returnValue
@@ -100,7 +104,7 @@ describe("POST /api/benchmark-runs", () => {
     const response = await post({
       models: ["openai/gpt-5.5", "google/gemini-3.5-flash"],
       items: { limit: 2 },
-      reasoningEffort: "low",
+      reasoning: "low",
       dryRun: true,
     })
 
@@ -117,7 +121,7 @@ describe("POST /api/benchmark-runs", () => {
     const response = await post({
       models: ["deepseek/deepseek-v3.2-thinking"],
       items: { ids: [sample[1]!.id] },
-      reasoningEffort: "high",
+      reasoning: "high",
     })
 
     expect(response.status).toBe(202)
@@ -136,7 +140,7 @@ describe("POST /api/benchmark-runs", () => {
     const response = await post({
       models: ["openai/gpt-5.5"],
       items: { ids: ["lichess:nope"] },
-      reasoningEffort: "low",
+      reasoning: "low",
     })
     expect(response.status).toBe(400)
     expect(await response.text()).toContain("lichess:nope")
@@ -146,7 +150,7 @@ describe("POST /api/benchmark-runs", () => {
     const response = await post({
       models: ["xai/grok-4.1-fast-reasoning"],
       items: { limit: 7, bands: ["under-1200"] },
-      reasoningEffort: "low",
+      reasoning: "low",
       dryRun: true,
     })
     expect(await response.json()).toEqual({ toRun: 7, skipped: 0 })
@@ -156,7 +160,7 @@ describe("POST /api/benchmark-runs", () => {
     const response = await post({
       models: ["xai/grok-4.1-fast-reasoning", "xai/grok-4.1-fast-reasoning"],
       items: { limit: 2 },
-      reasoningEffort: "low",
+      reasoning: "low",
       dryRun: true,
     })
     expect(await response.json()).toEqual({ toRun: 2, skipped: 0 })

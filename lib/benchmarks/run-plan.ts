@@ -7,7 +7,7 @@ import {
   PROTOCOL_ID,
   selectDefaultLichessPuzzleItems,
 } from "./lichess-puzzles"
-import { reasoningLevelFor, type ReasoningEffort } from "./models"
+import type { ReasoningLevel } from "./models"
 
 const benchmarkId = "lichess-puzzles-v1"
 
@@ -22,11 +22,11 @@ export type ItemSelection =
 export async function planRun({
   models,
   items,
-  reasoningEffort,
+  reasoning,
 }: {
   models: string[]
   items: ItemSelection
-  reasoningEffort: ReasoningEffort
+  reasoning: ReasoningLevel
 }) {
   const all = await loadItems(
     join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
@@ -60,10 +60,7 @@ export async function planRun({
           eq(attempts.benchmark, benchmarkId),
           eq(attempts.protocol, PROTOCOL_ID),
           eq(attempts.model, model),
-          eq(
-            attempts.reasoningLevel,
-            reasoningLevelFor(model, reasoningEffort)
-          ),
+          eq(attempts.reasoningLevel, reasoning),
           inArray(attempts.itemId, itemIds),
           ne(attempts.status, "error")
         )

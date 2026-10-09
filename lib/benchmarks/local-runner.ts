@@ -37,6 +37,7 @@ export type GenerateBenchmarkText = (input: {
   costUsd?: number
   generationId?: string
   servedProvider?: string
+  warnings?: string[]
 }>
 
 export type LichessPuzzleTurnResult =
@@ -73,6 +74,7 @@ export type LichessPuzzleAttemptTurn = {
   costUsd?: number
   servedProvider?: string
   generationId?: string
+  warnings?: string[]
 }
 
 export type LichessPuzzleAttemptRow = {
@@ -102,7 +104,7 @@ export type LichessPuzzleAttemptRow = {
   inputTokens: number | null
   outputTokens: number | null
   totalTokens: number | null
-  reasoningEffort?: string
+  reasoningLevel?: string
   maxOutputTokens?: number | null
   reasoningTokens: number | null
   costUsd: number | null
@@ -228,6 +230,7 @@ export function recordAnswer(
     costUsd: response.costUsd,
     servedProvider: response.servedProvider,
     generationId: response.generationId,
+    warnings: response.warnings?.length ? response.warnings : undefined,
   }
 
   if (!parsedMove) {

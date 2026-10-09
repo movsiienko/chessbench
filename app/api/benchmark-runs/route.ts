@@ -2,7 +2,7 @@ import { start } from "workflow/api"
 import { z } from "zod"
 import { isAdminRequest } from "@/lib/admin-token"
 import { benchmarkRun } from "@/lib/benchmarks/benchmark-workflow"
-import { MODELS, REASONING_EFFORTS } from "@/lib/benchmarks/models"
+import { MODELS, REASONING_LEVELS } from "@/lib/benchmarks/models"
 import { planRun } from "@/lib/benchmarks/run-plan"
 
 const registered = new Set<string>(MODELS.map((model) => model.id))
@@ -25,7 +25,7 @@ const runRequestSchema = z.object({
       })
       .strict(),
   ]),
-  reasoningEffort: z.enum(REASONING_EFFORTS),
+  reasoning: z.enum(REASONING_LEVELS),
   dryRun: z.boolean().default(false),
 })
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     {
       models: parsed.data.models,
       itemIds: plan.itemIds,
-      reasoningEffort: parsed.data.reasoningEffort,
+      reasoning: parsed.data.reasoning,
     },
   ])
 
