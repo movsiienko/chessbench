@@ -33,7 +33,7 @@ const token = "t".repeat(48)
 /** A run request as a client sends it, valid or not. */
 type RunRequestBody = {
   models: string[]
-  items: { limit?: number; ids?: string[] }
+  items: { limit?: number; ids?: string[]; bands?: string[] }
   reasoningEffort: string
   dryRun?: boolean
 }
@@ -140,5 +140,25 @@ describe("POST /api/benchmark-runs", () => {
     })
     expect(response.status).toBe(400)
     expect(await response.text()).toContain("lichess:nope")
+  })
+
+  test("a band filter spends the whole limit inside the chosen bands", async () => {
+    const response = await post({
+      models: ["xai/grok-4.1-fast-reasoning"],
+      items: { limit: 7, bands: ["under-1200"] },
+      reasoningEffort: "low",
+      dryRun: true,
+    })
+    expect(await response.json()).toEqual({ toRun: 7, skipped: 0 })
+  })
+
+  test("counts a model listed twice once", async () => {
+    const response = await post({
+      models: ["xai/grok-4.1-fast-reasoning", "xai/grok-4.1-fast-reasoning"],
+      items: { limit: 2 },
+      reasoningEffort: "low",
+      dryRun: true,
+    })
+    expect(await response.json()).toEqual({ toRun: 2, skipped: 0 })
   })
 })

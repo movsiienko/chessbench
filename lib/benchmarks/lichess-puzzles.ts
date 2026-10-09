@@ -107,10 +107,13 @@ export function selectDefaultLichessPuzzleItems(
     byBand.get(item.metadata.ratingBand)?.push(item)
   }
 
-  const basePerBand = Math.floor(limit / ratingBandOrder.length)
-  let remainder = limit % ratingBandOrder.length
+  // Split the limit across the bands present, so a pool narrowed to some
+  // bands still yields `limit` items.
+  const bands = ratingBandOrder.filter((band) => byBand.get(band)?.length)
+  const basePerBand = Math.floor(limit / bands.length)
+  let remainder = limit % bands.length
 
-  for (const band of ratingBandOrder) {
+  for (const band of bands) {
     const bandItems = byBand.get(band) ?? []
     const bandLimit = basePerBand + (remainder > 0 ? 1 : 0)
     remainder -= remainder > 0 ? 1 : 0

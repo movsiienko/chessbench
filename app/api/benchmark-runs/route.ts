@@ -14,7 +14,8 @@ const runRequestSchema = z.object({
         error: (issue) => `${String(issue.input)} is not in the model registry`,
       })
     )
-    .min(1),
+    .min(1)
+    .transform((ids) => [...new Set(ids)]),
   items: z.union([
     z.object({ ids: z.array(z.string()).min(1) }).strict(),
     z
