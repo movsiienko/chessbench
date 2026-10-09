@@ -1,7 +1,7 @@
 import { generateText, type LanguageModelUsage } from "ai"
 import { z } from "zod"
 import type { GenerateBenchmarkText } from "./local-runner"
-import { providerOptionsFor, type ReasoningEffort } from "./models"
+import type { ReasoningLevel } from "./models"
 
 /**
  * The AI SDK adapter for one model call. String model ids resolve through the
@@ -9,28 +9,31 @@ import { providerOptionsFor, type ReasoningEffort } from "./models"
  * in tests.
  */
 export function createGenerate({
-  reasoningEffort,
+  reasoning,
   maxOutputTokens,
   gatewayTags,
 }: {
-  reasoningEffort: ReasoningEffort
+  reasoning: ReasoningLevel
   maxOutputTokens: number | null
+  /**
+   * Non-null runs on Gateway system credentials: the empty request-scoped
+   * BYOK overrides cached BYOK so Gateway falls back to system keys.
+   */
   gatewayTags: string[] | null
 }): GenerateBenchmarkText {
   return async ({ model, messages, abortSignal }) => {
     const startedAt = performance.now()
-    const providerOptions = providerOptionsFor(
-      model,
-      reasoningEffort,
-      gatewayTags
-    )
     const result = await generateText({
       model,
       messages,
       abortSignal,
+      // The workflow retries a failed turn as a whole; SDK retries would
+      // multiply paid calls and hide time inside the move time limit.
+      maxRetries: 0,
+      reasoning,
       maxOutputTokens: maxOutputTokens ?? undefined,
-      providerOptions: Object.keys(providerOptions).length
-        ? providerOptions
+      providerOptions: gatewayTags
+        ? { gateway: { byok: {}, tags: gatewayTags } }
         : undefined,
     })
     const gateway = gatewayMetadataSchema.parse(
@@ -52,6 +55,9 @@ export function createGenerate({
       costUsd: gateway?.gatewayCost ?? gateway?.cost,
       generationId: gateway?.generationId,
       servedProvider: gateway?.routing?.finalProvider,
+      // How each provider honored the request, such as a reasoning level
+      // mapped to a different provider setting.
+      warnings: result.warnings?.map((warning) => JSON.stringify(warning)),
     }
   }
 }
@@ -94,7 +100,6 @@ function reasoningTokensFromUsage(usage: LanguageModelUsage) {
 
   return (
     usage.outputTokenDetails?.reasoningTokens ??
-    usage.reasoningTokens ??
     raw?.output_tokens_details?.reasoning_tokens ??
     raw?.output_tokens_details?.thinking_tokens ??
     raw?.completion_tokens_details?.reasoning_tokens ??

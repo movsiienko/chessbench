@@ -1,5 +1,3 @@
-import type { ProviderOptions } from "@ai-sdk/provider-utils"
-
 /**
  * The one place a benchmarked model is declared, keyed by Gateway ID. It is the
  * allowlist of models a benchmark run may request and the display metadata for
@@ -63,162 +61,20 @@ export function labOf(model: ModelId): LabId {
   return model.split("/")[0] as LabId
 }
 
-export const REASONING_EFFORTS = [
+/**
+ * Provider-neutral reasoning levels, sent as the AI SDK's `reasoning` option.
+ * Each provider maps a level to its own control: an effort setting on
+ * effort-based models, a share of max output tokens on budget-based ones.
+ * `provider-default` sends nothing and leaves the provider's default.
+ */
+export const REASONING_LEVELS = [
+  "provider-default",
   "none",
   "minimal",
   "low",
   "medium",
   "high",
   "xhigh",
+  "max",
 ] as const
-export type ReasoningEffort = (typeof REASONING_EFFORTS)[number]
-type ActiveReasoningEffort = Exclude<ReasoningEffort, "none">
-
-export function isReasoningEffort(value: string): value is ReasoningEffort {
-  return REASONING_EFFORTS.some((effort) => effort === value)
-}
-
-/**
- * Per-lab provider options for a gateway model id. `gatewayTags` non-null
- * means "use Gateway system credentials": the empty request-scoped BYOK
- * overrides cached BYOK so Gateway falls back to system keys; it does not
- * enable user-supplied BYOK.
- */
-export function providerOptionsFor(
-  model: string,
-  effort: ReasoningEffort,
-  gatewayTags: string[] | null = null
-): ProviderOptions {
-  const providerOptions: ProviderOptions = {}
-  const activeEffort = activeReasoningEffort(effort)
-
-  if (activeEffort && model.startsWith("openai/")) {
-    providerOptions.openai = { reasoningEffort: activeEffort }
-  }
-
-  if (activeEffort && model.startsWith("anthropic/")) {
-    providerOptions.anthropic = {
-      thinking: { type: "adaptive" },
-      output_config: { effort: reasoningEffortForAnthropic(activeEffort) },
-    }
-  }
-
-  if (activeEffort && model.startsWith("google/")) {
-    providerOptions.google = {
-      thinkingConfig: {
-        thinkingLevel: reasoningEffortForGoogle(activeEffort),
-        includeThoughts: true,
-      },
-    }
-  }
-
-  const xaiReasoningEffort = reasoningEffortForXai(activeEffort)
-  if (xaiReasoningEffort && model.startsWith("xai/")) {
-    providerOptions.xai = { reasoningEffort: xaiReasoningEffort }
-  }
-
-  if (model.startsWith("deepseek/")) {
-    providerOptions.deepseek =
-      effort === "none"
-        ? { thinking: { type: "disabled" } }
-        : {
-            thinking: { type: "enabled" },
-            reasoning_effort: reasoningEffortForDeepSeek(effort),
-          }
-  }
-
-  if (gatewayTags) {
-    providerOptions.gateway = { byok: {}, tags: gatewayTags }
-  }
-
-  return providerOptions
-}
-
-/**
- * The reasoning level the provider actually receives for a requested effort;
- * results are keyed by it, so requests that collapse to one level share it.
- */
-export function reasoningLevelFor(model: string, effort: ReasoningEffort) {
-  return reasoningEffortForModel(model, effort) || "none"
-}
-
-/** The `reasoning_effort` string recorded in the results CSV. */
-export function reasoningEffortForModel(
-  model: string,
-  effort: ReasoningEffort
-): string {
-  if (model.startsWith("deepseek/")) {
-    return reasoningEffortForDeepSeek(effort)
-  }
-
-  const activeEffort = activeReasoningEffort(effort)
-
-  if (!activeEffort) {
-    return ""
-  }
-
-  if (/(?:^|[-.])thinking(?:$|-)|(?:^|[-.])reasoning(?:$|-)/.test(model)) {
-    return "model-thinking"
-  }
-
-  if (model.startsWith("anthropic/")) {
-    return reasoningEffortForAnthropic(activeEffort)
-  }
-
-  if (model.startsWith("google/")) {
-    return reasoningEffortForGoogle(activeEffort)
-  }
-
-  if (model.startsWith("xai/")) {
-    return reasoningEffortForXai(activeEffort) ?? ""
-  }
-
-  return model.startsWith("openai/") ? activeEffort : ""
-}
-
-function activeReasoningEffort(
-  effort: ReasoningEffort
-): ActiveReasoningEffort | null {
-  return effort === "none" ? null : effort
-}
-
-// Each lab's effort scale, indexed by our minimal..xhigh ladder.
-const EFFORT_LADDER: ActiveReasoningEffort[] = [
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-]
-const LAB_EFFORTS = {
-  xai: ["low", "low", "low", "high", "high"],
-  anthropic: ["low", "low", "medium", "high", "max"],
-  google: ["low", "low", "medium", "high", "high"],
-} as const
-
-function labEffort<L extends keyof typeof LAB_EFFORTS>(
-  lab: L,
-  effort: ActiveReasoningEffort
-): (typeof LAB_EFFORTS)[L][number] {
-  return LAB_EFFORTS[lab][EFFORT_LADDER.indexOf(effort)]
-}
-
-function reasoningEffortForXai(effort: ActiveReasoningEffort | null) {
-  return effort && labEffort("xai", effort)
-}
-
-function reasoningEffortForAnthropic(effort: ActiveReasoningEffort) {
-  return labEffort("anthropic", effort)
-}
-
-function reasoningEffortForGoogle(effort: ActiveReasoningEffort) {
-  return labEffort("google", effort)
-}
-
-function reasoningEffortForDeepSeek(effort: ReasoningEffort): string {
-  if (effort === "none") {
-    return "none"
-  }
-
-  return effort === "xhigh" ? "max" : "high"
-}
+export type ReasoningLevel = (typeof REASONING_LEVELS)[number]

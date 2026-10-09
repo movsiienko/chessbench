@@ -22,6 +22,13 @@
       "when": 1791559855271,
       "tag": "0002_claim-attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791565098040,
+      "tag": "0003_relabel-reasoning-levels",
+      "breakpoints": true
     }
   ]
 }

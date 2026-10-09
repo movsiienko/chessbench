@@ -63,13 +63,19 @@ step per turn, five attempts at a time. Start one through the admin endpoint:
 curl -X POST https://<production-domain>/api/benchmark-runs \
   -H "Authorization: Bearer $BENCHMARK_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"models":["openai/gpt-5.5"],"items":{"limit":50},"reasoningEffort":"low","dryRun":true}'
+  -d '{"models":["openai/gpt-5.5"],"items":{"limit":50},"reasoning":"low","dryRun":true}'
 ```
 
 - `models`: Gateway IDs from `MODELS` in `lib/benchmarks/models.ts`.
 - `items`: `{"limit": n}` for the deterministic sample spread across rating
   bands (a larger limit includes every smaller one), optionally narrowed with
   `"bands"`, or `{"ids": [...]}`.
+- `reasoning`: a provider-neutral level (`provider-default`, `none`,
+  `minimal`, `low`, `medium`, `high`, `xhigh`, `max`), sent as the AI SDK's
+  `reasoning` option. Each provider maps it to its own control: an effort
+  setting on effort-based models (Claude Opus 4.6+, GPT-5, Grok, Gemini 3) or
+  a share of max output tokens on budget-based ones. Any provider warning
+  about the mapping is recorded with the turn.
 - `dryRun: true` returns `{toRun, skipped}` without starting anything.
   Otherwise the response is `202 {runId, toRun, skipped}`.
 
