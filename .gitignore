@@ -52,3 +52,8 @@ data/
 .agents/
 .claude/skills/
 skills-lock.json
+/.swc
+
+# Workflow SDK local world and test bundles
+.workflow-data/
+.workflow-vitest/

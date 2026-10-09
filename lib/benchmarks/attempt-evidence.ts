@@ -23,6 +23,7 @@ const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
   ok: "Unsolved",
   wrong_move: "Wrong move",
   invalid_format: "Invalid answer",
+  timeout: "Move time limit exceeded",
   error: "Error",
 }
 

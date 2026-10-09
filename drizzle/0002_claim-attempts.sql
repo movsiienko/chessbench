@@ -1,0 +1,1 @@
+ALTER TABLE "attempts" ALTER COLUMN "record" DROP NOT NULL;

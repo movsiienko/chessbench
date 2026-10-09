@@ -87,6 +87,9 @@ export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "uci-or-san-single-move-v3"
  */
 export const PROTOCOL_ID = "v1"
 
+/** The protocol's move time limit; see docs/adr/0001. */
+export const MOVE_TIME_LIMIT_MS = 270_000
+
 export function selectDefaultLichessPuzzleItems(
   items: LichessPuzzleBenchmarkItem[],
   limit: number
