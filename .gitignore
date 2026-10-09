@@ -45,3 +45,10 @@ data/
 .codex/
 .cursor/
 .impeccable/live/sessions/
+.vercel
+.env*
+
+# agent skills installed by the Neon integration
+.agents/
+.claude/skills/
+skills-lock.json

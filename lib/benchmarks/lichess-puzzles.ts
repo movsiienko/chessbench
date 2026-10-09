@@ -80,6 +80,13 @@ const ratingBandOrder: RatingBandId[] = [
 
 export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "uci-or-san-single-move-v3"
 
+/**
+ * The current protocol: this prompt template, the answer parser and scoring in
+ * local-runner.ts, provider-default max output tokens, and a 270-second move
+ * time limit. Bump it whenever any of those change; see docs/adr/0003.
+ */
+export const PROTOCOL_ID = "v1"
+
 export function selectDefaultLichessPuzzleItems(
   items: LichessPuzzleBenchmarkItem[],
   limit: number
