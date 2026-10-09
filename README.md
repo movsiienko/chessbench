@@ -101,6 +101,20 @@ set -a && . ./.env.local && set +a && bun run db:migrate
 
 Generate a migration after editing the schema with `bun x drizzle-kit generate`.
 
+## Dashboard Data
+
+`app/page.tsx` is prerendered at build from Postgres: every current-protocol
+model and reasoning level with finished attempts becomes a scoreboard entry
+(`entriesFrom` in `lib/benchmarks/dashboard-build.ts`). The page carries attempt
+summaries only; a transcript fetches its full record from
+`/api/attempts/<id>`, which the CDN caches permanently. After new results land,
+regenerate the page on the production domain:
+
+```bash
+curl -X POST https://<production-domain>/api/revalidate \
+  -H "Authorization: Bearer $BENCHMARK_ADMIN_TOKEN"
+```
+
 ## Dashboard Lab Logos
 
 Dashboard model chips render lab marks that are **vendored into the repo** as
@@ -109,16 +123,13 @@ svgl.app or models.dev at render time: a third-party request per logo per page
 load leaves gaps whenever those hosts are slow, blocked or offline, and leaks
 visitor traffic to hosts the visitor did not choose.
 
-`LAB_SVGS` in `components/chessbench-dashboard.tsx` maps each generated
-`DashboardLabId` to a label and a mark. A lab with no vendored mark may omit
+`LAB_SVGS` in `components/chessbench-dashboard.tsx` maps each `LabId` to a
+label and a mark. A lab with no vendored mark may omit
 `icon` and falls back to a monogram, which still never touches the network.
 
-`DashboardModel.lab` is the provider prefix of the model's Gateway id, for
-example `openai` from `openai/gpt-5.5`.
-
-The emitted `DashboardLabId` union covers only the labs the configured models
-belong to, not the whole remote catalog, so a lab added upstream cannot rewrite
-the generated file or break `bun run typecheck`.
+`LabId` is the provider prefix of a registry model's Gateway id, for example
+`openai` from `openai/gpt-5.5`, so it covers only the labs of models in `MODELS`
+(`lib/benchmarks/models.ts`), not the whole remote catalog.
 
 Logo rules:
 
@@ -130,9 +141,6 @@ Logo rules:
    pair when it publishes one and wire both into `icon`.
 3. Marks stay the trademark of the lab they name and are used only to identify
    that lab's model.
-4. Keep `LAB_SVGS` complete for every generated `DashboardLabId`. The mapping
-   uses `satisfies Record<DashboardLabId, ...>`, so `bun run typecheck` fails
-   when a benchmarked model introduces a lab with no entry.
-
-Current mappings: `gpt5` -> OpenAI, `claude45` -> Anthropic, `gem25` ->
-Google, `ds35` -> DeepSeek, `grok4` -> xAI, and `qwen3` -> Alibaba (Qwen mark).
+4. Keep `LAB_SVGS` complete for every `LabId`. The mapping uses
+   `satisfies Record<LabId, ...>`, so `bun run typecheck` fails when a registry
+   model introduces a lab with no entry.

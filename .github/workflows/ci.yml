@@ -47,4 +47,12 @@ jobs:
         run: bun test
 
       - name: Build
+        # The page prerenders from Postgres; CI reads the development database
+        # but never migrates it, so an unmerged migration can't change the
+        # schema other branches build against. Preview deployments migrate
+        # their own database branch. Fork pull requests get no secrets.
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         run: bun run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL_UNPOOLED }}

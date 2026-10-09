@@ -4,15 +4,19 @@ import type {
   LichessPuzzleAttemptStatus,
 } from "./local-runner"
 
+/** An attempt record without its turns, which are fetched when a transcript opens. */
+export type AttemptSummary = Omit<LichessPuzzleAttemptRow, "turns">
+
 /** A recorded attempt and the meaning shared by its summary and exports. */
 export type AttemptEvidence<Model extends string = string> = {
+  attemptId: string
   model: Model
   solved: boolean
   firstMove: { uci: string; label: string; correct: boolean | null }
   outcome: string
   thinkingMs: number
   thinkingTokens: number | null
-  record: LichessPuzzleAttemptRow
+  record: AttemptSummary
 }
 
 const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
@@ -24,10 +28,12 @@ const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
 
 export function buildAttemptEvidence<Model extends string>(
   model: Model,
-  row: LichessPuzzleAttemptRow
+  attemptId: string,
+  row: AttemptSummary
 ): AttemptEvidence<Model> {
   const playedMove = row.submittedPlayerMoves[0] ?? ""
   return {
+    attemptId,
     model,
     solved: row.solved,
     firstMove: {
@@ -45,12 +51,11 @@ export function buildAttemptEvidence<Model extends string>(
 }
 
 /** Download the recorded evidence, including structured turns and provider metadata. */
-export function attemptJson(attempt: AttemptEvidence): string {
-  return `${JSON.stringify(attempt.record, null, 2)}\n`
+export function attemptJson(record: LichessPuzzleAttemptRow): string {
+  return `${JSON.stringify(record, null, 2)}\n`
 }
 
-export function attemptTranscript(attempt: AttemptEvidence): string {
-  const row = attempt.record
+export function attemptTranscript(row: LichessPuzzleAttemptRow): string {
   const header = [
     `# ${row.model} trace - ${row.itemId}`,
     `Run: ${row.runId}`,

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import { buildDashboardData } from "./dashboard-build"
+import { buildDashboardData, entriesFrom } from "./dashboard-build"
+import type { DashboardAttemptRow } from "./dashboard-build"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
-import type { LichessPuzzleAttemptRow } from "./local-runner"
 
 function item(
   id: string,
@@ -44,8 +44,9 @@ function row(
   itemId: string,
   rating: number,
   solved: boolean
-): LichessPuzzleAttemptRow {
+): DashboardAttemptRow {
   return {
+    attemptId: `${model}-${itemId}`,
     runId: "run",
     createdAt: "2026-06-06T08:00:00.000Z",
     benchmark: "lichess-puzzles-v1",
@@ -76,14 +77,23 @@ function row(
     costUsd: 0.001,
     servedProvider: "test",
     generationId: "gen",
-    turns: [],
   }
 }
 
 const models = [
-  { id: "a", name: "GPT 5.5", vendor: "OpenAI", lab: "openai" },
-  { id: "b", name: "Claude Opus 4.8", vendor: "Anthropic", lab: "anthropic" },
-].map((model) => ({ ...model, color: "#000", colorDark: "#fff", releaseQ: "" }))
+  { id: "a", name: "GPT 5.5", vendor: "OpenAI", lab: "openai" as const },
+  {
+    id: "b",
+    name: "Claude Opus 4.8",
+    vendor: "Anthropic",
+    lab: "anthropic" as const,
+  },
+].map((model) => ({
+  ...model,
+  model: `${model.lab}/${model.id}`,
+  color: "#000",
+  colorDark: "#fff",
+}))
 
 const items = [
   item("p1", 1012, ["fork", "middlegame"]),
@@ -107,8 +117,8 @@ describe("buildDashboardData", () => {
         row("b", "p3", 1500, false),
       ],
     },
+    pending: { a: 1 },
     datasetSize: 3,
-    sourceFiles: ["a.csv", "b.csv"],
   })
 
   test("emits the elo estimate with its one-puzzle band", () => {
@@ -134,5 +144,43 @@ describe("buildDashboardData", () => {
       data.models.map((model) => model.shortName),
       ["GPT", "Claude"]
     )
+  })
+})
+
+describe("entriesFrom", () => {
+  const stored = (itemId: string, status: string) => ({
+    attemptId: `${itemId}-${status}`,
+    model: "openai/gpt-5.5",
+    reasoningLevel: "low",
+    status,
+    record: row("openai/gpt-5.5", itemId, 1500, status === "ok"),
+  })
+
+  test("pending counts unretried items once, not every error row", () => {
+    const { models, rows, pending } = entriesFrom([
+      stored("p1", "error"),
+      stored("p1", "ok"), // a retry finished p1
+      stored("p2", "error"),
+      stored("p2", "error"), // p2 failed twice and is still pending
+      stored("p3", "wrong_move"),
+    ])
+
+    assert.deepEqual(
+      models.map((model) => model.name),
+      ["GPT 5.5 · low"]
+    )
+    assert.equal(rows[models[0]!.id]?.length, 2)
+    assert.equal(pending[models[0]!.id], 1)
+  })
+
+  test("an empty protocol builds an empty dashboard instead of throwing", () => {
+    const data = buildDashboardData({
+      ...entriesFrom([]),
+      items,
+      datasetSize: 3,
+    })
+
+    assert.deepEqual(data.scoreboard, [])
+    assert.deepEqual(data.meta.sampleSize, { min: 0, max: 0 })
   })
 })

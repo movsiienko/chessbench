@@ -1,9 +1,9 @@
 import type { ProviderOptions } from "@ai-sdk/provider-utils"
 
 /**
- * The one place a benchmarked model is declared. The build derives
- * `DashboardModelId` from `id`, reads results from `file`, and the dashboard
- * gets the rest through the generated data file.
+ * The one place a benchmarked model is declared, keyed by Gateway ID. It is the
+ * allowlist of models a benchmark run may request and the display metadata for
+ * their scoreboard entries; the lab is the ID's prefix.
  *
  * `color`/`colorDark` are chart series colors fitted to the light and dark
  * `--card` surfaces (3.5:1 minimum, WCAG 1.4.11), not raw brand hexes: xAI
@@ -12,68 +12,56 @@ import type { ProviderOptions } from "@ai-sdk/provider-utils"
  */
 export const MODELS = [
   {
-    id: "gpt5",
-    apiModel: "openai/gpt-5.5",
-    file: "openai-gpt-5-5-single-move-v3-effort-only-20260605.csv",
+    id: "openai/gpt-5.5",
     name: "GPT 5.5",
     vendor: "OpenAI",
     color: "#009b78",
     colorDark: "#10a37f",
-    releaseQ: "v3 low reasoning",
   },
   {
-    id: "claude45",
-    apiModel: "anthropic/claude-opus-4.8",
-    file: "anthropic-claude-opus-4-8-single-move-v3-thinking-low-20260606.csv",
+    id: "anthropic/claude-opus-4.8",
     name: "Claude Opus 4.8",
     vendor: "Anthropic",
     color: "#cf6e4e",
     colorDark: "#d97757",
-    releaseQ: "v3 low thinking",
   },
   {
-    id: "gem25",
-    apiModel: "google/gemini-3.5-flash",
-    file: "google-gemini-3-5-flash-single-move-v3-thinking-low-20260606.csv",
+    id: "google/gemini-3.5-flash",
     name: "Gemini 3.5 Flash",
     vendor: "Google",
     color: "#4285f4",
     colorDark: "#4285f4",
-    releaseQ: "v3 low thinking",
   },
   {
-    id: "ds35",
-    apiModel: "deepseek/deepseek-v3.2-thinking",
-    file: "deepseek-deepseek-v3-2-thinking-single-move-v3-thinking-low-20260606.csv",
+    id: "deepseek/deepseek-v3.2-thinking",
     name: "DeepSeek V3.2 Thinking",
     vendor: "DeepSeek",
     color: "#007d98",
     colorDark: "#007d98",
-    releaseQ: "v3 low thinking",
   },
   {
-    id: "grok4",
-    apiModel: "xai/grok-4.1-fast-reasoning",
-    file: "xai-grok-4-1-fast-reasoning-single-move-v3-thinking-low-20260606.csv",
+    id: "xai/grok-4.1-fast-reasoning",
     name: "Grok 4.1 Fast Reasoning",
     vendor: "xAI",
     color: "#111827",
     colorDark: "#a4aec3",
-    releaseQ: "v3 low thinking",
   },
   {
-    id: "qwen3",
-    apiModel: "alibaba/qwen3-max-thinking",
-    file: "alibaba-qwen3-max-thinking-single-move-v3-thinking-low-20260606.csv",
+    id: "alibaba/qwen3-max-thinking",
     name: "Qwen3 Max Thinking",
     vendor: "Alibaba",
     color: "#9a56ed",
     colorDark: "#9a56ed",
-    releaseQ: "v3 thinking model",
   },
 ] as const
 
 export type ModelId = (typeof MODELS)[number]["id"]
+export type LabId = ModelId extends `${infer Lab}/${string}` ? Lab : never
+
+export function labOf(model: ModelId): LabId {
+  // SAFETY: every registry ID is `<lab>/<name>`, which is what LabId extracts.
+  return model.split("/")[0] as LabId
+}
 
 export const REASONING_EFFORTS = [
   "none",

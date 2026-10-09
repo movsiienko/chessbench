@@ -1,6 +1,6 @@
-import { buildAttemptEvidence } from "./attempt-evidence"
+import { buildAttemptEvidence, type AttemptSummary } from "./attempt-evidence"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
-import type { LichessPuzzleAttemptRow } from "./local-runner"
+import { labOf, MODELS, type LabId } from "./models"
 
 export type CategoryId =
   | "mate"
@@ -16,23 +16,84 @@ export type CategoryId =
   | "zugzwang"
   | "promotion"
 
+/** A scoreboard entry: one registry model at one reasoning level. */
 export type DashboardModelInput = {
   id: string
+  /** The registry model's Gateway ID; several entries can share one. */
+  model: string
   name: string
   vendor: string
-  lab: string
+  lab: LabId
   color: string
   colorDark: string
-  releaseQ: string
+}
+
+export type DashboardAttemptRow = AttemptSummary & { attemptId: string }
+
+/** An attempt as stored, minus its turns. */
+export type StoredAttempt = {
+  attemptId: string
+  model: string
+  reasoningLevel: string
+  status: string
+  record: AttemptSummary
 }
 
 export type DashboardBuildInput = {
   models: DashboardModelInput[]
   items: LichessPuzzleBenchmarkItem[]
-  /** Attempt rows keyed by model id. */
-  rows: Record<string, LichessPuzzleAttemptRow[]>
+  /** Finished attempt rows keyed by entry id. */
+  rows: Record<string, DashboardAttemptRow[]>
+  /** Pending (provider error) attempts per entry id; excluded from scores. */
+  pending: Record<string, number>
   datasetSize: number
-  sourceFiles: string[]
+}
+
+/**
+ * Groups current-protocol attempts into scoreboard entries, one per registry
+ * model and reasoning level. Models outside the registry have no display
+ * metadata and are left out.
+ */
+export function entriesFrom(stored: StoredAttempt[]) {
+  const models: DashboardModelInput[] = []
+  const rows: Record<string, DashboardAttemptRow[]> = {}
+  const pending: Record<string, number> = {}
+
+  for (const model of MODELS) {
+    const own = stored.filter((attempt) => attempt.model === model.id)
+
+    for (const level of unique(own.map((a) => a.reasoningLevel)).sort()) {
+      // Entry ids become CSS custom property names (`--color-<id>`).
+      const id = `${model.id}-${level}`.replace(/[^a-z0-9-]+/gi, "-")
+      const atLevel = own.filter((attempt) => attempt.reasoningLevel === level)
+
+      models.push({
+        id,
+        model: model.id,
+        name: `${model.name} · ${level}`,
+        vendor: model.vendor,
+        lab: labOf(model.id),
+        color: model.color,
+        colorDark: model.colorDark,
+      })
+      const finished = atLevel.filter((attempt) => attempt.status !== "error")
+      const finishedItems = new Set(finished.map((a) => a.record.itemId))
+
+      rows[id] = finished.map((attempt) => ({
+        ...attempt.record,
+        attemptId: attempt.attemptId,
+      }))
+      // Items whose every attempt so far was a provider error. An error row
+      // stays after a successful retry, so rows alone would overcount.
+      pending[id] = unique(
+        atLevel
+          .filter((attempt) => attempt.status === "error")
+          .map((attempt) => attempt.record.itemId)
+      ).filter((itemId) => !finishedItems.has(itemId)).length
+    }
+  }
+
+  return { models, rows, pending }
 }
 
 /** Puzzle rating slider granularity; `meta.ratingBounds` is rounded to it. */
@@ -92,8 +153,8 @@ export function buildDashboardData({
   models,
   items,
   rows,
+  pending,
   datasetSize,
-  sourceFiles,
 }: DashboardBuildInput) {
   const itemsById = new Map(items.map((item) => [item.id, item]))
   const rowsFor = (model: DashboardModelInput) => rows[model.id] ?? []
@@ -112,7 +173,7 @@ export function buildDashboardData({
     labIds: unique(models.map((model) => model.lab)).sort(),
     categories: categories.map(({ id, label }) => ({ id, label })),
     scoreboard: models.map((model) =>
-      buildScoreboardRow(model.id, rowsFor(model))
+      buildScoreboardRow(model.id, rowsFor(model), pending[model.id] ?? 0)
     ),
     category: Object.fromEntries(
       models.map((model) => [
@@ -133,7 +194,6 @@ export function buildDashboardData({
       lastUpdated: latestDate(allRows).slice(0, 10),
       version: "0.8.0",
       benchmarkId: "lichess-puzzles-v1",
-      sourceFiles,
       rowsByModel: Object.fromEntries(
         models.map((model) => [model.id, rowsFor(model).length])
       ),
@@ -163,7 +223,11 @@ function shortName(name: string, names: string[]) {
   return name
 }
 
-function buildScoreboardRow(model: string, rows: LichessPuzzleAttemptRow[]) {
+function buildScoreboardRow(
+  model: string,
+  rows: DashboardAttemptRow[],
+  pending: number
+) {
   const count = rows.length
   const solved = rows.filter((row) => row.solved).length
   const valid = rows.filter((row) => row.status !== "invalid_format").length
@@ -177,13 +241,13 @@ function buildScoreboardRow(model: string, rows: LichessPuzzleAttemptRow[]) {
   return {
     model,
     n: count,
+    pending,
     accuracy: round(accuracy, 3),
     elo: estimateElo(avgRating, accuracy),
     eloLow: estimateElo(avgRating, Math.max(0, accuracy - step)),
     eloHigh: estimateElo(avgRating, Math.min(1, accuracy + step)),
     // Extrapolated from a small sample, so it is emitted at whole-dollar precision.
     cost: round(count === 0 ? 0 : (totalCost / count) * 1000, 0),
-    // Errored attempts have no usage; they count as 0 tokens in the average.
     avgTokens: Math.round(average(rows.map((row) => row.totalTokens ?? 0))),
     avgMoveTime: round(
       average(rows.map((row) => row.latencyMsTotal)) / 1000,
@@ -194,7 +258,7 @@ function buildScoreboardRow(model: string, rows: LichessPuzzleAttemptRow[]) {
 }
 
 function buildCategoryStats(
-  rows: LichessPuzzleAttemptRow[],
+  rows: DashboardAttemptRow[],
   itemLookup: Map<string, LichessPuzzleBenchmarkItem>
 ) {
   const stats = new Map<CategoryId, { accuracy: number | null; n: number }>()
@@ -226,16 +290,10 @@ function buildCategoryStats(
 }
 
 function resolveSampleSize(counts: number[]) {
-  const min = Math.min(...counts)
-  const max = Math.max(...counts)
-
-  if (min !== max) {
-    console.warn(
-      `Models were evaluated on different puzzle counts (min ${min}, max ${max}); emitting a range for META.sampleSize.`
-    )
-  }
-
-  return { min, max }
+  // Entries are scored on their own item sets, so this is often a range.
+  return counts.length === 0
+    ? { min: 0, max: 0 }
+    : { min: Math.min(...counts), max: Math.max(...counts) }
 }
 
 function ratingBoundsOf(ratings: number[]): [number, number] {
@@ -252,7 +310,7 @@ function ratingBoundsOf(ratings: number[]): [number, number] {
 function buildPuzzle(
   item: LichessPuzzleBenchmarkItem,
   models: DashboardModelInput[],
-  rows: Record<string, LichessPuzzleAttemptRow[]>
+  rows: Record<string, DashboardAttemptRow[]>
 ) {
   return {
     id: item.id,
@@ -270,7 +328,11 @@ function buildPuzzle(
         const row = rows[model.id]?.find(
           (candidate) => candidate.itemId === item.id
         )
-        return row ? buildAttemptEvidence(model.id, row) : null
+        if (!row) {
+          return null
+        }
+        const { attemptId, ...summary } = row
+        return buildAttemptEvidence(model.id, attemptId, summary)
       })
       .filter((attempt): attempt is NonNullable<typeof attempt> =>
         Boolean(attempt)
@@ -307,7 +369,7 @@ function estimateElo(avgRating: number, score: number) {
   return Math.round(avgRating + 400 * Math.log10(clamped / (1 - clamped)))
 }
 
-function latestDate(rows: LichessPuzzleAttemptRow[]) {
+function latestDate(rows: DashboardAttemptRow[]) {
   return (
     rows
       .map((row) => row.createdAt)
