@@ -1,0 +1,82 @@
+name: Run benchmark
+
+# Starts a benchmark run on production through the admin endpoint. Only people
+# with write access to the repository can dispatch it; the token stays a
+# repository secret. See README.md "Benchmark Runs".
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Gateway model IDs from lib/benchmarks/models.ts, comma-separated
+        required: true
+        default: openai/gpt-5.5
+      limit:
+        description: Puzzles per model from the deterministic sample (1-500)
+        required: true
+        default: "10"
+      bands:
+        description: Optional rating bands, comma-separated (e.g. under-1200)
+        required: false
+        default: ""
+      reasoning:
+        description: Reasoning level
+        type: choice
+        default: provider-default
+        options:
+          - provider-default
+          - none
+          - minimal
+          - low
+          - medium
+          - high
+          - xhigh
+          - max
+      dry_run:
+        description: Only report what would run
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  start:
+    name: Start run
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request the run
+        env:
+          URL: https://chessbench-omega.vercel.app/api/benchmark-runs
+          TOKEN: ${{ secrets.BENCHMARK_ADMIN_TOKEN }}
+          MODELS: ${{ inputs.models }}
+          LIMIT: ${{ inputs.limit }}
+          BANDS: ${{ inputs.bands }}
+          REASONING: ${{ inputs.reasoning }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          body=$(jq -n \
+            --arg models "$MODELS" --arg limit "$LIMIT" --arg bands "$BANDS" \
+            --arg reasoning "$REASONING" --arg dry "$DRY_RUN" '{
+              models: ($models | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))),
+              items: ({limit: ($limit | tonumber)}
+                + (if $bands == "" then {} else {bands: ($bands | split(",") | map(gsub("^\\s+|\\s+$"; "")))} end)),
+              reasoning: $reasoning,
+              dryRun: ($dry == "true")
+            }')
+          response=$(curl -sS --fail-with-body -X POST "$URL" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            --data "$body")
+          echo "$response"
+          {
+            echo "### Benchmark run $([ "$DRY_RUN" = true ] && echo '(dry run)')"
+            echo
+            echo '```json'
+            echo "$body"
+            echo '```'
+            echo
+            echo '```json'
+            echo "$response" | jq .
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
