@@ -2,8 +2,9 @@ import { start } from "workflow/api"
 import { z } from "zod"
 import { isAdminRequest } from "@/lib/admin-token"
 import { benchmarkRun } from "@/lib/benchmarks/benchmark-workflow"
+import { RATING_BAND_IDS } from "@/lib/benchmarks/lichess-puzzles"
 import { MODELS, REASONING_LEVELS } from "@/lib/benchmarks/models"
-import { planRun } from "@/lib/benchmarks/run-plan"
+import { planRun, type ItemSelection } from "@/lib/benchmarks/run-plan"
 
 const registered = new Set<string>(MODELS.map((model) => model.id))
 
@@ -16,15 +17,37 @@ const runRequestSchema = z.object({
     )
     .min(1)
     .transform((ids) => [...new Set(ids)]),
-  items: z.union([
-    z.object({ ids: z.array(z.string()).min(1) }).strict(),
-    z
-      .object({
-        limit: z.number().int().positive(),
-        bands: z.array(z.string()).min(1).optional(),
-      })
-      .strict(),
-  ]),
+  // Either explicit ids, or the deterministic sample (optionally by band).
+  items: z
+    .object({
+      ids: z.array(z.string()).min(1).optional(),
+      // The benchmark has 500 items; more would read as a typo.
+      limit: z.number().int().positive().max(500).optional(),
+      bands: z
+        .array(
+          z.enum(RATING_BAND_IDS, {
+            error: (issue) =>
+              `${String(issue.input)} is not a rating band (${RATING_BAND_IDS.join(", ")})`,
+          })
+        )
+        .min(1)
+        .optional(),
+    })
+    .strict()
+    .refine(
+      (items) => (items.ids === undefined) !== (items.limit === undefined),
+      {
+        error: "Give either items.ids or items.limit",
+      }
+    )
+    .refine((items) => items.ids === undefined || items.bands === undefined, {
+      error:
+        "items.bands narrows items.limit and cannot be used with items.ids",
+    })
+    .transform(
+      ({ ids, limit, bands }): ItemSelection =>
+        ids ? { ids } : { limit: limit ?? 0, bands }
+    ),
   reasoning: z.enum(REASONING_LEVELS),
   dryRun: z.boolean().default(false),
 })

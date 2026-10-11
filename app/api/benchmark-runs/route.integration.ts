@@ -33,7 +33,7 @@ const token = "t".repeat(48)
 /** A run request as a client sends it, valid or not. */
 type RunRequestBody = {
   models: string[]
-  items: { limit?: number; ids?: string[]; bands?: string[] }
+  items: { limit?: number | string; ids?: string[]; bands?: string[] }
   reasoning: string
   dryRun?: boolean
 }
@@ -164,5 +164,28 @@ describe("POST /api/benchmark-runs", () => {
       dryRun: true,
     })
     expect(await response.json()).toEqual({ toRun: 2, skipped: 0 })
+  })
+
+  test("rejects a band outside the benchmark instead of selecting nothing", async () => {
+    const response = await post({
+      models: ["openai/gpt-5.5"],
+      items: { limit: 5, bands: ["under-120"] },
+      reasoning: "low",
+      dryRun: true,
+    })
+    expect(response.status).toBe(400)
+    expect(await response.text()).toContain("under-120")
+  })
+
+  test("rejects a limit beyond the 500 benchmark puzzles, or one that is not a number", async () => {
+    for (const limit of [501, "ten"]) {
+      const response = await post({
+        models: ["openai/gpt-5.5"],
+        items: { limit },
+        reasoning: "low",
+        dryRun: true,
+      })
+      expect(response.status).toBe(400)
+    }
   })
 })
