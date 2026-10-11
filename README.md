@@ -58,11 +58,14 @@ prefix score.
 
 Runs execute on Vercel Workflows (`lib/benchmarks/benchmark-workflow.ts`), one
 step per turn, five attempts at a time. Start one from GitHub: **Actions → Run
-benchmark → Run workflow**, with models, a puzzle limit, optional rating bands,
+benchmark → Run workflow**, with models, a puzzle limit (1-500), optional rating
+bands,
 a reasoning level, and a dry-run switch (on by default). The job summary shows
 the request and the plan or run ID. Only people with write access can dispatch
 it; it calls the admin endpoint with the `BENCHMARK_ADMIN_TOKEN` repository
-secret. The endpoint can also be called directly:
+secret and the `CHESSBENCH_URL` repository variable; rejected requests show the
+endpoint's explanation in the log and summary. The endpoint can also be called
+directly:
 
 ```bash
 curl -X POST https://<production-domain>/api/benchmark-runs \
@@ -85,7 +88,9 @@ curl -X POST https://<production-domain>/api/benchmark-runs \
   Otherwise the response is `202 {runId, toRun, skipped}`.
 
 Each model and item is claimed in Postgres before the paid call, so items an
-entry has already finished, or that another run is playing, are skipped. A
+entry has already finished, or that another run is playing, are skipped:
+overlapping runs, such as a double-clicked dispatch, never pay twice for an
+item, though the second one's plan counts items the first is still playing. A
 failed call is retried up to four times, after the provider's `retry-after` or
 an exponential backoff; a request the provider rejects as invalid is not
 retried. A turn still failing goes pending for the next run. Claims

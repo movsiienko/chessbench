@@ -70,13 +70,13 @@ export async function loadItems(
     .map((line) => JSON.parse(line) as LichessPuzzleBenchmarkItem)
 }
 
-const ratingBandOrder: RatingBandId[] = [
+export const RATING_BAND_IDS = [
   "under-1200",
   "1200-1599",
   "1600-1999",
   "2000-2399",
   "2400-plus",
-]
+] as const satisfies readonly RatingBandId[]
 
 export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "uci-or-san-single-move-v3"
 
@@ -100,7 +100,7 @@ export function selectDefaultLichessPuzzleItems(
 
   const selected: LichessPuzzleBenchmarkItem[] = []
   const byBand = new Map<RatingBandId, LichessPuzzleBenchmarkItem[]>(
-    ratingBandOrder.map((band) => [band, []])
+    RATING_BAND_IDS.map((band) => [band, []])
   )
 
   for (const item of items) {
@@ -109,7 +109,7 @@ export function selectDefaultLichessPuzzleItems(
 
   // Split the limit across the bands present, so a pool narrowed to some
   // bands still yields `limit` items.
-  const bands = ratingBandOrder.filter((band) => byBand.get(band)?.length)
+  const bands = RATING_BAND_IDS.filter((band) => byBand.get(band)?.length)
   const basePerBand = Math.floor(limit / bands.length)
   let remainder = limit % bands.length
 

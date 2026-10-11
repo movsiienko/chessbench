@@ -47,7 +47,8 @@ jobs:
     steps:
       - name: Request the run
         env:
-          URL: https://chessbench-omega.vercel.app/api/benchmark-runs
+          # Repository variable, so a domain change needs no code change.
+          BASE_URL: ${{ vars.CHESSBENCH_URL }}
           TOKEN: ${{ secrets.BENCHMARK_ADMIN_TOKEN }}
           MODELS: ${{ inputs.models }}
           LIMIT: ${{ inputs.limit }}
@@ -55,28 +56,42 @@ jobs:
           REASONING: ${{ inputs.reasoning }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "::error::Set the CHESSBENCH_URL repository variable to the production URL"
+            exit 1
+          fi
+          # A non-numeric limit is sent as text so the endpoint explains the error.
           body=$(jq -n \
             --arg models "$MODELS" --arg limit "$LIMIT" --arg bands "$BANDS" \
-            --arg reasoning "$REASONING" --arg dry "$DRY_RUN" '{
-              models: ($models | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))),
-              items: ({limit: ($limit | tonumber)}
-                + (if $bands == "" then {} else {bands: ($bands | split(",") | map(gsub("^\\s+|\\s+$"; "")))} end)),
-              reasoning: $reasoning,
-              dryRun: ($dry == "true")
-            }')
-          response=$(curl -sS --fail-with-body -X POST "$URL" \
+            --arg reasoning "$REASONING" --arg dry "$DRY_RUN" '
+              def list: split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""));
+              {
+                models: ($models | list),
+                items: ({limit: (try ($limit | tonumber) catch $limit)}
+                  + (if ($bands | list) == [] then {} else {bands: ($bands | list)} end)),
+                reasoning: $reasoning,
+                dryRun: ($dry == "true")
+              }')
+          # Keep the response body on errors: the endpoint says what was wrong.
+          status=$(curl -sS -o response.json -w "%{http_code}" -X POST \
+            "$BASE_URL/api/benchmark-runs" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             --data "$body")
-          echo "$response"
+          cat response.json; echo
           {
-            echo "### Benchmark run $([ "$DRY_RUN" = true ] && echo '(dry run)')"
+            echo "### Benchmark run: HTTP $status$([ "$DRY_RUN" = true ] && echo ' (dry run)')"
             echo
             echo '```json'
             echo "$body"
             echo '```'
             echo
-            echo '```json'
-            echo "$response" | jq .
+            echo '```'
+            cat response.json
+            echo
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$status" = 404 ]; then
+            echo "::error::404: the BENCHMARK_ADMIN_TOKEN secret does not match production, or CHESSBENCH_URL is wrong"
+          fi
+          [ "$status" -ge 200 ] && [ "$status" -lt 300 ]
