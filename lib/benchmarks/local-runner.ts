@@ -2,7 +2,7 @@ import { Chess } from "chess.js"
 
 import {
   applyUciMove,
-  readsAsMove,
+  moveToken,
   parseAcceptedMoveAnswer,
 } from "../chess/moves"
 import {
@@ -282,7 +282,7 @@ export function recordAnswer(
 function unplayableResult(
   rawAnswer: string
 ): "illegal_move" | "invalid_format" {
-  return readsAsMove(rawAnswer) ? "illegal_move" : "invalid_format"
+  return moveToken(rawAnswer) ? "illegal_move" : "invalid_format"
 }
 
 /**
@@ -304,19 +304,17 @@ export function withCurrentStatus(
   row: LichessPuzzleAttemptRow
 ): LichessPuzzleAttemptRow {
   const final = row.turns.at(-1)
+  const status = currentStatus(row.status, final?.rawAnswer ?? "")
 
-  if (row.status !== "invalid_format" || !final) {
-    return row
-  }
-
-  const result = unplayableResult(final.rawAnswer)
-  return {
-    ...row,
-    status: result,
-    turns: row.turns.map((turn) =>
-      turn === final ? { ...turn, result } : turn
-    ),
-  }
+  return status !== "illegal_move" || status === row.status
+    ? row
+    : {
+        ...row,
+        status,
+        turns: row.turns.map((turn) =>
+          turn === final ? { ...turn, result: status } : turn
+        ),
+      }
 }
 
 /**

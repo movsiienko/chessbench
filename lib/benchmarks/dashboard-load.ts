@@ -21,10 +21,11 @@ export async function loadDashboardData() {
       status: attempts.status,
       // Turns carry the reasoning text; transcripts fetch them on demand.
       record: sql<AttemptSummary>`${attempts.record} - 'turns'`,
-      // Reclassifies attempts stored before illegal moves had their own status.
+      // Reclassifies attempts stored before illegal moves had their own
+      // status, and labels the illegal move; only unplayable answers need it.
       finalAnswer: sql<
         string | null
-      >`${attempts.record} -> 'turns' -> -1 ->> 'rawAnswer'`,
+      >`CASE WHEN ${attempts.status} IN ('invalid_format', 'illegal_move') THEN ${attempts.record} -> 'turns' -> -1 ->> 'rawAnswer' END`,
     })
     .from(attempts)
     .where(

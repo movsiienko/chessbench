@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import {
   applyUciMove,
-  readsAsMove,
+  moveToken,
   parseAcceptedMoveAnswer,
   parseMoveInput,
   readableMove,
@@ -14,7 +14,7 @@ const CASTLING = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
 const PROMOTION = "7k/4P3/8/8/8/8/8/4K3 w - - 0 1"
 
 describe("model move grammar", () => {
-  test("reads move shape without a position", () => {
+  test("reads a move token without a position", () => {
     for (const answer of [
       "a1b3",
       "e7e8q",
@@ -23,12 +23,24 @@ describe("model move grammar", () => {
       "1. Nf3!",
       "0-0-0",
       "exd8=Q#",
+      "e2-e5",
+      "Ng1-h4",
     ]) {
-      assert.equal(readsAsMove(answer), true, answer)
+      assert.notEqual(moveToken(answer), "", answer)
     }
-    for (const answer of ["", "resign", "Nf3 Nc6", "best is e4", "z9", "Ke9"]) {
-      assert.equal(readsAsMove(answer), false, answer)
+    for (const answer of [
+      "",
+      "resign",
+      "Nf3 Nc6",
+      "best is e4",
+      "z9",
+      "Ke9",
+      "xe4",
+    ]) {
+      assert.equal(moveToken(answer), "", answer)
     }
+    assert.equal(moveToken("```\nBf3\n```"), "Bf3")
+    assert.equal(moveToken("1. Bf3!"), "Bf3")
   })
 
   test("rejects illegal UCI-shaped moves", () => {

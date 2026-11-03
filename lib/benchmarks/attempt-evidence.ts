@@ -1,4 +1,4 @@
-import { readableMove } from "../chess/moves"
+import { moveToken, readableMove } from "../chess/moves"
 import type {
   LichessPuzzleAttemptRow,
   LichessPuzzleAttemptStatus,
@@ -58,8 +58,8 @@ export function buildAttemptEvidence<Model extends string>(
       uci: playedMove,
       label: playedMove
         ? readableMove(playedMove)
-        : illegalFirst && finalAnswer
-          ? `${finalAnswer.trim()} (illegal)`
+        : illegalFirst && moveToken(finalAnswer)
+          ? `${moveToken(finalAnswer)} (illegal)`
           : "No valid move",
       correct: playedMove ? row.firstMoveCorrect : illegalFirst ? false : null,
     },

@@ -92,18 +92,21 @@ export function parseAcceptedMoveAnswer(
   return normalized ? (resolveMove(fen, normalized)?.uci ?? null) : null
 }
 
+// Pieces (`Nf3`, `Nbd2`, `Ng1-f3`), pawns (`e4`, `exd5`, `e2-e4`, `e8=Q`) and
+// castling, as chess.js reads them, with no origin square required to be real.
 const SAN =
-  /^(?:O-O(?:-O)?|[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=?[QRBN])?)[+#]?$/
+  /^(?:O-O(?:-O)?|[KQRBN](?:[a-h]?[1-8]?|[a-h][1-8]-)x?[a-h][1-8]|(?:[a-h]x|[a-h][1-8][-x]?)?[a-h][1-8](?:=?[QRBN])?)[+#]?$/
 
 /**
- * True when the answer reads as one move in the accepted notation, legal or
- * not, by the same grammar as `parseAcceptedMoveAnswer`. Tells an illegal move
- * apart from an answer that is not a move at all, without needing the position.
+ * The answer as one move token in the accepted notation, legal or not, after
+ * the normalization `parseAcceptedMoveAnswer` applies; empty when the answer is
+ * not a move at all. Needs no position, so it tells an illegal move apart from
+ * an unreadable answer.
  */
-export function readsAsMove(answer: string): boolean {
+export function moveToken(answer: string): string {
   const normalized = normalizeMoveAnswer(answer)
 
-  return UCI.test(normalized) || SAN.test(normalized)
+  return UCI.test(normalized) || SAN.test(normalized) ? normalized : ""
 }
 
 function normalizeMoveAnswer(answer: string): string {
