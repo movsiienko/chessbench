@@ -2674,7 +2674,7 @@ function ProblemFocus({
                             {attempt.firstMove.label}
                           </span>
                           <span className="block text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground">
+                            <span className="font-medium">
                               {attempt.outcome}
                             </span>
                             {attempt.outcomeHint && (
@@ -2721,7 +2721,7 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
   return (
     <Tooltip>
       <TooltipTrigger
-        aria-label={`${model.name}: ${state}`}
+        aria-label={`${model.name}: ${state}${attempt.outcomeHint ? `. ${attempt.outcomeHint}` : ""}`}
         className={cn(
           "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           attempt.solved
