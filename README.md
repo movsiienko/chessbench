@@ -110,6 +110,10 @@ tests: workflows execute in-process on the Workflow SDK's local world against an
 in-memory PGlite database migrated from `drizzle/`, with scripted models
 installed as the AI SDK's default provider. `bun run test` runs both.
 
+`bun run typecheck` generates Next's route types and runs `bun check`, which
+needs Bun 1.4.3 or later. `next build` skips type checking, so CI's typecheck
+step is the only one.
+
 ## Results Database
 
 Attempts are recorded in Neon Postgres (schema in `lib/db/schema.ts`,
