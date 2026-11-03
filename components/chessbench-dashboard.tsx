@@ -545,7 +545,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   href={href}
                   aria-label={label}
                   aria-current={current ? "page" : undefined}
-                  className="relative inline-flex h-9 items-center gap-1.5 rounded-md text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-foreground/60 uppercase transition-colors outline-none after:absolute after:inset-x-0 after:bottom-[-5px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:text-foreground aria-[current=page]:after:opacity-100 dark:text-muted-foreground dark:hover:text-foreground dark:aria-[current=page]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+                  className="relative inline-flex h-9 min-w-6 items-center justify-center gap-1.5 rounded-md text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-foreground/60 uppercase transition-colors outline-none after:absolute after:inset-x-0 after:bottom-[-5px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:text-foreground aria-[current=page]:after:opacity-100 dark:text-muted-foreground dark:hover:text-foreground dark:aria-[current=page]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
                 >
                   <Icon aria-hidden />
                   <span className="hidden sm:inline">{label}</span>
@@ -1970,18 +1970,22 @@ function puzzleHref(id: string, query: string) {
 
 function usePuzzleFilters(search: Search) {
   const { PUZZLES, RATING_BOUNDS } = useDashboard()
-  const router = useRouter()
-  const pathname = usePathname()
 
   // SAFETY: an unknown theme id matches no puzzle and shows as a removable chip.
   const selectedThemes = search.getAll("theme") as CategoryId[]
   const sideParam = search.get("side")
   const side: Side = sideParam === "w" || sideParam === "b" ? sideParam : "any"
+  // Hand-edited links: clamp to the slider's bounds and drop reversed ranges.
   const rating = /^(\d+)-(\d+)$/.exec(search.get("rating") ?? "")
-  const ratingRange: [number, number] = rating
-    ? [Number(rating[1]), Number(rating[2])]
-    : RATING_BOUNDS
-  const sort = search.get("sort") ?? "popularity"
+  const low = Math.max(Number(rating?.[1]), RATING_BOUNDS[0])
+  const high = Math.min(Number(rating?.[2]), RATING_BOUNDS[1])
+  const ratingRange: [number, number] =
+    rating && low <= high ? [low, high] : RATING_BOUNDS
+  const sortParam = search.get("sort")
+  const sort =
+    sortParam === "rating" || sortParam === "rating-asc"
+      ? sortParam
+      : "popularity"
 
   const filterParams = new URLSearchParams(search.toString())
   filterParams.delete("model")
@@ -2011,12 +2015,17 @@ function usePuzzleFilters(search: Search) {
     return b.popularity - a.popularity
   })
 
-  /** Pushes a history entry unless `replace`, which slider drags use. */
+  /**
+   * Native history calls, which Next syncs into `useSearchParams`: same-page
+   * query changes need no server round trip. Reads the live URL, not the
+   * render snapshot, so two quick changes do not overwrite each other. Pushes
+   * a history entry unless `replace`, which slider drags use.
+   */
   const setParams = (
     changes: Record<string, string | string[] | null>,
     replace = false
   ) => {
-    const next = new URLSearchParams(search.toString())
+    const next = new URLSearchParams(window.location.search)
     for (const [key, value] of Object.entries(changes)) {
       next.delete(key)
       for (const item of value === null ? [] : [value].flat()) {
@@ -2024,12 +2033,8 @@ function usePuzzleFilters(search: Search) {
       }
     }
     const query = next.toString()
-    const href = query ? `${pathname}?${query}` : pathname
-    if (replace) {
-      router.replace(href, { scroll: false })
-    } else {
-      router.push(href, { scroll: false })
-    }
+    const href = query ? `?${query}` : window.location.pathname
+    window.history[replace ? "replaceState" : "pushState"](null, "", href)
   }
 
   return {
@@ -2068,9 +2073,14 @@ function PuzzleDetail({ id, search }: { id: string; search: Search }) {
   const index = list.findIndex((puzzle) => puzzle.id === id)
   const puzzle = list[index]
 
-  // The route 404s on unknown ids before this renders.
+  // The route 404s on unknown ids, so this is only reached when the page is
+  // newer than the data this tab loaded.
   if (!puzzle) {
-    return null
+    return (
+      <p className="text-muted-foreground">
+        This puzzle is newer than the loaded results. Reload the page to see it.
+      </p>
+    )
   }
 
   const step = (direction: number) =>
@@ -2407,9 +2417,13 @@ function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
       </CardContent>
       <CardContent className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
-          {/* Stretched over the card: other links can sit above it later. */}
+          {/*
+            Stretched over the card so other links can sit above it later. No
+            prefetch: a grid of hundreds of cards would fetch every page.
+          */}
           <Link
             href={href}
+            prefetch={false}
             aria-label={label}
             className="font-mono text-xs text-muted-foreground outline-none after:absolute after:inset-0 after:rounded-lg"
           >
