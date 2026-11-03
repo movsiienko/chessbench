@@ -33,6 +33,10 @@ jobs:
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
+        with:
+          # 1.4.3 is the first Bun with `bun check`, and its checker matches
+          # TypeScript 7.0.2 (1.4.4 follows the 7.1 beta). Bump with typescript.
+          bun-version: 1.4.3
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
