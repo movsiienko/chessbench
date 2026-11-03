@@ -22,7 +22,7 @@ export type AttemptEvidence<Model extends string = string> = {
   record: AttemptSummary
 }
 
-export const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
+const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
   ok: "Unsolved",
   wrong_move: "Wrong move",
   illegal_move: "Illegal move",
@@ -31,7 +31,7 @@ export const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
   error: "Error",
 }
 
-export const outcomeHints: Record<LichessPuzzleAttemptStatus, string> = {
+const outcomeHints: Record<LichessPuzzleAttemptStatus, string> = {
   ok: "Ended without completing the line.",
   wrong_move: "A legal move, but not the solution.",
   illegal_move: "A move the position does not allow.",
