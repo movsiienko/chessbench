@@ -209,6 +209,13 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     return
   }
 
+  // Nothing has been played yet, so the side to move is the solver, whose
+  // pieces belong at the bottom.
+  const want = fen.includes(" b ") ? "orientation-black" : "orientation-white"
+  if (await page.locator(`.cg-wrap.${want}`).count())
+    ok("board orientation", `${want} for ${fen}`)
+  else fail("board orientation", `expected ${want} for ${fen}`)
+
   const statusBefore = await page.evaluate(() =>
     [...document.querySelectorAll('[role="status"]')]
       .map((el) => el.textContent?.trim() ?? "")
