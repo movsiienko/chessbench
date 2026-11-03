@@ -171,8 +171,8 @@ async function checkSeriesContrast(page: Page, theme: string) {
 
 /** The board must be operable, and reduced motion must not break that. */
 async function checkBoardAndMotion(page: Page, reduced: boolean) {
-  await page.getByRole("tab", { name: /problems/i }).click()
-  await page.locator('[role="button"][aria-label*="Puzzle"]').first().click()
+  await page.getByRole("link", { name: /problems/i }).click()
+  await page.locator('a[aria-label*="Puzzle"]').first().click()
   await page.waitForSelector(".cg-wrap")
   await page.evaluate(() =>
     document.querySelector(".cg-wrap")?.setAttribute("data-probe", "original")
@@ -267,8 +267,8 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
 /** A failed attempt must not relabel its correct first move or discard evidence. */
 async function checkAttemptEvidence(page: Page) {
   await page.goto(BASE, { waitUntil: "networkidle" })
-  await page.getByRole("tab", { name: /problems/i }).click()
-  await page.getByRole("button", { name: /Puzzle lichess:bHLqd,/ }).click()
+  await page.getByRole("link", { name: /problems/i }).click()
+  await page.getByRole("link", { name: /Puzzle lichess:bHLqd,/ }).click()
   for (const name of [
     "GPT 5.5",
     "DeepSeek V3.2 Thinking",
@@ -329,9 +329,9 @@ async function checkAttemptEvidence(page: Page) {
     (turn) => turn.reasoningText
   )!.reasoningText!
   await page.goto(BASE, { waitUntil: "networkidle" })
-  await page.getByRole("tab", { name: /problems/i }).click()
+  await page.getByRole("link", { name: /problems/i }).click()
   await page
-    .getByRole("button", {
+    .getByRole("link", {
       name: new RegExp(`Puzzle ${withReasoning.itemId},`),
     })
     .click()

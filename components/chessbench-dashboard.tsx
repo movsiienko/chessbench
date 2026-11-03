@@ -31,6 +31,8 @@ import {
   Trophy,
   X,
 } from "lucide-react"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
   Bar,
@@ -115,7 +117,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Tooltip,
   TooltipContent,
@@ -143,7 +144,6 @@ import {
 } from "@/lib/chess/moves"
 import { cn } from "@/lib/utils"
 
-type View = "leaderboard" | "problems" | "docs"
 /** A scoreboard entry id: one model at one reasoning level. */
 type ModelId = string
 type Score = DashboardData["scoreboard"][number]
@@ -482,36 +482,41 @@ function useMounted() {
   )
 }
 
-export function ChessBenchDashboard({ data }: { data: DashboardData }) {
+export function ChessBenchDashboard({
+  data,
+  children,
+}: {
+  data: DashboardData
+  children: React.ReactNode
+}) {
   const dashboard = React.useMemo(() => deriveDashboard(data), [data])
 
   return (
     <DashboardContext.Provider value={dashboard}>
-      <DashboardShell />
+      <DashboardShell>{children}</DashboardShell>
     </DashboardContext.Provider>
   )
 }
 
-function DashboardShell() {
-  const [view, setView] = React.useState<View>("leaderboard")
+const SECTIONS = [
+  { href: "/", label: "Leaderboard", icon: Trophy },
+  { href: "/puzzles", label: "Problems", icon: Puzzle },
+  { href: "/docs", label: "Docs", icon: BookOpen },
+] as const
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const { resolvedTheme, setTheme } = useTheme()
   const mounted = useMounted()
   const isDark = mounted && resolvedTheme === "dark"
   const shortcutLabel = useThemeShortcutLabel()
 
   return (
-    <Tabs
-      value={view}
-      onValueChange={(value) => {
-        // SAFETY: the only TabsTriggers rendered carry View values.
-        setView(value as View)
-      }}
-      className="min-h-svh bg-background text-foreground"
-    >
+    <div className="flex min-h-svh flex-col gap-2 bg-background text-foreground">
       {/*
         First thing in the tab order: the sticky header puts a wordmark, three
-        tabs and the theme toggle ahead of the content on every keyboard entry,
-        and the tablist has to be stepped through again after each view change.
+        section links and the theme toggle ahead of the content on every
+        keyboard entry.
       */}
       <a
         href={`#${MAIN_CONTENT_ID}`}
@@ -527,32 +532,27 @@ function DashboardShell() {
             </Badge>
             <span className="truncate">ChessBench</span>
           </div>
-          <TabsList
-            variant="line"
-            className="ml-4 h-10 gap-4 border-l border-border pl-4"
+          <nav
+            aria-label="Sections"
+            className="ml-4 flex h-10 items-center gap-4 border-l border-border pl-4"
           >
-            <TabsTrigger
-              value="leaderboard"
-              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
-            >
-              <Trophy data-icon="inline-start" />
-              <span className="hidden sm:inline">Leaderboard</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="problems"
-              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
-            >
-              <Puzzle data-icon="inline-start" />
-              <span className="hidden sm:inline">Problems</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="docs"
-              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
-            >
-              <BookOpen data-icon="inline-start" />
-              <span className="hidden sm:inline">Docs</span>
-            </TabsTrigger>
-          </TabsList>
+            {SECTIONS.map(({ href, label, icon: Icon }) => {
+              const current =
+                href === "/" ? pathname === "/" : pathname.startsWith(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-label={label}
+                  aria-current={current ? "page" : undefined}
+                  className="relative inline-flex h-9 items-center gap-1.5 rounded-md text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-foreground/60 uppercase transition-colors outline-none after:absolute after:inset-x-0 after:bottom-[-5px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:text-foreground aria-[current=page]:after:opacity-100 dark:text-muted-foreground dark:hover:text-foreground dark:aria-[current=page]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+                >
+                  <Icon aria-hidden />
+                  <span className="hidden sm:inline">{label}</span>
+                </Link>
+              )
+            })}
+          </nav>
           <Tooltip>
             {/*
               `aria-keyshortcuts` takes the constant so the announced binding is
@@ -586,23 +586,15 @@ function DashboardShell() {
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}
-        className="mx-auto w-full max-w-[1360px] px-4 py-6 outline-none sm:px-6 lg:px-8"
+        className="mx-auto w-full max-w-[1360px] px-4 py-6 text-sm outline-none sm:px-6 lg:px-8"
       >
-        <TabsContent value="leaderboard">
-          <LeaderboardView />
-        </TabsContent>
-        <TabsContent value="problems">
-          <ProblemsView />
-        </TabsContent>
-        <TabsContent value="docs">
-          <DocsView />
-        </TabsContent>
+        {children}
       </main>
-    </Tabs>
+    </div>
   )
 }
 
-function LeaderboardView() {
+export function LeaderboardView() {
   const {
     SCOREBOARD,
     MODELS,
@@ -1937,77 +1929,194 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
   )
 }
 
-function ProblemsView() {
-  const { PUZZLES, META, categoryById, RATING_BOUNDS } = useDashboard()
-  const [activeId, setActiveId] = React.useState<string | null>(null)
-  const [selectedThemes, setSelectedThemes] = React.useState<CategoryId[]>([])
-  const [side, setSide] = React.useState<"any" | "w" | "b">("any")
-  const [ratingRange, setRatingRange] =
-    React.useState<[number, number]>(RATING_BOUNDS)
-  const [sort, setSort] = React.useState("popularity")
+type Search = Pick<URLSearchParams, "get" | "getAll" | "toString">
+type Side = "any" | "w" | "b"
 
-  const filtered = React.useMemo(() => {
-    return PUZZLES.filter((puzzle) => {
-      if (puzzle.rating < ratingRange[0] || puzzle.rating > ratingRange[1]) {
-        return false
-      }
-      if (
-        selectedThemes.length > 0 &&
-        !puzzle.themes.some((theme) => selectedThemes.includes(theme))
-      ) {
-        return false
-      }
-      if (side !== "any" && puzzle.side !== side) {
-        return false
-      }
-      return true
-    }).sort((a, b) => {
-      if (sort === "rating") {
-        return b.rating - a.rating
-      }
-      if (sort === "rating-asc") {
-        return a.rating - b.rating
-      }
-      return b.popularity - a.popularity
-    })
-  }, [PUZZLES, ratingRange, selectedThemes, side, sort])
+const NO_SEARCH = new URLSearchParams()
 
-  const activeIndex = filtered.findIndex((puzzle) => puzzle.id === activeId)
-  const activePuzzle = activeIndex >= 0 ? filtered[activeIndex] : null
+/**
+ * Puzzle filters, sort and the open model trace live in the URL so Back,
+ * Forward, reload and shared links all land on the same view. Static
+ * prerendering has no query string, so it renders the unfiltered view and the
+ * client swaps in the real one after hydration.
+ */
+function withSearch(render: (search: Search) => React.ReactNode) {
+  return (
+    <React.Suspense fallback={render(NO_SEARCH)}>
+      <SearchParams render={render} />
+    </React.Suspense>
+  )
+}
 
-  const clearFilters = () => {
-    setSelectedThemes([])
-    setSide("any")
-    setRatingRange(RATING_BOUNDS)
+function SearchParams({
+  render,
+}: {
+  render: (search: Search) => React.ReactNode
+}) {
+  return render(useSearchParams())
+}
+
+export function PuzzlesPage() {
+  return withSearch((search) => <ProblemsView search={search} />)
+}
+
+export function PuzzlePage({ id }: { id: string }) {
+  return withSearch((search) => <PuzzleDetail id={id} search={search} />)
+}
+
+function puzzleHref(id: string, query: string) {
+  return `/puzzles/${encodeURIComponent(id)}${query ? `?${query}` : ""}`
+}
+
+function usePuzzleFilters(search: Search) {
+  const { PUZZLES, RATING_BOUNDS } = useDashboard()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  // SAFETY: an unknown theme id matches no puzzle and shows as a removable chip.
+  const selectedThemes = search.getAll("theme") as CategoryId[]
+  const sideParam = search.get("side")
+  const side: Side = sideParam === "w" || sideParam === "b" ? sideParam : "any"
+  const rating = /^(\d+)-(\d+)$/.exec(search.get("rating") ?? "")
+  const ratingRange: [number, number] = rating
+    ? [Number(rating[1]), Number(rating[2])]
+    : RATING_BOUNDS
+  const sort = search.get("sort") ?? "popularity"
+
+  const filterParams = new URLSearchParams(search.toString())
+  filterParams.delete("model")
+  const filterQuery = filterParams.toString()
+
+  const filtered = PUZZLES.filter((puzzle) => {
+    if (puzzle.rating < ratingRange[0] || puzzle.rating > ratingRange[1]) {
+      return false
+    }
+    if (
+      selectedThemes.length > 0 &&
+      !puzzle.themes.some((theme) => selectedThemes.includes(theme))
+    ) {
+      return false
+    }
+    if (side !== "any" && puzzle.side !== side) {
+      return false
+    }
+    return true
+  }).sort((a, b) => {
+    if (sort === "rating") {
+      return b.rating - a.rating
+    }
+    if (sort === "rating-asc") {
+      return a.rating - b.rating
+    }
+    return b.popularity - a.popularity
+  })
+
+  /** Pushes a history entry unless `replace`, which slider drags use. */
+  const setParams = (
+    changes: Record<string, string | string[] | null>,
+    replace = false
+  ) => {
+    const next = new URLSearchParams(search.toString())
+    for (const [key, value] of Object.entries(changes)) {
+      next.delete(key)
+      for (const item of value === null ? [] : [value].flat()) {
+        next.append(key, item)
+      }
+    }
+    const query = next.toString()
+    const href = query ? `${pathname}?${query}` : pathname
+    if (replace) {
+      router.replace(href, { scroll: false })
+    } else {
+      router.push(href, { scroll: false })
+    }
   }
+
+  return {
+    selectedThemes,
+    setSelectedThemes: (themes: CategoryId[]) => setParams({ theme: themes }),
+    side,
+    setSide: (value: Side) =>
+      setParams({ side: value === "any" ? null : value }),
+    ratingRange,
+    setRatingRange: (range: [number, number]) =>
+      setParams(
+        {
+          rating:
+            range[0] === RATING_BOUNDS[0] && range[1] === RATING_BOUNDS[1]
+              ? null
+              : `${range[0]}-${range[1]}`,
+        },
+        true
+      ),
+    sort,
+    setSort: (value: string) =>
+      setParams({ sort: value === "popularity" ? null : value }),
+    clearFilters: () => setParams({ theme: null, side: null, rating: null }),
+    filtered,
+    filterQuery,
+    setParams,
+  }
+}
+
+function PuzzleDetail({ id, search }: { id: string; search: Search }) {
+  const { PUZZLES } = useDashboard()
+  const { filtered, filterQuery, setParams } = usePuzzleFilters(search)
+  // A shared link can carry filters that exclude its own puzzle; step through
+  // the whole bank then rather than strand it.
+  const list = filtered.some((puzzle) => puzzle.id === id) ? filtered : PUZZLES
+  const index = list.findIndex((puzzle) => puzzle.id === id)
+  const puzzle = list[index]
+
+  // The route 404s on unknown ids before this renders.
+  if (!puzzle) {
+    return null
+  }
+
+  const step = (direction: number) =>
+    puzzleHref(
+      list[(index + direction + list.length) % list.length].id,
+      filterQuery
+    )
+
+  return (
+    <ProblemFocus
+      key={puzzle.id}
+      puzzle={puzzle}
+      index={index}
+      total={list.length}
+      backHref={`/puzzles${filterQuery ? `?${filterQuery}` : ""}`}
+      previousHref={step(-1)}
+      nextHref={step(1)}
+      openModel={search.get("model")}
+      onOpenModel={(model) => setParams({ model })}
+    />
+  )
+}
+
+function ProblemsView({ search }: { search: Search }) {
+  const { PUZZLES, META, categoryById, RATING_BOUNDS } = useDashboard()
+  const router = useRouter()
+  const {
+    selectedThemes,
+    setSelectedThemes,
+    side,
+    setSide,
+    ratingRange,
+    setRatingRange,
+    sort,
+    setSort,
+    clearFilters,
+    filtered,
+    filterQuery,
+  } = usePuzzleFilters(search)
 
   const randomPuzzle = () => {
     if (filtered.length === 0) {
       return
     }
     const index = Math.floor(Math.random() * filtered.length)
-    setActiveId(filtered[index].id)
-  }
-
-  const stepFocus = (direction: number) => {
-    if (filtered.length === 0) {
-      return
-    }
-    const next = (activeIndex + direction + filtered.length) % filtered.length
-    setActiveId(filtered[next].id)
-  }
-
-  if (activePuzzle) {
-    return (
-      <ProblemFocus
-        key={activePuzzle.id}
-        puzzle={activePuzzle}
-        index={activeIndex}
-        total={filtered.length}
-        onBack={() => setActiveId(null)}
-        onStep={stepFocus}
-      />
-    )
+    router.push(puzzleHref(filtered[index].id, filterQuery))
   }
 
   return (
@@ -2128,7 +2237,7 @@ function ProblemsView() {
             <ProblemCard
               key={puzzle.id}
               puzzle={puzzle}
-              onOpen={() => setActiveId(puzzle.id)}
+              href={puzzleHref(puzzle.id, filterQuery)}
             />
           ))}
         </div>
@@ -2148,8 +2257,8 @@ function FiltersPopover({
 }: {
   selectedThemes: CategoryId[]
   setSelectedThemes: (themes: CategoryId[]) => void
-  side: "any" | "w" | "b"
-  setSide: (side: "any" | "w" | "b") => void
+  side: Side
+  setSide: (side: Side) => void
   ratingRange: [number, number]
   setRatingRange: (range: [number, number]) => void
   onClear: () => void
@@ -2220,7 +2329,7 @@ function FiltersPopover({
             value={side}
             onValueChange={(value) => {
               // SAFETY: the only SelectItems rendered carry these three values.
-              setSide(value as "any" | "w" | "b")
+              setSide(value as Side)
             }}
           >
             <SelectTrigger className="w-full">
@@ -2272,16 +2381,10 @@ function FiltersPopover({
   )
 }
 
-function ProblemCard({
-  puzzle,
-  onOpen,
-}: {
-  puzzle: PuzzleItem
-  onOpen: () => void
-}) {
+function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
   const { categoryById } = useDashboard()
-  // The card is the only focusable thing here, so its name has to carry the
-  // position too. Meta first, position last, and the board itself is marked
+  // The puzzle link is stretched over the whole card, so its name has to carry
+  // the position too. Meta first, position last, and the board itself is marked
   // decorative so the same squares are not read out twice.
   const label = React.useMemo(() => {
     const themes = puzzle.themes.map(
@@ -2298,27 +2401,20 @@ function ProblemCard({
   }, [categoryById, puzzle])
 
   return (
-    <Card
-      role="button"
-      tabIndex={0}
-      aria-label={label}
-      className="cursor-pointer gap-3 rounded-lg transition-transform outline-none hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50"
-      onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onOpen()
-        }
-      }}
-    >
+    <Card className="relative gap-3 rounded-lg transition-transform hover:-translate-y-0.5 has-[a:focus-visible]:ring-3 has-[a:focus-visible]:ring-ring/50">
       <CardContent className="pt-0">
         <ChessBoard fen={puzzle.fen} interactive={false} small decorative />
       </CardContent>
       <CardContent className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-mono text-xs text-muted-foreground">
+          {/* Stretched over the card: other links can sit above it later. */}
+          <Link
+            href={href}
+            aria-label={label}
+            className="font-mono text-xs text-muted-foreground outline-none after:absolute after:inset-0 after:rounded-lg"
+          >
             {puzzle.id}
-          </span>
+          </Link>
           <span className="font-mono text-sm font-semibold tabular-nums">
             {puzzle.rating}
           </span>
@@ -2346,14 +2442,20 @@ function ProblemFocus({
   puzzle,
   index,
   total,
-  onBack,
-  onStep,
+  backHref,
+  previousHref,
+  nextHref,
+  openModel,
+  onOpenModel,
 }: {
   puzzle: PuzzleItem
   index: number
   total: number
-  onBack: () => void
-  onStep: (direction: number) => void
+  backHref: string
+  previousHref: string
+  nextHref: string
+  openModel: string | null
+  onOpenModel: (model: string | null) => void
 }) {
   const { modelById, categoryById } = useDashboard()
   const [boardFen, setBoardFen] = React.useState(puzzle.fen)
@@ -2421,7 +2523,12 @@ function ProblemFocus({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <Button size="sm" variant="ghost" onClick={onBack}>
+        <Button
+          size="sm"
+          variant="ghost"
+          nativeButton={false}
+          render={<Link href={backHref} />}
+        >
           <ArrowLeft data-icon="inline-start" />
           All puzzles
         </Button>
@@ -2434,7 +2541,8 @@ function ProblemFocus({
             size="icon-sm"
             variant="outline"
             aria-label="Previous puzzle"
-            onClick={() => onStep(-1)}
+            nativeButton={false}
+            render={<Link href={previousHref} />}
           >
             <ChevronLeft />
           </Button>
@@ -2442,7 +2550,8 @@ function ProblemFocus({
             size="icon-sm"
             variant="outline"
             aria-label="Next puzzle"
-            onClick={() => onStep(1)}
+            nativeButton={false}
+            render={<Link href={nextHref} />}
           >
             <ChevronRight />
           </Button>
@@ -2574,7 +2683,11 @@ function ProblemFocus({
             </CardAction>
           </CardHeader>
           <CardContent className="cb-model-attempts">
-            <Accordion className="border-t">
+            <Accordion
+              className="border-t"
+              value={openModel ? [openModel] : []}
+              onValueChange={(value) => onOpenModel(value[0] ?? null)}
+            >
               {attempts.map((attempt) => {
                 const model = modelById(attempt.model)
                 return (
@@ -2941,7 +3054,7 @@ function MetaCell({
   )
 }
 
-function DocsView() {
+export function DocsView() {
   const {
     SCOREBOARD,
     CATEGORIES,
