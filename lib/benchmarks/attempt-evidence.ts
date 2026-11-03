@@ -2,6 +2,7 @@ import { readableMove } from "../chess/moves"
 import type {
   LichessPuzzleAttemptRow,
   LichessPuzzleAttemptStatus,
+  LichessPuzzleAttemptTurn,
 } from "./local-runner"
 
 /** An attempt record without its turns, which are fetched when a transcript opens. */
@@ -51,6 +52,24 @@ export function buildAttemptEvidence<Model extends string>(
   }
 }
 
+/**
+ * A turn's reasoning as readable text (the AI SDK's join of the readable
+ * reasoning parts), or `hidden` when the model reasoned but
+ * the provider returned only signed, encrypted, or no text (Claude, GPT, Grok),
+ * or nothing when it did not reason at all.
+ */
+export function turnReasoning(
+  turn: LichessPuzzleAttemptTurn
+): { text: string } | "hidden" | null {
+  const text = turn.reasoningText ?? ""
+  if (text.trim()) return { text }
+  const signedOrEncrypted =
+    Array.isArray(turn.reasoning) && turn.reasoning.length > 0
+  return signedOrEncrypted || (turn.usage?.reasoningTokens ?? 0) > 0
+    ? "hidden"
+    : null
+}
+
 /** Download the recorded evidence, including structured turns and provider metadata. */
 export function attemptJson(record: LichessPuzzleAttemptRow): string {
   return `${JSON.stringify(record, null, 2)}\n`
@@ -84,12 +103,14 @@ export function attemptTranscript(row: LichessPuzzleAttemptRow): string {
     `Parsed move: ${turn.parsedMove || "(none)"}`,
     `Expected move: ${turn.expectedMove}`,
     `Result: ${turn.result}`,
-    ...(turn.reasoningText ? ["Reasoning:", turn.reasoningText] : []),
-    ...(!turn.reasoningText && turn.reasoning !== undefined
-      ? ["Recorded reasoning:", JSON.stringify(turn.reasoning, null, 2)]
-      : []),
+    ...reasoningLines(turnReasoning(turn)),
     ...(turn.errorMessage ? [`Error: ${turn.errorMessage}`] : []),
   ])
 
   return [...header, ...turnText].join("\n")
+}
+
+function reasoningLines(reasoning: ReturnType<typeof turnReasoning>) {
+  if (reasoning === "hidden") return ["Reasoning: not exposed by the provider"]
+  return reasoning ? ["Reasoning:", reasoning.text] : []
 }

@@ -3,6 +3,7 @@
 import {
   attemptJson,
   attemptTranscript,
+  turnReasoning,
 } from "@/lib/benchmarks/attempt-evidence"
 import * as React from "react"
 import { Chessground } from "@lichess-org/chessground"
@@ -2804,6 +2805,7 @@ function AttemptTrace({
   puzzle: PuzzleItem
   attempt: SolutionAttempt
 }) {
+  const { modelById } = useDashboard()
   const [loaded, setLoaded] = React.useState<{
     id: string
     record: LichessPuzzleAttemptRow | null
@@ -2838,11 +2840,35 @@ function AttemptTrace({
     )
   }
 
+  const { turns } = loaded.record
   return (
     <>
-      <pre className="max-h-72 overflow-auto rounded-md border bg-muted/50 p-3 font-mono text-xs leading-6 whitespace-pre-wrap">
-        {attemptTranscript(loaded.record)}
-      </pre>
+      <ol className="space-y-5">
+        {turns.map((turn) => (
+          <li key={turn.turnIndex} className="space-y-2">
+            {turns.length > 1 && (
+              <h4 className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                Turn {turn.turnIndex + 1}
+              </h4>
+            )}
+            {turn.errorMessage ? (
+              <TraceField label="Error">
+                <p className="text-xs text-destructive">{turn.errorMessage}</p>
+              </TraceField>
+            ) : (
+              <TraceField label="Answer">
+                <pre className="rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs whitespace-pre-wrap">
+                  {turn.rawAnswer || "(empty)"}
+                </pre>
+              </TraceField>
+            )}
+            <TurnReasoning
+              reasoning={turnReasoning(turn)}
+              vendor={modelById(attempt.model).vendor}
+            />
+          </li>
+        ))}
+      </ol>
       <TranscriptActions
         puzzle={puzzle}
         attempt={attempt}
@@ -2852,10 +2878,51 @@ function AttemptTrace({
   )
 }
 
+function TraceField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-medium text-muted-foreground">{label}</div>
+      {children}
+    </div>
+  )
+}
+
+/** Only readable reasoning is shown; signatures and encrypted blobs stay in the JSON download. */
+function TurnReasoning({
+  reasoning,
+  vendor,
+}: {
+  reasoning: ReturnType<typeof turnReasoning>
+  vendor: string
+}) {
+  if (reasoning === null) {
+    return null
+  }
+
+  return (
+    <TraceField label="Reasoning">
+      {reasoning === "hidden" ? (
+        <p className="text-xs text-muted-foreground">
+          {vendor} doesn&apos;t expose this model&apos;s reasoning.
+        </p>
+      ) : (
+        <div className="max-h-72 overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 whitespace-pre-wrap">
+          {reasoning.text}
+        </div>
+      )}
+    </TraceField>
+  )
+}
+
 /**
- * The transcript above is the trace, so these actions take it away rather than
- * link to a viewer that does not exist: a JSON download of the recorded attempt
- * and a clipboard copy of the trace text.
+ * Take the full evidence away: a JSON download of the recorded attempt and a
+ * clipboard copy of the plain-text transcript.
  */
 function TranscriptActions({
   puzzle,
@@ -2880,9 +2947,6 @@ function TranscriptActions({
 
   return (
     <div className="mt-3 flex items-center justify-end gap-2">
-      <span className="mr-auto font-mono text-xs text-muted-foreground">
-        {transcript.split("\n").length} lines
-      </span>
       <Button
         size="sm"
         variant="ghost"
