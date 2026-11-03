@@ -58,18 +58,15 @@ export default async function TagPage({ params }: Props) {
     <main className="mx-auto max-w-[1360px] space-y-8 px-4 py-6 sm:px-6 lg:px-8">
       <Link
         href="/"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ArrowLeft className="size-4" />
         ChessBench
       </Link>
 
       <header className="space-y-2 border-b pb-6">
-        <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-          Tag
-        </div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          {category.label}
+          {category.label} puzzles
         </h1>
         <p className="text-sm text-muted-foreground">
           {puzzles.length} of {data.meta.puzzleCount} benchmark puzzles carry
@@ -88,7 +85,7 @@ export default async function TagPage({ params }: Props) {
             <TableHeader>
               <TableRow>
                 <TableHead>Model</TableHead>
-                <TableHead className="text-right">Solved</TableHead>
+                <TableHead className="text-right">Solved rate</TableHead>
                 <TableHead className="text-right">Puzzles</TableHead>
               </TableRow>
             </TableHeader>
