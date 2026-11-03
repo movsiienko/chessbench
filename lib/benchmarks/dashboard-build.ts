@@ -1,5 +1,9 @@
 import { buildAttemptEvidence, type AttemptSummary } from "./attempt-evidence"
-import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
+import {
+  MOVE_TIME_LIMIT_MS,
+  type LichessPuzzleBenchmarkItem,
+} from "./lichess-puzzles"
+import { QUALITY_FILTERS, RATING_BANDS } from "./lichess-puzzle-builder"
 import { labOf, MODELS, type LabId } from "./models"
 
 export type CategoryId =
@@ -200,6 +204,13 @@ export function buildDashboardData({
       ratingBounds: ratingBoundsOf(ratings),
       ratingStep: RATING_STEP,
       maxOutputTokens: "uncapped",
+      moveTimeLimitSeconds: MOVE_TIME_LIMIT_MS / 1000,
+      ratingBands: RATING_BANDS.map((band) => ({
+        label: band.label,
+        count: items.filter((item) => item.metadata.ratingBand === band.id)
+          .length,
+      })),
+      qualityFilters: QUALITY_FILTERS,
       eloIsEstimated: true,
       costIsExtrapolated: true,
     },
