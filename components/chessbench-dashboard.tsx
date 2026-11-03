@@ -31,6 +31,7 @@ import {
   Trophy,
   X,
 } from "lucide-react"
+import Link from "next/link"
 import { useTheme } from "next-themes"
 import {
   Bar,
@@ -2477,12 +2478,13 @@ function ProblemFocus({
           <MetaCell label={`Themes - ${puzzle.themes.length}`}>
             <span className="flex flex-wrap gap-x-2 gap-y-1">
               {puzzle.themes.map((theme) => (
-                <span
+                <Link
                   key={theme}
-                  className="border-b-2 border-[var(--chess-amber)]/60"
+                  href={`/tags/${theme}`}
+                  className="border-b-2 border-[var(--chess-amber)]/60 hover:border-[var(--chess-amber)]"
                 >
                   {categoryById(theme)?.label ?? theme}
-                </span>
+                </Link>
               ))}
             </span>
           </MetaCell>

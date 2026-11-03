@@ -12,5 +12,6 @@ export async function POST(request: Request) {
   }
 
   revalidatePath("/")
+  revalidatePath("/tags/[tag]", "page")
   return Response.json({ revalidated: true })
 }
