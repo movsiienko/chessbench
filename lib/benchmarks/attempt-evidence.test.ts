@@ -128,7 +128,12 @@ describe("published attempt evidence", () => {
 
   test("distinguishes a wrong first move, invalid answer, and provider error", () => {
     const original = gpt5[0]!
-    for (const status of ["wrong_move", "invalid_format", "error"] as const) {
+    for (const status of [
+      "wrong_move",
+      "illegal_move",
+      "invalid_format",
+      "error",
+    ] as const) {
       const hasMove = status === "wrong_move"
       const record = {
         ...original,
@@ -154,16 +159,22 @@ describe("published attempt evidence", () => {
           },
         ],
       }
-      const evidence = buildAttemptEvidence("test", "attempt", record)
-      assert.equal(evidence.firstMove.correct, hasMove ? false : null)
+      const evidence = buildAttemptEvidence("test", "attempt", record, "Qh5")
+      const illegal = status === "illegal_move"
+      assert.equal(
+        evidence.firstMove.correct,
+        hasMove || illegal ? false : null
+      )
       assert.equal(
         evidence.firstMove.label,
-        hasMove ? "a2 to a3" : "No valid move"
+        hasMove ? "a2 to a3" : illegal ? "Qh5 (illegal)" : "No valid move"
       )
+      assert.notEqual(evidence.outcomeHint, "")
       assert.equal(evidence.thinkingTokens, null)
       const labels = {
         wrong_move: "Wrong move",
-        invalid_format: "Invalid answer",
+        illegal_move: "Illegal move",
+        invalid_format: "Invalid format",
         error: "Error",
       }
       assert.equal(evidence.outcome, `${labels[status]} on turn 1`)

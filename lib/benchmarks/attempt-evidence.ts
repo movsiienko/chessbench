@@ -13,35 +13,58 @@ export type AttemptEvidence<Model extends string = string> = {
   model: Model
   solved: boolean
   firstMove: { uci: string; label: string; correct: boolean | null }
+  status: LichessPuzzleAttemptStatus
   outcome: string
+  /** Why an unsolved attempt ended, in a sentence; empty when solved. */
+  outcomeHint: string
   thinkingMs: number
   thinkingTokens: number | null
   record: AttemptSummary
 }
 
-const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
+export const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
   ok: "Unsolved",
   wrong_move: "Wrong move",
-  invalid_format: "Invalid answer",
+  illegal_move: "Illegal move",
+  invalid_format: "Invalid format",
   timeout: "Move time limit exceeded",
   error: "Error",
+}
+
+export const outcomeHints: Record<LichessPuzzleAttemptStatus, string> = {
+  ok: "Ended without completing the line.",
+  wrong_move: "A legal move, but not the solution.",
+  illegal_move: "A move the position does not allow.",
+  invalid_format: "No move could be read from the answer.",
+  timeout: "No answer within the move time limit.",
+  error: "The provider returned an error.",
 }
 
 export function buildAttemptEvidence<Model extends string>(
   model: Model,
   attemptId: string,
-  row: AttemptSummary
+  row: AttemptSummary,
+  /** The final turn's raw answer; shown when the first move was illegal. */
+  finalAnswer = ""
 ): AttemptEvidence<Model> {
   const playedMove = row.submittedPlayerMoves[0] ?? ""
+  const illegalFirst =
+    row.status === "illegal_move" && row.invalidTurnIndex === 0
   return {
     attemptId,
     model,
     solved: row.solved,
     firstMove: {
       uci: playedMove,
-      label: playedMove ? readableMove(playedMove) : "No valid move",
-      correct: playedMove ? row.firstMoveCorrect : null,
+      label: playedMove
+        ? readableMove(playedMove)
+        : illegalFirst && finalAnswer
+          ? `${finalAnswer.trim()} (illegal)`
+          : "No valid move",
+      correct: playedMove ? row.firstMoveCorrect : illegalFirst ? false : null,
     },
+    status: row.status,
+    outcomeHint: row.solved ? "" : outcomeHints[row.status],
     outcome: row.solved
       ? "Solved"
       : `${outcomeLabels[row.status]}${row.invalidTurnIndex === null ? "" : ` on turn ${row.invalidTurnIndex + 1}`}`,

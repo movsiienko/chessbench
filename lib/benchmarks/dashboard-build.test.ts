@@ -173,6 +173,42 @@ describe("entriesFrom", () => {
     assert.equal(pending[models[0]!.id], 1)
   })
 
+  test("tells stored illegal moves apart from invalid formats", () => {
+    const legacy = (itemId: string, finalAnswer: string) => ({
+      ...stored(itemId, "invalid_format"),
+      record: {
+        ...row("openai/gpt-5.5", itemId, 1500, false),
+        status: "invalid_format" as const,
+        invalidTurnIndex: 0,
+        submittedPlayerMoves: [],
+      },
+      finalAnswer,
+    })
+    const entries = entriesFrom([
+      legacy("p1", "Bf3"),
+      legacy("p2", "I think Bf3"),
+      stored("p3", "ok"),
+    ])
+    const rows = Object.values(entries.rows)[0]!
+    assert.deepEqual(
+      rows.map((attempt) => attempt.status),
+      ["illegal_move", "invalid_format", "ok"]
+    )
+
+    const data = buildDashboardData({ ...entries, items, datasetSize: 3 })
+    const score = data.scoreboard[0]!
+    assert.equal(score.illegalMoves, 1)
+    assert.equal(score.invalidFormats, 1)
+    assert.equal(score.legalRate, 0.333)
+    const attempts = data.puzzles.flatMap((puzzle) => puzzle.attempts)
+    const illegal = attempts.find(
+      (attempt) => attempt.status === "illegal_move"
+    )
+    assert.equal(illegal?.outcome, "Illegal move on turn 1")
+    assert.equal(illegal?.firstMove.label, "Bf3 (illegal)")
+    assert.equal(illegal?.firstMove.correct, false)
+  })
+
   test("an empty protocol builds an empty dashboard instead of throwing", () => {
     const data = buildDashboardData({
       ...entriesFrom([]),

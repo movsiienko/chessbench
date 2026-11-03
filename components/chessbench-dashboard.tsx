@@ -12,6 +12,7 @@ import type { DrawShape as BoardArrow } from "@lichess-org/chessground/draw"
 import type * as cg from "@lichess-org/chessground/types"
 import {
   ArrowLeft,
+  Ban,
   BarChart3,
   BookOpen,
   Brain,
@@ -19,6 +20,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  CircleHelp,
   Copy,
   Download,
   Filter,
@@ -30,6 +32,7 @@ import {
   Target,
   Trophy,
   X,
+  type LucideIcon,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import {
@@ -149,6 +152,32 @@ type ModelId = string
 type Score = DashboardData["scoreboard"][number]
 type PuzzleItem = DashboardData["puzzles"][number]
 type SolutionAttempt = PuzzleItem["attempts"][number]
+
+/**
+ * How an unsolved attempt ended, as an icon: a cross for a wrong move, a ban
+ * for an illegal one, a question mark when no move could be read at all.
+ */
+const outcomeIcons: Record<SolutionAttempt["status"], LucideIcon> = {
+  ok: X,
+  wrong_move: X,
+  illegal_move: Ban,
+  invalid_format: CircleHelp,
+  timeout: Clock,
+  error: X,
+}
+
+function OutcomeIcon({
+  attempt,
+  ...props
+}: { attempt: SolutionAttempt } & React.ComponentProps<LucideIcon>) {
+  const Icon = attempt.solved ? Check : outcomeIcons[attempt.status]
+  return <Icon {...props} />
+}
+
+/** An unreadable answer is not a chess mistake, so it is drawn neutral, not red. */
+function isUnreadable(attempt: SolutionAttempt) {
+  return !attempt.solved && attempt.status === "invalid_format"
+}
 
 type LabIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
 type LabLogo = {
@@ -310,6 +339,8 @@ function deriveDashboard(data: DashboardData) {
       "puzzles_evaluated",
       "solved_rate_measured",
       "legal_move_rate_measured",
+      "illegal_move_attempts",
+      "invalid_format_attempts",
       "avg_total_tokens_measured",
       "avg_move_seconds_measured",
       "elo_estimated",
@@ -326,6 +357,8 @@ function deriveDashboard(data: DashboardData) {
           score.n,
           score.accuracy,
           score.legalRate,
+          score.illegalMoves,
+          score.invalidFormats,
           score.avgTokens,
           score.avgMoveTime,
           score.elo,
@@ -639,6 +672,14 @@ function LeaderboardView() {
   const avgTokens = average(sorted.map((score) => score.avgTokens))
   const medianMove = median(sorted.map((score) => score.avgMoveTime))
   const meanLegalRate = average(sorted.map((score) => score.legalRate))
+  const illegalMoves = sorted.reduce(
+    (total, score) => total + score.illegalMoves,
+    0
+  )
+  const invalidFormats = sorted.reduce(
+    (total, score) => total + score.invalidFormats,
+    0
+  )
 
   return (
     <div className="space-y-8">
@@ -705,7 +746,7 @@ function LeaderboardView() {
           icon={BarChart3}
           label="Legal moves"
           value={pct(meanLegalRate, 0)}
-          sub="mean parse and legality rate"
+          sub={`${illegalMoves} illegal, ${invalidFormats} invalid format`}
           note={`${META.evaluations.toLocaleString()} evaluations total`}
         />
       </section>
@@ -1848,9 +1889,10 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
       */}
       <TableCaption className="sr-only">
         Per-model benchmark results on {META.benchmarkId}, ranked by accuracy.
-        Puzzles, accuracy, legal-move rate, average tokens and average time are
-        measured; Elo and cost per 1,000 puzzles are derived from them. Pending
-        puzzles ended in a provider error and are excluded until retried.
+        Puzzles, accuracy, legal-move rate with its illegal-move and
+        invalid-format counts, average tokens and average time are measured; Elo
+        and cost per 1,000 puzzles are derived from them. Pending puzzles ended
+        in a provider error and are excluded until retried.
       </TableCaption>
       <TableHeader>
         <TableRow>
@@ -1864,7 +1906,12 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
               hint="Estimated, not played: average rating of the puzzles the model faced, adjusted by its solve rate. Rounded to 10 points until the sample reaches 100 puzzles."
             />
           </TableHead>
-          <TableHead className="text-right">Legal move</TableHead>
+          <TableHead className="text-right">
+            <DerivedLabel
+              label="Legal move"
+              hint="Share of attempts that never ended on an unplayable answer. Illegal: a move the position does not allow. Invalid format: no move could be read from the answer."
+            />
+          </TableHead>
           <TableHead className="text-right">
             <DerivedLabel
               label="Avg tokens"
@@ -1919,6 +1966,17 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
               </TableCell>
               <TableCell className="text-right font-mono">
                 {pct(score.legalRate, 0)}
+                {score.illegalMoves + score.invalidFormats > 0 && (
+                  <span className="block text-xs text-muted-foreground">
+                    {[
+                      score.illegalMoves > 0 && `${score.illegalMoves} illegal`,
+                      score.invalidFormats > 0 &&
+                        `${score.invalidFormats} invalid format`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
                 {tokensText(score.avgTokens, score.n)}
@@ -2586,14 +2644,12 @@ function ProblemFocus({
                             "grid size-6 place-items-center rounded-full",
                             attempt.solved
                               ? "bg-move-correct text-move-correct-foreground"
-                              : "border border-dashed border-move-incorrect text-move-incorrect"
+                              : isUnreadable(attempt)
+                                ? "border border-dashed border-muted-foreground text-muted-foreground"
+                                : "border border-dashed border-move-incorrect text-move-incorrect"
                           )}
                         >
-                          {attempt.solved ? (
-                            <Check className="size-3.5" />
-                          ) : (
-                            <X className="size-3.5" />
-                          )}
+                          <OutcomeIcon attempt={attempt} className="size-3.5" />
                         </span>
                         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                           <ModelDot model={attempt.model} />
@@ -2618,7 +2674,12 @@ function ProblemFocus({
                             {attempt.firstMove.label}
                           </span>
                           <span className="block text-xs text-muted-foreground">
-                            {attempt.outcome}
+                            <span className="font-medium text-foreground">
+                              {attempt.outcome}
+                            </span>
+                            {attempt.outcomeHint && (
+                              <> · {attempt.outcomeHint}</>
+                            )}
                           </span>
                         </span>
                         <span className="justify-self-end font-mono text-xs text-muted-foreground tabular-nums">
@@ -2665,7 +2726,9 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
           "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           attempt.solved
             ? "border border-move-correct/50"
-            : "border border-dashed border-move-incorrect/70"
+            : isUnreadable(attempt)
+              ? "border border-dashed border-muted-foreground/70"
+              : "border border-dashed border-move-incorrect/70"
         )}
       >
         <ModelDot
@@ -2678,18 +2741,19 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
             "absolute -right-1 -bottom-1 grid size-3 place-items-center rounded-full",
             attempt.solved
               ? "bg-move-correct text-move-correct-foreground"
-              : "bg-move-incorrect text-move-incorrect-foreground"
+              : isUnreadable(attempt)
+                ? "bg-muted-foreground text-background"
+                : "bg-move-incorrect text-move-incorrect-foreground"
           )}
         >
-          {attempt.solved ? (
-            <Check className="size-2" strokeWidth={4} />
-          ) : (
-            <X className="size-2" strokeWidth={4} />
-          )}
+          <OutcomeIcon attempt={attempt} className="size-2" strokeWidth={4} />
         </span>
       </TooltipTrigger>
       <TooltipContent>
         {model.name}: {state}
+        {attempt.outcomeHint && (
+          <span className="block opacity-80">{attempt.outcomeHint}</span>
+        )}
       </TooltipContent>
     </Tooltip>
   )
@@ -2998,13 +3062,15 @@ function DocsView() {
                 Each model receives a position in FEN, the side to move, and a
                 strict instruction to output exactly one legal move token in UCI
                 or SAN, with no extra text. Answers are normalized to UCI for
-                scoring, and invalid formats are counted separately from
-                valid-but-wrong moves. Longer puzzles are played out turn by
+                scoring, and three kinds of miss are kept apart: a wrong move is
+                legal but not the solution, an illegal move names a move the
+                position does not allow, and an invalid format is an answer no
+                move could be read from. Longer puzzles are played out turn by
                 turn: a correct move is answered with the expected opponent
                 reply and a request for the next move in the same conversation,
-                and a puzzle ends at the first wrong move, unusable answer, or
-                provider error. The legal move column is the share of attempts
-                that did not end on an unusable answer.
+                and a puzzle ends at the first wrong move, illegal move, invalid
+                format, or provider error. The legal move column is the share of
+                attempts that did not end on an illegal move or invalid format.
               </p>
             </div>
             <div>

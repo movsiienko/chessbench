@@ -21,6 +21,10 @@ export async function loadDashboardData() {
       status: attempts.status,
       // Turns carry the reasoning text; transcripts fetch them on demand.
       record: sql<AttemptSummary>`${attempts.record} - 'turns'`,
+      // Reclassifies attempts stored before illegal moves had their own status.
+      finalAnswer: sql<
+        string | null
+      >`${attempts.record} -> 'turns' -> -1 ->> 'rawAnswer'`,
     })
     .from(attempts)
     .where(

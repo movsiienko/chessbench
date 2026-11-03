@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm"
 import { db } from "@/lib/db/client"
+import { withCurrentStatus } from "@/lib/benchmarks/local-runner"
 import { attempts, FINISHED_STATUSES } from "@/lib/db/schema"
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -20,11 +21,11 @@ export async function GET(
         )
     : []
 
-  if (!row) {
+  if (!row?.record) {
     return new Response("Not found", { status: 404 })
   }
 
-  return Response.json(row.record, {
+  return Response.json(withCurrentStatus(row.record), {
     headers: {
       "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
     },
