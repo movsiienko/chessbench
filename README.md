@@ -118,10 +118,13 @@ step is the only one.
 ## Results Database
 
 Attempts are recorded in Neon Postgres (schema in `lib/db/schema.ts`,
-migrations in `drizzle/`). Vercel applies migrations before every build;
-production and preview deployments share the same `chessbench-db` database, so
-a preview build migrates, and a preview run writes to, production data. Local development uses the separate
-`chessbench-dev-db`:
+migrations in `drizzle/`). Vercel applies migrations before every build.
+Production uses the main branch of the `chessbench-db` Neon project. The Vercel
+Neon integration gives each preview deployment its own `preview/<git-branch>`
+database branch with its own `DATABASE_URL`, so a preview build migrates, and a
+preview run writes to, that branch only. The branch is deleted when its pull
+request closes (`.github/workflows/neon-preview-cleanup.yml`). Local
+development uses the separate `chessbench-dev-db`:
 
 ```bash
 vercel env pull .env.local
