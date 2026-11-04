@@ -25,14 +25,10 @@ export function startPuzzleLine(fen: string): PuzzleLineState {
   return { fen, lastMove: null, ply: 0, feedback: null }
 }
 
-/**
- * The board takes no input after a miss or an invalid reply, once solved, or
- * while the reply is due.
- */
+/** The board takes no input after a miss, once solved, or while the reply is due. */
 export function isLineLocked(state: PuzzleLineState, line: string[]) {
   return (
     state.feedback?.result === "miss" ||
-    state.feedback?.result === "invalid" ||
     state.ply >= line.length ||
     state.ply % 2 === 1
   )
@@ -95,7 +91,7 @@ export function playOpponentReply(
     state.feedback?.result === "miss" ||
     state.feedback?.result === "invalid" ||
     state.ply % 2 === 0 ||
-    !reply
+    reply === undefined
   ) {
     return null
   }

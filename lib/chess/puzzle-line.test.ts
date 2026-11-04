@@ -113,6 +113,11 @@ describe("puzzle line", () => {
     assert.equal(isLineLocked(stopped, line), true)
     // Settled: nothing more is due, so the board no longer waits on a reply.
     assert.equal(playOpponentReply(stopped, line), null)
+    // An empty entry (e.g. a stray space in the source) stops it the same way.
+    assert.equal(
+      playOpponentReply(state, ["e2e4", "", "g1f3"])?.feedback?.result,
+      "invalid"
+    )
   })
 
   test("an expected move illegal in the position falls back to readable text", () => {

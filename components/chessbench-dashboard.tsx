@@ -2669,11 +2669,9 @@ function ProblemFocus({
             <div
               aria-hidden="true"
               data-result={
-                missed
-                  ? "miss"
-                  : feedback?.result === "invalid"
-                    ? "invalid"
-                    : "success"
+                missed || feedback?.result === "invalid"
+                  ? feedback.result
+                  : "success"
               }
               className={cn(
                 "cb-move-line order-3 sm:order-none sm:w-[15.75rem]",
@@ -2697,7 +2695,9 @@ function ProblemFocus({
                     Opponent played <strong>{feedback.san}</strong> - your move
                   </>
                 ) : feedback.result === "invalid" ? (
-                  "Invalid opponent move - reset to retry"
+                  <>
+                    <strong>Puzzle error</strong> - reset to try again
+                  </>
                 ) : (
                   <>
                     <strong>Solved</strong> - all {solverMoves} moves found
