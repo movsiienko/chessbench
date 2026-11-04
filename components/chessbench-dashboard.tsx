@@ -2959,7 +2959,8 @@ const METRICS: {
       <>
         Mean rating of the puzzles faced, plus{" "}
         <span className="font-mono text-xs">400 · log10(p / (1 - p))</span> for
-        accuracy <span className="font-mono text-xs">p</span>, clamped to 1-99%.
+        accuracy <span className="font-mono text-xs">p</span> (clamped to
+        1-99%).
       </>
     ),
   },
@@ -3010,7 +3011,7 @@ function DocsView() {
       : `${META.ratingBands.length}`
 
   const limits = [
-    `Each model answered ${SAMPLE_LABEL} puzzles, so one puzzle moves accuracy by up to ${puzzleWeight(MIN_SAMPLE).toFixed(0)} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
+    `With so few puzzles per model, one puzzle moves accuracy by up to ${puzzleWeight(MIN_SAMPLE).toFixed(0)} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
     "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry is one model at one reasoning level, with one attempt per puzzle.",
@@ -3038,7 +3039,7 @@ function DocsView() {
         <MetaCell label="Rating bands">
           <span className="font-mono">{bandSummary}</span> puzzles
         </MetaCell>
-        <MetaCell label="Answered so far">
+        <MetaCell label="Per model">
           <span className="font-mono">{SAMPLE_LABEL}</span> answered
         </MetaCell>
         <MetaCell label="Move time limit">
