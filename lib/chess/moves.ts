@@ -57,21 +57,19 @@ export function resolveMove(fen: string, text: string): PlayedMove | null {
 }
 
 /**
- * Applies a from/to pair (drag-and-drop or typed UCI). A pawn reaching the last
- * rank without a stated promotion becomes a queen, matching what the board does.
+ * Applies a dragged from/to pair. A pawn reaching the last rank becomes a queen,
+ * matching what the board does.
  */
 export function playMove(
   fen: string,
   from: string,
-  to: string,
-  promotion?: string
+  to: string
 ): PlayedMove | null {
   try {
     const chess = new Chess(fen)
-    // SAFETY: `from` is a square Chessground or the UCI grammar already validated.
+    // SAFETY: `from` is a square Chessground already validated.
     const piece = chess.get(from as Square)
-    const promotesTo =
-      promotion ?? (piece?.type === "p" && /[18]$/.test(to) ? "q" : undefined)
+    const promotesTo = piece?.type === "p" && /[18]$/.test(to) ? "q" : undefined
     return played(chess, chess.move({ from, to, promotion: promotesTo }))
   } catch {
     return null
@@ -136,43 +134,6 @@ function normalizeMoveAnswer(answer: string): string {
   }
 
   return /\s/.test(normalized) ? "" : normalized
-}
-
-const CASTLE_INPUT = /^[o0](?:-?[o0]){1,2}$/i
-
-/**
- * Human grammar: whitespace is ignored, `e2-e4` and `o-o`/`0-0-0` are accepted,
- * a lowercase piece letter is retried capitalised, and a UCI promotion defaults
- * to a queen. Everything still resolves through chess.js, so an illegal entry is
- * rejected exactly the way the board rejects an illegal drag.
- */
-export function parseMoveInput(fen: string, input: string): PlayedMove | null {
-  const text = input.replace(/\s+/g, "")
-
-  if (!text) {
-    return null
-  }
-
-  const dashless = text.replace("-", "")
-
-  if (UCI.test(dashless)) {
-    const { from, to, promotion } = uciToMoveObject(dashless)
-    return playMove(fen, from, to, promotion)
-  }
-
-  const san = CASTLE_INPUT.test(text)
-    ? text.replace(/-/g, "").length === 3
-      ? "O-O-O"
-      : "O-O"
-    : text
-
-  // `bxc3` is a pawn capture and `Bxc3` a bishop capture, so the literal text is
-  // always tried first; the capitalised form is only a fallback for people who
-  // type `nf3`.
-  return (
-    resolveMove(fen, san) ??
-    resolveMove(fen, san.charAt(0).toUpperCase() + san.slice(1))
-  )
 }
 
 export function readableMove(uci: string) {
