@@ -1,6 +1,6 @@
 import { readableMove, resolveMove, type PlayedMove } from "./moves"
 
-export type PuzzleFeedback =
+type PuzzleFeedback =
   | { result: "correct" | "solved"; san: string }
   // `played` is the solver move the reply answered, announced with it so the
   // "correct" message is not cut off by the reply that follows.
