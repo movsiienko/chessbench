@@ -6,6 +6,8 @@ type PuzzleFeedback =
   // "correct" message is not cut off by the reply that follows.
   | { result: "reply"; san: string; played: string }
   | { result: "miss"; san: string; expectedSan: string }
+  // Bad puzzle data: the scripted reply is not legal, so the line stops here.
+  | { result: "invalid" }
 
 /**
  * Progress through a puzzle line. The line alternates solver and opponent
@@ -75,21 +77,29 @@ export function playSolverMove(
   }
 }
 
-/** The scripted opponent reply, or null when none is due (or it is illegal). */
+/**
+ * The scripted opponent reply, or null when none is due. An illegal reply
+ * stops the line with "invalid" feedback instead of leaving it waiting.
+ */
 export function playOpponentReply(
   state: PuzzleLineState,
   line: string[]
 ): PuzzleLineState | null {
   const reply = line[state.ply]
 
-  if (state.feedback?.result === "miss" || state.ply % 2 === 0 || !reply) {
+  if (
+    state.feedback?.result === "miss" ||
+    state.feedback?.result === "invalid" ||
+    state.ply % 2 === 0 ||
+    reply === undefined
+  ) {
     return null
   }
 
   const move = resolveMove(state.fen, reply)
 
   if (!move) {
-    return null
+    return { ...state, feedback: { result: "invalid" } }
   }
 
   const ply = state.ply + 1

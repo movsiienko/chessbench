@@ -104,10 +104,20 @@ describe("puzzle line", () => {
     assert.equal(drag(state, LINE, "e2e4").feedback?.result, "correct")
   })
 
-  test("an illegal scripted reply is not played", () => {
-    const line = ["e2e4", "e7e4"]
+  test("an illegal scripted reply stops the line instead of waiting", () => {
+    const line = ["e2e4", "e7e4", "g1f3"]
     const state = drag(startPuzzleLine(START), line, "e2e4")
-    assert.equal(playOpponentReply(state, line), null)
+    const stopped = playOpponentReply(state, line)
+    assert.ok(stopped)
+    assert.deepEqual(stopped, { ...state, feedback: { result: "invalid" } })
+    assert.equal(isLineLocked(stopped, line), true)
+    // Settled: nothing more is due, so the board no longer waits on a reply.
+    assert.equal(playOpponentReply(stopped, line), null)
+    // An empty entry (e.g. a stray space in the source) stops it the same way.
+    assert.equal(
+      playOpponentReply(state, ["e2e4", "", "g1f3"])?.feedback?.result,
+      "invalid"
+    )
   })
 
   test("an expected move illegal in the position falls back to readable text", () => {
