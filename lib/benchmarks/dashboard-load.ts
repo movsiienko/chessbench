@@ -1,10 +1,15 @@
+import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { cache } from "react"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "../db/client"
 import { attempts, FINISHED_STATUSES } from "../db/schema"
 import type { AttemptSummary } from "./attempt-evidence"
-import { buildDashboardData, entriesFrom } from "./dashboard-build"
+import {
+  buildDashboardData,
+  entriesFrom,
+  type DatasetSelection,
+} from "./dashboard-build"
 import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
 
 const benchmarkId = "lichess-puzzles-v1"
@@ -14,8 +19,10 @@ const benchmarkId = "lichess-puzzles-v1"
  * Cached per render, so a page and its layout share one query.
  */
 export const loadDashboardData = cache(async () => {
-  const items = await loadItems(
-    join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
+  const dataset = join(process.cwd(), "data/benchmarks", benchmarkId)
+  const items = await loadItems(join(dataset, "items.jsonl"))
+  const manifest: { selection: DatasetSelection } = JSON.parse(
+    await readFile(join(dataset, "manifest.json"), "utf8")
   )
   const stored = await db
     .select({
@@ -45,6 +52,7 @@ export const loadDashboardData = cache(async () => {
     ...entriesFrom(stored),
     items,
     datasetSize: items.length,
+    selection: manifest.selection,
   })
 })
 
