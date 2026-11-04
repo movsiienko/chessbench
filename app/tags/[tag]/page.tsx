@@ -92,7 +92,9 @@ export default async function TagPage({ params }: Props) {
             <TableBody>
               {models.map((model) => (
                 <TableRow key={model.id}>
-                  <TableCell className="font-medium">{model.name}</TableCell>
+                  <TableCell className="font-medium whitespace-normal">
+                    {model.name}
+                  </TableCell>
                   <TableCell className="text-right font-mono tabular-nums">
                     {Math.round((model.accuracy ?? 0) * 100)}%
                   </TableCell>
