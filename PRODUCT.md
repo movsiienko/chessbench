@@ -28,7 +28,7 @@ Supporting mechanisms, already true in the repository and available to state fac
 
 ## Operating Context
 
-- The published surface is a single-route dashboard with three sections: Leaderboard (aggregate comparison, charts, results table), Problems (puzzle browser with filters and a focused board, model attempts, and transcripts), and Docs (methodology and scoring).
+- The published surface is a dashboard with three sections, each its own route: Leaderboard (`/`: aggregate comparison, charts, results table), Problems (`/puzzles`, with `/puzzles/[id]` for one puzzle: filters, a focused board, model attempts, and transcripts), and Docs (`/docs`: methodology and scoring). Filters and the open model trace live in the query string, so any view can be linked.
 - Analysis is comparative and repetitive: users scan across models, then drop into one puzzle, then return. The same screens are revisited many times in a session.
 - Benchmark runs happen offline via Bun scripts, not in the browser. Results reach the dashboard as tracked canonical CSVs that a build step compiles into generated dashboard data.
 - Reproduction is part of the workflow: a reader who distrusts a number is expected to be able to run the dataset preparation and benchmark commands themselves.

@@ -13,10 +13,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Revalidation re-runs the page on a function, which reads the item set
-  // and its manifest.
+  // Revalidation re-runs a page on a function, and every dashboard route reads
+  // the item set and its manifest through the shared layout.
   outputFileTracingIncludes: {
-    "/": [
+    "/**": [
       "./data/benchmarks/lichess-puzzles-v1/items.jsonl",
       "./data/benchmarks/lichess-puzzles-v1/manifest.json",
     ],

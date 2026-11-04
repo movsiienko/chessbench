@@ -103,7 +103,14 @@ const models = [
 const items = [
   item("p1", 1012, ["fork", "middlegame"]),
   item("p2", 1500, ["mateIn1"], ["checkmate"]),
-  item("p3", 2043, ["pin", "rookEndgame"], ["endgame"]),
+  {
+    ...item("p3", 2043, ["pin", "rookEndgame"], ["endgame"]),
+    expected: {
+      uciLine: ["h8h1", "a1a2", "h1h2"],
+      playerUciMoves: ["h8h1", "h1h2"],
+      finalFen: "",
+    },
+  },
 ]
 
 describe("buildDashboardData", () => {
@@ -141,6 +148,13 @@ describe("buildDashboardData", () => {
     assert.deepEqual(data.category.a?.fork, { accuracy: 1, n: 1 })
     assert.deepEqual(data.category.a?.endgame, { accuracy: 0, n: 1 })
     assert.deepEqual(data.category.b?.zugzwang, { accuracy: null, n: 0 })
+  })
+
+  test("a puzzle carries its full line, opponent replies included", () => {
+    assert.deepEqual(
+      data.puzzles.find((puzzle) => puzzle.id === "p3")?.solution,
+      ["h8h1", "a1a2", "h1h2"]
+    )
   })
 
   test("emits rating bounds, sample size, and short names", () => {
