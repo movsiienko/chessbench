@@ -2,6 +2,7 @@ import { ArrowLeft, Check, X } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
+import { BackLink } from "@/components/back-link"
 import {
   Table,
   TableBody,
@@ -56,13 +57,13 @@ export default async function TagPage({ params }: Props) {
 
   return (
     <main className="mx-auto max-w-[1360px] space-y-8 px-4 py-6 sm:px-6 lg:px-8">
-      <Link
-        href="/"
+      <BackLink
+        href="/puzzles"
         className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <ArrowLeft className="size-4" />
-        ChessBench
-      </Link>
+        Back
+      </BackLink>
 
       <header className="space-y-2 border-b pb-6">
         <h1 className="text-2xl font-semibold tracking-tight">
