@@ -65,7 +65,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -2538,38 +2538,33 @@ function ProblemFocus({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <Button
-          size="sm"
-          variant="ghost"
-          nativeButton={false}
-          render={<Link href={backHref} />}
+        {/* Styled links, not Buttons: those render as role="button". */}
+        <Link
+          href={backHref}
+          className={buttonVariants({ size: "sm", variant: "ghost" })}
         >
           <ArrowLeft data-icon="inline-start" />
           All puzzles
-        </Button>
+        </Link>
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">
             {String(index + 1).padStart(2, "0")} /{" "}
             {String(total).padStart(2, "0")}
           </span>
-          <Button
-            size="icon-sm"
-            variant="outline"
+          <Link
+            href={previousHref}
             aria-label="Previous puzzle"
-            nativeButton={false}
-            render={<Link href={previousHref} />}
+            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
           >
             <ChevronLeft />
-          </Button>
-          <Button
-            size="icon-sm"
-            variant="outline"
+          </Link>
+          <Link
+            href={nextHref}
             aria-label="Next puzzle"
-            nativeButton={false}
-            render={<Link href={nextHref} />}
+            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
           >
             <ChevronRight />
-          </Button>
+          </Link>
         </div>
       </div>
 
