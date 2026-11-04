@@ -1936,32 +1936,21 @@ const NO_SEARCH = new URLSearchParams()
 
 /**
  * Puzzle filters, sort and the open model trace live in the URL so Back,
- * Forward, reload and shared links all land on the same view. Static
- * prerendering has no query string, so it renders the unfiltered view and the
- * client swaps in the real one after hydration.
+ * Forward, reload and shared links all land on the same view. The pages are
+ * force-static, so the prerender sees no query string: hydrate with none, to
+ * match that HTML, then apply the real one.
  */
-function withSearch(render: (search: Search) => React.ReactNode) {
-  return (
-    <React.Suspense fallback={render(NO_SEARCH)}>
-      <SearchParams render={render} />
-    </React.Suspense>
-  )
-}
-
-function SearchParams({
-  render,
-}: {
-  render: (search: Search) => React.ReactNode
-}) {
-  return render(useSearchParams())
+function useSearch(): Search {
+  const search = useSearchParams()
+  return useMounted() ? search : NO_SEARCH
 }
 
 export function PuzzlesPage() {
-  return withSearch((search) => <ProblemsView search={search} />)
+  return <ProblemsView search={useSearch()} />
 }
 
 export function PuzzlePage({ id }: { id: string }) {
-  return withSearch((search) => <PuzzleDetail id={id} search={search} />)
+  return <PuzzleDetail id={id} search={useSearch()} />
 }
 
 function puzzleHref(id: string, query: string) {
