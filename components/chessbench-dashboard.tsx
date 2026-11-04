@@ -2631,7 +2631,11 @@ function ProblemFocus({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <AttemptTrace puzzle={puzzle} attempt={attempt} />
+                      <AttemptTrace
+                        puzzle={puzzle}
+                        attempt={attempt}
+                        vendor={model.vendor}
+                      />
                     </AccordionContent>
                   </AccordionItem>
                 )
@@ -2801,11 +2805,12 @@ function MoveEntry({
 function AttemptTrace({
   puzzle,
   attempt,
+  vendor,
 }: {
   puzzle: PuzzleItem
   attempt: SolutionAttempt
+  vendor: string
 }) {
-  const { modelById } = useDashboard()
   const [loaded, setLoaded] = React.useState<{
     id: string
     record: LichessPuzzleAttemptRow | null
@@ -2864,10 +2869,7 @@ function AttemptTrace({
                 </pre>
               </TraceField>
             )}
-            <TurnReasoning
-              reasoning={turnReasoning(turn)}
-              vendor={modelById(attempt.model).vendor}
-            />
+            <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
           </li>
         ))}
       </ol>
@@ -2911,11 +2913,11 @@ function TurnReasoning({
     <TraceField label="Reasoning">
       {reasoning === "hidden" ? (
         <p className="text-xs text-muted-foreground">
-          {vendor} doesn&apos;t expose this model&apos;s reasoning.
+          {vendor} didn&apos;t return readable reasoning for this turn.
         </p>
       ) : (
         <div className="max-h-72 max-w-[75ch] overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 wrap-anywhere whitespace-pre-wrap">
-          {reasoning.text}
+          {reasoning.text.trim()}
         </div>
       )}
     </TraceField>

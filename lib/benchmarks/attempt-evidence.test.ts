@@ -158,7 +158,7 @@ describe("published attempt evidence", () => {
         attemptTranscript({
           ...gpt5[0]!,
           turns: [{ ...turn, reasoning }],
-        }).includes("Reasoning: not exposed by the provider")
+        }).includes("Reasoning: not returned as readable text")
       )
     }
     // Grok: reasoning tokens billed, no reasoning returned.

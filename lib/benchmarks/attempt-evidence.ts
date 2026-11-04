@@ -54,9 +54,9 @@ export function buildAttemptEvidence<Model extends string>(
 
 /**
  * A turn's reasoning as readable text (the AI SDK's join of the readable
- * reasoning parts), or `hidden` when the model reasoned but
- * the provider returned only signed, encrypted, or no text (Claude, GPT, Grok),
- * or nothing when it did not reason at all.
+ * reasoning parts), or `hidden` when the model reasoned but this response
+ * carried only signed, encrypted, or no text (always for Claude, GPT, and
+ * Grok; on some Gemini turns), or nothing when it did not reason at all.
  */
 export function turnReasoning(
   turn: LichessPuzzleAttemptTurn
@@ -111,6 +111,7 @@ export function attemptTranscript(row: LichessPuzzleAttemptRow): string {
 }
 
 function reasoningLines(reasoning: ReturnType<typeof turnReasoning>) {
-  if (reasoning === "hidden") return ["Reasoning: not exposed by the provider"]
+  if (reasoning === "hidden")
+    return ["Reasoning: not returned as readable text"]
   return reasoning ? ["Reasoning:", reasoning.text] : []
 }
