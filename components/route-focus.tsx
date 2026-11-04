@@ -21,8 +21,17 @@ export function RouteFocus() {
     const track = () => {
       lastFocused.current = document.activeElement
     }
+    // A pointer press starts a fresh interaction; a link Safari clicks
+    // without focusing must not inherit an older keyboard focus.
+    const reset = () => {
+      lastFocused.current = null
+    }
     document.addEventListener("focusin", track)
-    return () => document.removeEventListener("focusin", track)
+    document.addEventListener("pointerdown", reset, true)
+    return () => {
+      document.removeEventListener("focusin", track)
+      document.removeEventListener("pointerdown", reset, true)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -31,17 +40,16 @@ export function RouteFocus() {
     }
     shownPath.current = pathname
     const main = document.querySelector("main")
-    const active = document.activeElement
-    if (
-      !main ||
-      (active && active !== document.body && main.contains(active))
-    ) {
+    const last = lastFocused.current
+    lastFocused.current = null
+    if (!main || main.contains(document.activeElement)) {
       return
     }
-    const last = lastFocused.current
     const label = last?.isConnected ? null : last?.getAttribute("aria-label")
     const same = label
-      ? main.querySelector<HTMLElement>(`[aria-label="${CSS.escape(label)}"]`)
+      ? main.querySelector<HTMLElement>(
+          `:is(a, button)[aria-label="${CSS.escape(label)}"]`
+        )
       : null
     ;(same ?? main).focus({ preventScroll: true })
   }, [pathname])
