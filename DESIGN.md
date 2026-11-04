@@ -219,8 +219,8 @@ ChessBench is flat by default. Depth comes from tonal contrast, one-pixel rings,
 
 ### Navigation
 
-- **Style:** top navigation is a line-style shadcn Tabs list after the ChessBench wordmark. Triggers are uppercase 12px labels with 0.12em tracking.
-- **Active state:** line variant uses the bottom active indicator. Avoid pill backgrounds in the top nav unless the page shifts to a smaller embedded context.
+- **Style:** top navigation is a row of route links (Leaderboard, Problems, Docs) after the ChessBench wordmark, styled like line tabs. Links are uppercase 12px labels with 0.12em tracking.
+- **Active state:** the current route (`aria-current="page"`) shows a bottom underline indicator. Avoid pill backgrounds in the top nav unless the page shifts to a smaller embedded context.
 - **Mobile treatment:** hide tab label text below small breakpoints and keep icons visible. The header remains 56px tall.
 
 ### Chess Board

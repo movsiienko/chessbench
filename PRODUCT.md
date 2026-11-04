@@ -24,26 +24,26 @@ ChessBench evaluates model chess puzzle solving against a deterministic Lichess-
 
 ChessBench publishes puzzle-level evidence, not just scores. Every leaderboard number drills down into the actual position, the move each model played, its transcript, and its thinking time and token cost, so a failure is inspectable rather than aggregate. A competing benchmark can copy a solved-rate table; it cannot copy the evidence trail unless it also records and publishes per-puzzle model behavior.
 
-Supporting mechanisms, already true in the repository and available to state factually: the sample is seeded and stratified (100 puzzles from each of five rating bands), and the local runner drives puzzles one move at a time, revealing the expected opponent reply after each correct move and stopping on the first wrong or invalid move.
+Supporting mechanisms, already true in the repository and available to state factually: the sample is seeded and stratified (100 puzzles from each of five rating bands), and the runner drives puzzles one move at a time, revealing the expected opponent reply after each correct move and stopping on the first wrong, illegal, or invalid-format move, or a move over the 270-second time limit.
 
 ## Operating Context
 
-- The published surface is a dashboard with three sections, each its own route: Leaderboard (`/`: aggregate comparison, charts, results table), Problems (`/puzzles`, with `/puzzles/[id]` for one puzzle: filters, a focused board, model attempts, and transcripts), and Docs (`/docs`: methodology and scoring). Filters and the open model trace live in the query string, so any view can be linked.
+- The published surface is a dashboard with three sections, each its own route: Leaderboard (`/`: aggregate comparison, charts, results table), Problems (`/puzzles`, with `/puzzles/[id]` for one puzzle: filters, a focused board, model attempts, and transcripts), and Docs (`/docs`: a short About page on methodology and scoring). Each puzzle tag links to `/tags/[tag]`, which lists that tag's puzzles with per-model solved rates. Filters and the open model trace live in the query string, so any view can be linked.
 - Analysis is comparative and repetitive: users scan across models, then drop into one puzzle, then return. The same screens are revisited many times in a session.
-- Benchmark runs happen offline via Bun scripts, not in the browser. Results reach the dashboard as tracked canonical CSVs that a build step compiles into generated dashboard data.
-- Reproduction is part of the workflow: a reader who distrusts a number is expected to be able to run the dataset preparation and benchmark commands themselves.
+- Benchmark runs execute on Vercel Workflows, started from a GitHub Actions dispatch or the admin `/api/benchmark-runs` endpoint, not from the browser. Each attempt is recorded in Neon Postgres. The dashboard is prerendered from Postgres at build and regenerated through `/api/revalidate` after a run finishes.
+- Reproduction is part of the workflow: a reader who distrusts a number can rebuild the dataset with the Bun preparation commands and read the scorer, prompt, and tests in the repository.
 - Chess positions are real board state. Move feedback, last moves, and corrections are spatial facts about the board, not text notifications.
 
 ## Capabilities and Constraints
 
 - Web app on Next.js 16 / React 19 with Tailwind v4, shadcn/Base UI primitives, Recharts for charts, and Chessground for boards. Geist and Geist Mono are the typefaces in use.
-- Dashboard data is generated (`lib/benchmarks/dashboard-data.ts` from `scripts/build-dashboard-data.ts`) and must not be hand-edited; the interface consumes whatever models, themes, and labs the canonical results contain.
+- Dashboard data is built from Postgres when the pages are prerendered or revalidated (`lib/benchmarks/dashboard-load.ts`, `lib/benchmarks/dashboard-build.ts`). The interface shows whatever models, reasoning levels, themes, and labs the current-protocol results contain.
 - The current dataset is `lichess-puzzles-v1`: 500 puzzles, quality-filtered, `mateIn1` excluded to avoid alternate-mate ambiguity. Dataset identity is versioned, so the interface should not hard-code a single dataset as permanent.
-- The primary metric is `solved_rate`, an exact match against either the full forcing line or the player-only move line. Secondary metrics are first-move accuracy, full-line prefix score, and player-move prefix score.
+- The primary metric is `solved_rate`: an attempt is solved when every player move matches the expected player-only move line and no turn fails. Opponent replies are revealed, not scored. Secondary metrics are first-move accuracy and player-move prefix score; the leaderboard also shows the share of legal answers, plus illegal-move and invalid-format counts.
 - Model lab identity is the provider prefix of the Gateway model id, with vendored SVGL logos; the lab mapping is type-checked so a new lab id fails the build rather than rendering blank.
-- Terminology to use consistently: puzzle, item, attempt, solved rate, rating band, theme, ply, FEN, UCI, SAN, canonical run, lab, model.
+- Terminology to use consistently (see `CONTEXT.md`): puzzle, item, attempt, turn, entry, solved rate, pending attempt, reasoning level, protocol, rating band, theme, ply, FEN, UCI, SAN, lab, model.
 
-**Binding product fact: results are real runs only.** Every figure shown comes from tracked canonical CSVs of actual model runs. Illustrative, sampled, projected, or placeholder numbers must never appear in the interface, including in empty states, examples, and screenshots.
+**Binding product fact: results are real runs only.** Every figure shown comes from attempts of actual model runs recorded in Postgres. Illustrative, sampled, projected, or placeholder numbers must never appear in the interface, including in empty states, examples, and screenshots.
 
 ## Brand Commitments
 
@@ -57,11 +57,12 @@ Supporting mechanisms, already true in the repository and available to state fac
 ## Evidence on Hand
 
 - Benchmark dataset: `data/benchmarks/lichess-puzzles-v1/items.jsonl` and `manifest.json`.
-- Real model results: tracked canonical CSVs in `data/results/canonical/lichess-puzzles-v1/` across OpenAI, Anthropic, Google, DeepSeek, xAI, Alibaba, Meta, and MiniMax models, plus run logs in `data/results/logs/`.
+- Real model results: attempts in Neon Postgres (schema in `lib/db/schema.ts`), for the models in `MODELS` (`lib/benchmarks/models.ts`): OpenAI, Anthropic, Google, DeepSeek, xAI, and Alibaba. The first published results were imported by migration `drizzle/0001_import-published-results.sql`; the CSVs in `data/results/canonical/lichess-puzzles-v1/` are historical runs kept for reference and are not read by the dashboard.
 - Source: the Lichess puzzle database, CC0, with page URL, download URL, checksum, and retrieval dates recorded in the manifest. Attribution and license must stay accurate.
-- Scoring implementation and tests: `lib/benchmarks/lichess-puzzles.ts`, `lib/benchmarks/local-runner.ts`, with accompanying test files.
+- Scoring implementation and tests: `lib/benchmarks/lichess-puzzles.ts`, `lib/benchmarks/local-runner.ts`, and the run workflow `lib/benchmarks/benchmark-workflow.ts`, with accompanying test files.
+- Public deployment: the production Vercel deployment of this repository.
 - Lab logo assets: `components/ui/svgs/`.
-- Absent, and not to be fabricated: testimonials, named users or adopters, usage statistics, press, funding, pricing, a public deployment URL, or any claim of third-party endorsement.
+- Absent, and not to be fabricated: testimonials, named users or adopters, usage statistics, press, funding, pricing, or any claim of third-party endorsement.
 
 ## Product Principles
 
