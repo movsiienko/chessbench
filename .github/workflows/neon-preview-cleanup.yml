@@ -21,9 +21,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Delete preview/${{ github.head_ref }}
+      - name: Check preview/${{ github.head_ref }} exists
+        id: check
         # The branch may never have been created, or Vercel already removed it.
-        continue-on-error: true
+        # The delete action pastes the name into a shell script, so only allow
+        # plain branch-name characters through.
+        env:
+          BRANCH: preview/${{ github.head_ref }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          [[ "$BRANCH" =~ ^preview/[A-Za-z0-9._/-]+$ ]] || { echo "::error::Unexpected branch name: $BRANCH"; exit 1; }
+          found=$(curl -fsS --get -H "Authorization: Bearer $NEON_API_KEY" \
+            --data-urlencode "search=$BRANCH" \
+            "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" |
+            jq --arg name "$BRANCH" '[.branches[] | select(.name == $name)] | length')
+          echo "exists=$([ "$found" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          [ "$found" -gt 0 ] || echo "No Neon branch named $BRANCH; nothing to delete."
+
+      - name: Delete preview/${{ github.head_ref }}
+        if: steps.check.outputs.exists == 'true'
         uses: neondatabase/delete-branch-action@4468d825d5a88ef4012f1705a82f02ec3072f776 # v3.2.1
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
