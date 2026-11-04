@@ -2381,6 +2381,7 @@ function ProblemFocus({
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
   const missed = feedback?.result === "miss"
+  const solverMoves = Math.ceil(line.length / 2)
   const locked = missed || ply >= line.length || ply % 2 === 1
   const correctionArrows = React.useMemo(() => {
     const expected = line[ply]
@@ -2465,7 +2466,7 @@ function ProblemFocus({
         ? `Correct, ${feedback.san}. The opponent is replying.`
         : feedback.result === "reply"
           ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
-          : `Puzzle solved with ${feedback.san}.`
+          : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
 
   return (
     <div className="space-y-6">
@@ -2604,7 +2605,9 @@ function ProblemFocus({
                   </>
                 ) : (
                   <>
-                    Solved: <strong>{feedback.san}</strong> ends the line
+                    {/* The state word carries the weight here, not the move, so the
+                    ending reads differently from the in-progress lines. */}
+                    <strong>Solved</strong> - all {solverMoves} moves found
                   </>
                 )}
               </span>
