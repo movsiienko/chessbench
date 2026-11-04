@@ -451,6 +451,43 @@ async function checkNoHorizontalOverflow(page: Page) {
   }
 }
 
+/**
+ * A client navigation to a new path focuses the new page's <main>, so Tab
+ * does not restart in the header; Next puzzle keeps focus on itself.
+ */
+async function checkRouteFocus(page: Page) {
+  const focusOn = (target: string) =>
+    page
+      .waitForFunction(
+        (t) => {
+          const el = document.activeElement
+          return el?.tagName === "MAIN" ? t === "main" : el?.ariaLabel === t
+        },
+        target,
+        { timeout: 5000 }
+      )
+      .then(() => true)
+      .catch(() => false)
+
+  await page.goto(new URL("/", BASE).href, { waitUntil: "networkidle" })
+  await page.getByRole("link", { name: "Problems" }).focus()
+  await page.keyboard.press("Enter")
+  await page.waitForURL(/\/puzzles$/)
+  if (!(await focusOn("main")))
+    fail("route focus", "header link to /puzzles left focus outside <main>")
+  else ok("route focus", "header navigation focuses <main>")
+
+  await page.locator('main a[href^="/puzzles/"]').first().click()
+  await page.waitForURL(/\/puzzles\/.+/)
+  const from = page.url()
+  await page.getByRole("link", { name: "Next puzzle" }).focus()
+  await page.keyboard.press("Enter")
+  await page.waitForURL((url) => url.href !== from)
+  if (!(await focusOn("Next puzzle")))
+    fail("route focus", "Next puzzle lost focus after navigating")
+  else ok("route focus", "Next puzzle keeps focus")
+}
+
 const browser = await chromium.launch()
 
 for (const reduced of [false, true]) {
@@ -487,7 +524,10 @@ for (const reduced of [false, true]) {
   }
 
   await checkBoardAndMotion(page, reduced)
-  if (!reduced) await checkAttemptEvidence(page)
+  if (!reduced) {
+    await checkAttemptEvidence(page)
+    await checkRouteFocus(page)
+  }
   await page.close()
 }
 
