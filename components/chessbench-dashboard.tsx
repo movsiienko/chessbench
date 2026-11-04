@@ -3105,7 +3105,7 @@ function DocsView() {
             >
               <div className="font-mono text-sm">{band.label}</div>
               <div className="text-xs text-muted-foreground sm:mt-1">
-                {band.count} puzzles
+                {band.selected} puzzles
               </div>
             </div>
           ))}

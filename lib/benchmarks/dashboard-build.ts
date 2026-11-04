@@ -216,10 +216,7 @@ export function buildDashboardData({
       ratingStep: RATING_STEP,
       maxOutputTokens: "uncapped",
       moveTimeLimitSeconds: MOVE_TIME_LIMIT_MS / 1000,
-      ratingBands: selection.ratingBands.map((band) => ({
-        label: band.label,
-        count: band.selected,
-      })),
+      ratingBands: selection.ratingBands,
       qualityFilters: {
         minPopularity: selection.filters.minPopularity,
         minPlays: selection.filters.minPlays,

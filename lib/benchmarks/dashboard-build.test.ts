@@ -146,7 +146,7 @@ describe("buildDashboardData", () => {
   test("emits rating bounds, sample size, and short names", () => {
     assert.deepEqual(data.meta.ratingBounds, [1000, 2050])
     assert.deepEqual(data.meta.sampleSize, { min: 3, max: 3 })
-    assert.deepEqual(data.meta.ratingBands, [{ label: "<1200", count: 2 }])
+    assert.deepEqual(data.meta.ratingBands, selection.ratingBands)
     assert.deepEqual(
       data.models.map((model) => model.shortName),
       ["GPT", "Claude"]
