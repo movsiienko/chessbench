@@ -11,10 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { categories } from "@/lib/benchmarks/dashboard-build"
-import {
-  loadBenchmarkItems,
-  loadDashboardData,
-} from "@/lib/benchmarks/dashboard-load"
+import { loadDashboardData } from "@/lib/benchmarks/dashboard-load"
 
 // Prerendered per tag at build; regenerated only through /api/revalidate.
 export const dynamic = "force-static"
@@ -39,20 +36,22 @@ export default async function TagPage({ params }: Props) {
     notFound()
   }
 
-  const [data, items] = await Promise.all([
-    loadDashboardData(),
-    loadBenchmarkItems(),
-  ])
-  // Full theme match, the same rule the per-model rates use; a puzzle's
-  // own tag list is capped at three, so it can omit a tag it still has.
-  const tagged = new Set(items.filter(category.matches).map(({ id }) => id))
+  const data = await loadDashboardData()
+  // The tags a puzzle shows (and the dashboard's theme filter) decide
+  // membership, so the chip a user clicked always lists its own puzzle.
   const puzzles = data.puzzles
-    .filter(({ id }) => tagged.has(id))
+    .filter((puzzle) => puzzle.themes.includes(category.id))
     .sort((a, b) => a.rating - b.rating)
   const models = data.models
-    .map((model) => ({ ...model, ...data.category[model.id][category.id] }))
+    .map((model) => {
+      const attempts = puzzles.flatMap((puzzle) =>
+        puzzle.attempts.filter((attempt) => attempt.model === model.id)
+      )
+      const solved = attempts.filter((attempt) => attempt.solved).length
+      return { ...model, n: attempts.length, rate: solved / attempts.length }
+    })
     .filter(({ n }) => n > 0)
-    .sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0))
+    .sort((a, b) => b.rate - a.rate)
 
   return (
     <main className="mx-auto max-w-[1360px] space-y-8 px-4 py-6 sm:px-6 lg:px-8">
@@ -69,7 +68,7 @@ export default async function TagPage({ params }: Props) {
           {category.label} puzzles
         </h1>
         <p className="text-sm text-muted-foreground">
-          {puzzles.length} of {data.meta.puzzleCount} benchmark puzzles carry
+          {puzzles.length} of {data.meta.puzzleCount} attempted puzzles carry
           this tag.
         </p>
       </header>
@@ -96,7 +95,7 @@ export default async function TagPage({ params }: Props) {
                     {model.name}
                   </TableCell>
                   <TableCell className="text-right font-mono tabular-nums">
-                    {Math.round((model.accuracy ?? 0) * 100)}%
+                    {Math.round(model.rate * 100)}%
                   </TableCell>
                   <TableCell className="text-right font-mono text-muted-foreground tabular-nums">
                     {model.n}

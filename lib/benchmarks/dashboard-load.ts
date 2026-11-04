@@ -8,16 +8,11 @@ import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
 
 const benchmarkId = "lichess-puzzles-v1"
 
-/** Server-only: the benchmark's puzzle items, with full theme metadata. */
-export function loadBenchmarkItems() {
-  return loadItems(
-    join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
-  )
-}
-
 /** Server-only: every current-protocol entry, summarized for the dashboard. */
 export async function loadDashboardData() {
-  const items = await loadBenchmarkItems()
+  const items = await loadItems(
+    join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
+  )
   const stored = await db
     .select({
       attemptId: attempts.id,
