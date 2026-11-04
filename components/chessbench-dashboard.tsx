@@ -2402,7 +2402,13 @@ function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
   return (
     <Card className="relative gap-3 rounded-lg transition-transform hover:-translate-y-0.5 has-[a:focus-visible]:ring-3 has-[a:focus-visible]:ring-ring/50">
       <CardContent className="pt-0">
-        <ChessBoard fen={puzzle.fen} interactive={false} small decorative />
+        <ChessBoard
+          fen={puzzle.fen}
+          orientation={puzzle.side === "w" ? "white" : "black"}
+          interactive={false}
+          small
+          decorative
+        />
       </CardContent>
       <CardContent className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
@@ -2601,6 +2607,7 @@ function ProblemFocus({
             <CardContent>
               <ChessBoard
                 fen={boardFen}
+                orientation={puzzle.side === "w" ? "white" : "black"}
                 lastMove={lastMove}
                 arrows={correctionArrows}
                 onMove={handleMove}
@@ -3093,6 +3100,7 @@ export function DocsView() {
 
 function ChessBoard({
   fen,
+  orientation,
   interactive = true,
   onMove,
   lastMove,
@@ -3101,6 +3109,7 @@ function ChessBoard({
   decorative = false,
 }: {
   fen: string
+  orientation: cg.Color
   interactive?: boolean
   onMove?: (move: PlayedMove) => void
   lastMove?: { from: string; to: string } | null
@@ -3115,6 +3124,7 @@ function ChessBoard({
   const reducedMotion = usePreferReducedMotion()
   const latestRef = React.useRef({
     fen,
+    orientation,
     lastMove,
     arrows,
     onMove,
@@ -3125,7 +3135,14 @@ function ChessBoard({
   // Chessground instance outlives each render, and its move handler has to read
   // the position the user is currently looking at, not the one it was built on.
   React.useEffect(() => {
-    latestRef.current = { fen, lastMove, arrows, onMove, reducedMotion }
+    latestRef.current = {
+      fen,
+      orientation,
+      lastMove,
+      arrows,
+      onMove,
+      reducedMotion,
+    }
   })
 
   // Construction only. `viewOnly` and `drawable.visible` cannot be changed
@@ -3142,7 +3159,7 @@ function ChessBoard({
     const color = turnColor(initial.fen)
     const config: ChessgroundConfig = {
       fen: boardOnlyFen(initial.fen),
-      orientation: "white",
+      orientation: initial.orientation,
       turnColor: color,
       check: isCheck(initial.fen) ? color : false,
       // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
@@ -3231,6 +3248,7 @@ function ChessBoard({
 
     api.set({
       fen: boardOnlyFen(fen),
+      orientation,
       turnColor: color,
       check: isCheck(fen) ? color : false,
       // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
@@ -3247,7 +3265,7 @@ function ChessBoard({
         ["autoShapes"]: arrows,
       },
     })
-  }, [arrows, fen, interactive, lastMove, reducedMotion, small])
+  }, [arrows, fen, interactive, lastMove, orientation, reducedMotion, small])
 
   const summary = React.useMemo(() => boardSummary(fen), [fen])
 

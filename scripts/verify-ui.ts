@@ -172,7 +172,20 @@ async function checkSeriesContrast(page: Page, theme: string) {
 /** The board must be operable, and reduced motion must not break that. */
 async function checkBoardAndMotion(page: Page, reduced: boolean) {
   await page.getByRole("link", { name: /problems/i }).click()
-  await page.locator('a[aria-label*="Puzzle"]').first().click()
+  await page.waitForSelector(".cg-wrap")
+  // Every card shows its puzzle from the solver's side. The side is named in
+  // the label of the card's stretched link, a sibling of the board, so the
+  // match goes through the card.
+  const misoriented = await page
+    .locator(
+      '[data-slot="card"]:has(a[aria-label*="Black to move"]) .cg-wrap.orientation-white, [data-slot="card"]:has(a[aria-label*="White to move"]) .cg-wrap.orientation-black'
+    )
+    .count()
+  if (misoriented) fail("card orientation", `${misoriented} cards face wrong`)
+  else ok("card orientation", "every card shows the solver's side")
+
+  // A Black-to-solve puzzle, so the orientation check below covers the flip.
+  await page.locator('a[aria-label*="Black to move"]').first().click()
   await page.waitForSelector(".cg-wrap")
   await page.evaluate(() =>
     document.querySelector(".cg-wrap")?.setAttribute("data-probe", "original")
@@ -193,6 +206,14 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     fail("board fixture", "could not read a FEN from the puzzle view")
     return
   }
+
+  // Nothing has been played yet, so the side to move is the solver, whose
+  // pieces belong at the bottom, before and after the move below.
+  const want = `orientation-${new Chess(fen).turn() === "b" ? "black" : "white"}`
+  const solverAtBottom = () =>
+    page.locator(`.cg-wrap[data-probe="original"].${want}`).count()
+  if (await solverAtBottom()) ok("board orientation", `${want} for ${fen}`)
+  else fail("board orientation", `expected ${want} for ${fen}`)
 
   const statusBefore = await page.evaluate(() =>
     [...document.querySelectorAll('[role="status"]')]
@@ -243,6 +264,9 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
   // held text would otherwise pass this check without the move announcing
   // anything at all.
   const announced = state.status !== statusBefore && state.status.trim() !== ""
+
+  if (!(await solverAtBottom()))
+    fail("board orientation", "the board flipped when the solver moved")
 
   if (!state.survived)
     fail(
