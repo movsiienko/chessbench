@@ -31,6 +31,8 @@ import {
   Trophy,
   X,
 } from "lucide-react"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import {
   Bar,
@@ -63,7 +65,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -115,7 +117,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Tooltip,
   TooltipContent,
@@ -133,7 +134,6 @@ import {
   isCheck,
   legalDests,
   moveArrow,
-  parseMoveInput,
   piecesSummary,
   playMove,
   readableMove,
@@ -143,7 +143,6 @@ import {
 } from "@/lib/chess/moves"
 import { cn } from "@/lib/utils"
 
-type View = "leaderboard" | "problems" | "docs"
 /** A scoreboard entry id: one model at one reasoning level. */
 type ModelId = string
 type Score = DashboardData["scoreboard"][number]
@@ -482,36 +481,41 @@ function useMounted() {
   )
 }
 
-export function ChessBenchDashboard({ data }: { data: DashboardData }) {
+export function ChessBenchDashboard({
+  data,
+  children,
+}: {
+  data: DashboardData
+  children: React.ReactNode
+}) {
   const dashboard = React.useMemo(() => deriveDashboard(data), [data])
 
   return (
     <DashboardContext.Provider value={dashboard}>
-      <DashboardShell />
+      <DashboardShell>{children}</DashboardShell>
     </DashboardContext.Provider>
   )
 }
 
-function DashboardShell() {
-  const [view, setView] = React.useState<View>("leaderboard")
+const SECTIONS = [
+  { href: "/", label: "Leaderboard", icon: Trophy },
+  { href: "/puzzles", label: "Problems", icon: Puzzle },
+  { href: "/docs", label: "Docs", icon: BookOpen },
+] as const
+
+function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   const { resolvedTheme, setTheme } = useTheme()
   const mounted = useMounted()
   const isDark = mounted && resolvedTheme === "dark"
   const shortcutLabel = useThemeShortcutLabel()
 
   return (
-    <Tabs
-      value={view}
-      onValueChange={(value) => {
-        // SAFETY: the only TabsTriggers rendered carry View values.
-        setView(value as View)
-      }}
-      className="min-h-svh bg-background text-foreground"
-    >
+    <div className="flex min-h-svh flex-col gap-2 bg-background text-foreground">
       {/*
         First thing in the tab order: the sticky header puts a wordmark, three
-        tabs and the theme toggle ahead of the content on every keyboard entry,
-        and the tablist has to be stepped through again after each view change.
+        section links and the theme toggle ahead of the content on every
+        keyboard entry.
       */}
       <a
         href={`#${MAIN_CONTENT_ID}`}
@@ -527,32 +531,27 @@ function DashboardShell() {
             </Badge>
             <span className="truncate">ChessBench</span>
           </div>
-          <TabsList
-            variant="line"
-            className="ml-4 h-10 gap-4 border-l border-border pl-4"
+          <nav
+            aria-label="Sections"
+            className="ml-4 flex h-10 items-center gap-4 border-l border-border pl-4"
           >
-            <TabsTrigger
-              value="leaderboard"
-              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
-            >
-              <Trophy data-icon="inline-start" />
-              <span className="hidden sm:inline">Leaderboard</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="problems"
-              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
-            >
-              <Puzzle data-icon="inline-start" />
-              <span className="hidden sm:inline">Problems</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="docs"
-              className="h-9 rounded-none px-0 text-xs font-semibold tracking-[0.12em] uppercase"
-            >
-              <BookOpen data-icon="inline-start" />
-              <span className="hidden sm:inline">Docs</span>
-            </TabsTrigger>
-          </TabsList>
+            {SECTIONS.map(({ href, label, icon: Icon }) => {
+              const current =
+                href === "/" ? pathname === "/" : pathname.startsWith(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-label={label}
+                  aria-current={current ? "page" : undefined}
+                  className="relative inline-flex h-9 min-w-6 items-center justify-center gap-1.5 rounded-md text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-muted-foreground uppercase transition-colors outline-none after:absolute after:inset-x-0 after:bottom-[-5px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:text-foreground aria-[current=page]:after:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0"
+                >
+                  <Icon aria-hidden />
+                  <span className="hidden sm:inline">{label}</span>
+                </Link>
+              )
+            })}
+          </nav>
           <Tooltip>
             {/*
               `aria-keyshortcuts` takes the constant so the announced binding is
@@ -586,23 +585,15 @@ function DashboardShell() {
       <main
         id={MAIN_CONTENT_ID}
         tabIndex={-1}
-        className="mx-auto w-full max-w-[1360px] px-4 py-6 outline-none sm:px-6 lg:px-8"
+        className="mx-auto w-full max-w-[1360px] px-4 py-6 text-sm outline-none sm:px-6 lg:px-8"
       >
-        <TabsContent value="leaderboard">
-          <LeaderboardView />
-        </TabsContent>
-        <TabsContent value="problems">
-          <ProblemsView />
-        </TabsContent>
-        <TabsContent value="docs">
-          <DocsView />
-        </TabsContent>
+        {children}
       </main>
-    </Tabs>
+    </div>
   )
 }
 
-function LeaderboardView() {
+export function LeaderboardView() {
   const {
     SCOREBOARD,
     MODELS,
@@ -1937,77 +1928,186 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
   )
 }
 
-function ProblemsView() {
-  const { PUZZLES, META, categoryById, RATING_BOUNDS } = useDashboard()
-  const [activeId, setActiveId] = React.useState<string | null>(null)
-  const [selectedThemes, setSelectedThemes] = React.useState<CategoryId[]>([])
-  const [side, setSide] = React.useState<"any" | "w" | "b">("any")
-  const [ratingRange, setRatingRange] =
-    React.useState<[number, number]>(RATING_BOUNDS)
-  const [sort, setSort] = React.useState("popularity")
+type Search = Pick<URLSearchParams, "get" | "getAll" | "toString">
+type Side = "any" | "w" | "b"
 
-  const filtered = React.useMemo(() => {
-    return PUZZLES.filter((puzzle) => {
-      if (puzzle.rating < ratingRange[0] || puzzle.rating > ratingRange[1]) {
-        return false
-      }
-      if (
-        selectedThemes.length > 0 &&
-        !puzzle.themes.some((theme) => selectedThemes.includes(theme))
-      ) {
-        return false
-      }
-      if (side !== "any" && puzzle.side !== side) {
-        return false
-      }
-      return true
-    }).sort((a, b) => {
-      if (sort === "rating") {
-        return b.rating - a.rating
-      }
-      if (sort === "rating-asc") {
-        return a.rating - b.rating
-      }
-      return b.popularity - a.popularity
-    })
-  }, [PUZZLES, ratingRange, selectedThemes, side, sort])
+const NO_SEARCH = new URLSearchParams()
 
-  const activeIndex = filtered.findIndex((puzzle) => puzzle.id === activeId)
-  const activePuzzle = activeIndex >= 0 ? filtered[activeIndex] : null
+/**
+ * Puzzle filters, sort and the open model trace live in the URL so Back,
+ * Forward, reload and shared links all land on the same view. The pages are
+ * force-static, so the prerender sees no query string: hydrate with none, to
+ * match that HTML, then apply the real one.
+ */
+function useSearch(): Search {
+  const search = useSearchParams()
+  return useMounted() ? search : NO_SEARCH
+}
 
-  const clearFilters = () => {
-    setSelectedThemes([])
-    setSide("any")
-    setRatingRange(RATING_BOUNDS)
+export function PuzzlesPage() {
+  return <ProblemsView search={useSearch()} />
+}
+
+export function PuzzlePage({ id }: { id: string }) {
+  return <PuzzleDetail id={id} search={useSearch()} />
+}
+
+function puzzleHref(id: string, query: string) {
+  return `/puzzles/${encodeURIComponent(id)}${query ? `?${query}` : ""}`
+}
+
+function usePuzzleFilters(search: Search) {
+  const { PUZZLES, RATING_BOUNDS } = useDashboard()
+
+  // SAFETY: an unknown theme id matches no puzzle and shows as a removable chip.
+  const selectedThemes = [...new Set(search.getAll("theme"))] as CategoryId[]
+  const sideParam = search.get("side")
+  const side: Side = sideParam === "w" || sideParam === "b" ? sideParam : "any"
+  // Hand-edited links: clamp to the slider's bounds and drop reversed ranges.
+  const rating = /^(\d+)-(\d+)$/.exec(search.get("rating") ?? "")
+  const low = Math.max(Number(rating?.[1]), RATING_BOUNDS[0])
+  const high = Math.min(Number(rating?.[2]), RATING_BOUNDS[1])
+  const ratingRange: [number, number] =
+    rating && low <= high ? [low, high] : RATING_BOUNDS
+  const sortParam = search.get("sort")
+  const sort =
+    sortParam === "rating" || sortParam === "rating-asc"
+      ? sortParam
+      : "popularity"
+
+  const filterParams = new URLSearchParams(search.toString())
+  filterParams.delete("model")
+  const filterQuery = filterParams.toString()
+
+  const filtered = PUZZLES.filter((puzzle) => {
+    if (puzzle.rating < ratingRange[0] || puzzle.rating > ratingRange[1]) {
+      return false
+    }
+    if (
+      selectedThemes.length > 0 &&
+      !puzzle.themes.some((theme) => selectedThemes.includes(theme))
+    ) {
+      return false
+    }
+    if (side !== "any" && puzzle.side !== side) {
+      return false
+    }
+    return true
+  }).sort((a, b) => {
+    if (sort === "rating") {
+      return b.rating - a.rating
+    }
+    if (sort === "rating-asc") {
+      return a.rating - b.rating
+    }
+    return b.popularity - a.popularity
+  })
+
+  /**
+   * Native history calls, which Next syncs into `useSearchParams`: same-page
+   * query changes need no server round trip. Reads the live URL, not the
+   * render snapshot, so two quick changes do not overwrite each other.
+   */
+  const setParams = (changes: Record<string, string | string[] | null>) => {
+    const next = new URLSearchParams(window.location.search)
+    for (const [key, value] of Object.entries(changes)) {
+      next.delete(key)
+      for (const item of value === null ? [] : [value].flat()) {
+        next.append(key, item)
+      }
+    }
+    const query = next.toString()
+    const href = query ? `?${query}` : window.location.pathname
+    window.history.pushState(null, "", href)
   }
+
+  return {
+    selectedThemes,
+    setSelectedThemes: (themes: CategoryId[]) => setParams({ theme: themes }),
+    side,
+    setSide: (value: Side) =>
+      setParams({ side: value === "any" ? null : value }),
+    ratingRange,
+    setRatingRange: (range: [number, number]) =>
+      setParams({
+        rating:
+          range[0] === RATING_BOUNDS[0] && range[1] === RATING_BOUNDS[1]
+            ? null
+            : `${range[0]}-${range[1]}`,
+      }),
+    sort,
+    setSort: (value: string) =>
+      setParams({ sort: value === "popularity" ? null : value }),
+    clearFilters: () => setParams({ theme: null, side: null, rating: null }),
+    filtered,
+    filterQuery,
+    setParams,
+  }
+}
+
+function PuzzleDetail({ id, search }: { id: string; search: Search }) {
+  const { PUZZLES } = useDashboard()
+  const { filtered, filterQuery, setParams } = usePuzzleFilters(search)
+  // A shared link can carry filters that exclude its own puzzle; step through
+  // the whole bank then rather than strand it.
+  const list = filtered.some((puzzle) => puzzle.id === id) ? filtered : PUZZLES
+  const index = list.findIndex((puzzle) => puzzle.id === id)
+  const puzzle = list[index]
+
+  // The route 404s on unknown ids, so this is only reached when the page is
+  // newer than the data this tab loaded.
+  if (!puzzle) {
+    return (
+      <p className="text-muted-foreground">
+        This puzzle is newer than the loaded results. Reload the page to see it.
+      </p>
+    )
+  }
+
+  const step = (direction: number) =>
+    puzzleHref(
+      list[(index + direction + list.length) % list.length].id,
+      filterQuery
+    )
+
+  return (
+    <ProblemFocus
+      key={puzzle.id}
+      puzzle={puzzle}
+      index={index}
+      total={list.length}
+      backHref={`/puzzles${filterQuery ? `?${filterQuery}` : ""}`}
+      previousHref={step(-1)}
+      nextHref={step(1)}
+      openModel={search.get("model")}
+      onOpenModel={(model) => setParams({ model })}
+    />
+  )
+}
+
+function ProblemsView({ search }: { search: Search }) {
+  const { PUZZLES, META, categoryById, RATING_BOUNDS } = useDashboard()
+  const router = useRouter()
+  const {
+    selectedThemes,
+    setSelectedThemes,
+    side,
+    setSide,
+    ratingRange,
+    setRatingRange,
+    sort,
+    setSort,
+    clearFilters,
+    filtered,
+    filterQuery,
+  } = usePuzzleFilters(search)
 
   const randomPuzzle = () => {
     if (filtered.length === 0) {
       return
     }
     const index = Math.floor(Math.random() * filtered.length)
-    setActiveId(filtered[index].id)
-  }
-
-  const stepFocus = (direction: number) => {
-    if (filtered.length === 0) {
-      return
-    }
-    const next = (activeIndex + direction + filtered.length) % filtered.length
-    setActiveId(filtered[next].id)
-  }
-
-  if (activePuzzle) {
-    return (
-      <ProblemFocus
-        key={activePuzzle.id}
-        puzzle={activePuzzle}
-        index={activeIndex}
-        total={filtered.length}
-        onBack={() => setActiveId(null)}
-        onStep={stepFocus}
-      />
-    )
+    router.push(puzzleHref(filtered[index].id, filterQuery))
   }
 
   return (
@@ -2128,7 +2228,7 @@ function ProblemsView() {
             <ProblemCard
               key={puzzle.id}
               puzzle={puzzle}
-              onOpen={() => setActiveId(puzzle.id)}
+              href={puzzleHref(puzzle.id, filterQuery)}
             />
           ))}
         </div>
@@ -2148,13 +2248,23 @@ function FiltersPopover({
 }: {
   selectedThemes: CategoryId[]
   setSelectedThemes: (themes: CategoryId[]) => void
-  side: "any" | "w" | "b"
-  setSide: (side: "any" | "w" | "b") => void
+  side: Side
+  setSide: (side: Side) => void
   ratingRange: [number, number]
   setRatingRange: (range: [number, number]) => void
   onClear: () => void
 }) {
   const { CATEGORIES, PUZZLES, RATING_STEP, RATING_BOUNDS } = useDashboard()
+  // The thumb follows a local draft while dragging; the URL (and a history
+  // entry) changes once, on release, not on every pointer move.
+  const [draftRange, setDraftRange] = React.useState<[number, number] | null>(
+    null
+  )
+  const toRange = (value: number | readonly number[]): [number, number] => {
+    const range = Array.isArray(value) ? value : RATING_BOUNDS
+    return [range[0] ?? RATING_BOUNDS[0], range[1] ?? RATING_BOUNDS[1]]
+  }
+  const shownRange = draftRange ?? ratingRange
   const filterCount =
     selectedThemes.length +
     (side !== "any" ? 1 : 0) +
@@ -2220,7 +2330,7 @@ function FiltersPopover({
             value={side}
             onValueChange={(value) => {
               // SAFETY: the only SelectItems rendered carry these three values.
-              setSide(value as "any" | "w" | "b")
+              setSide(value as Side)
             }}
           >
             <SelectTrigger className="w-full">
@@ -2237,20 +2347,18 @@ function FiltersPopover({
           <div className="flex items-center justify-between text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
             <span>Rating</span>
             <span className="font-mono tracking-normal">
-              {ratingRange[0]}-{ratingRange[1]}
+              {shownRange[0]}-{shownRange[1]}
             </span>
           </div>
           <Slider
             min={RATING_BOUNDS[0]}
             max={RATING_BOUNDS[1]}
             step={RATING_STEP}
-            value={ratingRange}
-            onValueChange={(value) => {
-              const range = Array.isArray(value) ? value : RATING_BOUNDS
-              setRatingRange([
-                range[0] ?? RATING_BOUNDS[0],
-                range[1] ?? RATING_BOUNDS[1],
-              ])
+            value={shownRange}
+            onValueChange={(value) => setDraftRange(toRange(value))}
+            onValueCommitted={(value) => {
+              setRatingRange(toRange(value))
+              setDraftRange(null)
             }}
           />
           <p className="text-xs text-muted-foreground">
@@ -2272,16 +2380,10 @@ function FiltersPopover({
   )
 }
 
-function ProblemCard({
-  puzzle,
-  onOpen,
-}: {
-  puzzle: PuzzleItem
-  onOpen: () => void
-}) {
+function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
   const { categoryById } = useDashboard()
-  // The card is the only focusable thing here, so its name has to carry the
-  // position too. Meta first, position last, and the board itself is marked
+  // The puzzle link is stretched over the whole card, so its name has to carry
+  // the position too. Meta first, position last, and the board itself is marked
   // decorative so the same squares are not read out twice.
   const label = React.useMemo(() => {
     const themes = puzzle.themes.map(
@@ -2298,27 +2400,30 @@ function ProblemCard({
   }, [categoryById, puzzle])
 
   return (
-    <Card
-      role="button"
-      tabIndex={0}
-      aria-label={label}
-      className="cursor-pointer gap-3 rounded-lg transition-transform outline-none hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50"
-      onClick={onOpen}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault()
-          onOpen()
-        }
-      }}
-    >
+    <Card className="relative gap-3 rounded-lg transition-transform hover:-translate-y-0.5 has-[a:focus-visible]:ring-3 has-[a:focus-visible]:ring-ring/50">
       <CardContent className="pt-0">
-        <ChessBoard fen={puzzle.fen} interactive={false} small decorative />
+        <ChessBoard
+          fen={puzzle.fen}
+          orientation={puzzle.side === "w" ? "white" : "black"}
+          interactive={false}
+          small
+          decorative
+        />
       </CardContent>
       <CardContent className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
-          <span className="font-mono text-xs text-muted-foreground">
+          {/*
+            Stretched over the card so other links can sit above it later. No
+            prefetch: a grid of hundreds of cards would fetch every page.
+          */}
+          <Link
+            href={href}
+            prefetch={false}
+            aria-label={label}
+            className="font-mono text-xs text-muted-foreground outline-none after:absolute after:inset-0 after:rounded-lg"
+          >
             {puzzle.id}
-          </span>
+          </Link>
           <span className="font-mono text-sm font-semibold tabular-nums">
             {puzzle.rating}
           </span>
@@ -2349,14 +2454,20 @@ function ProblemFocus({
   puzzle,
   index,
   total,
-  onBack,
-  onStep,
+  backHref,
+  previousHref,
+  nextHref,
+  openModel,
+  onOpenModel,
 }: {
   puzzle: PuzzleItem
   index: number
   total: number
-  onBack: () => void
-  onStep: (direction: number) => void
+  backHref: string
+  previousHref: string
+  nextHref: string
+  openModel: string | null
+  onOpenModel: (model: string | null) => void
 }) {
   const { modelById, categoryById } = useDashboard()
   const [boardFen, setBoardFen] = React.useState(puzzle.fen)
@@ -2377,7 +2488,6 @@ function ProblemFocus({
     | null
   >(null)
 
-  const hintId = React.useId()
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
   const missed = feedback?.result === "miss"
@@ -2471,31 +2581,33 @@ function ProblemFocus({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <Button size="sm" variant="ghost" onClick={onBack}>
+        {/* Styled links, not Buttons: those render as role="button". */}
+        <Link
+          href={backHref}
+          className={buttonVariants({ size: "sm", variant: "ghost" })}
+        >
           <ArrowLeft data-icon="inline-start" />
           All puzzles
-        </Button>
+        </Link>
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-muted-foreground">
             {String(index + 1).padStart(2, "0")} /{" "}
             {String(total).padStart(2, "0")}
           </span>
-          <Button
-            size="icon-sm"
-            variant="outline"
+          <Link
+            href={previousHref}
             aria-label="Previous puzzle"
-            onClick={() => onStep(-1)}
+            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
           >
             <ChevronLeft />
-          </Button>
-          <Button
-            size="icon-sm"
-            variant="outline"
+          </Link>
+          <Link
+            href={nextHref}
             aria-label="Next puzzle"
-            onClick={() => onStep(1)}
+            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
           >
             <ChevronRight />
-          </Button>
+          </Link>
         </div>
       </div>
 
@@ -2545,11 +2657,11 @@ function ProblemFocus({
             <CardContent>
               <ChessBoard
                 fen={boardFen}
+                orientation={puzzle.side === "w" ? "white" : "black"}
                 lastMove={lastMove}
                 arrows={correctionArrows}
                 locked={locked}
                 onMove={handleMove}
-                describedBy={hintId}
               />
             </CardContent>
           </Card>
@@ -2561,16 +2673,6 @@ function ProblemFocus({
           <p className="sr-only" role="status">
             {announcement}
           </p>
-          <MoveEntry
-            fen={boardFen}
-            hintId={hintId}
-            blocked={
-              locked
-                ? "Not played: no move is due. Press Reset to start over."
-                : ""
-            }
-            onPlay={handleMove}
-          />
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
               {boardFen}
@@ -2632,7 +2734,11 @@ function ProblemFocus({
             </CardAction>
           </CardHeader>
           <CardContent className="cb-model-attempts">
-            <Accordion className="border-t">
+            <Accordion
+              className="border-t"
+              value={openModel ? [openModel] : []}
+              onValueChange={(value) => onOpenModel(value[0] ?? null)}
+            >
               {attempts.map((attempt) => {
                 const model = modelById(attempt.model)
                 return (
@@ -2750,114 +2856,6 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
         {model.name}: {state}
       </TooltipContent>
     </Tooltip>
-  )
-}
-
-/**
- * Chessground only exposes pointer and drag handlers, so a typed move is the
- * keyboard and switch equivalent of dragging a piece (the same affordance
- * lichess offers). It routes into the same handler as the drag path, so the
- * correct/incorrect feedback is identical whichever way the move arrives.
- */
-function MoveEntry({
-  fen,
-  hintId,
-  blocked,
-  onPlay,
-}: {
-  fen: string
-  hintId: string
-  /**
-   * Why no move can be played right now, if the board is locked. The form stays
-   * enabled so focus is not dropped mid-entry; a submit shows this instead.
-   */
-  blocked: string
-  onPlay: (move: PlayedMove) => void
-}) {
-  const inputId = React.useId()
-  const [value, setValue] = React.useState("")
-  const [rejected, setRejected] = React.useState<{
-    fen: string
-    message: string
-  } | null>(null)
-
-  // "... is not a legal move in this position" stops being true once the
-  // position changes, whether by a drag, a typed move, or Reset, so the error is
-  // tied to the position it was raised against rather than cleared in an effect.
-  const error = rejected && rejected.fen === fen ? rejected.message : ""
-
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (blocked) {
-      setRejected({ fen, message: blocked })
-      return
-    }
-
-    const move = parseMoveInput(fen, value)
-
-    if (!move) {
-      setRejected({
-        fen,
-        message: value.trim()
-          ? `${value.trim()} is not a legal move in this position.`
-          : "Type a move first, for example Nf3.",
-      })
-      return
-    }
-
-    setRejected(null)
-    setValue("")
-    onPlay(move)
-  }
-
-  return (
-    <form onSubmit={submit} className="grid gap-2">
-      <label
-        htmlFor={inputId}
-        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-      >
-        Play a move
-      </label>
-      <div className="flex items-center gap-2">
-        <input
-          id={inputId}
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value)
-            if (rejected) {
-              setRejected(null)
-            }
-          }}
-          aria-describedby={hintId}
-          aria-invalid={error ? true : undefined}
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="Nf3 or g1f3"
-          className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 font-mono text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
-        />
-        <Button type="submit" size="sm" variant="outline">
-          Play
-        </Button>
-      </div>
-      {/*
-        One element that swaps between hint and error, so nothing is inserted or
-        removed on a failed entry and the row height never moves.
-      */}
-      <p
-        id={hintId}
-        aria-live="polite"
-        className={cn(
-          "text-xs text-muted-foreground",
-          error && "text-destructive"
-        )}
-      >
-        {error ||
-          "Type a move in SAN or UCI and press Enter - the same as dragging the piece."}
-      </p>
-    </form>
   )
 }
 
@@ -3010,7 +3008,7 @@ function MetaCell({
   )
 }
 
-function DocsView() {
+export function DocsView() {
   const {
     SCOREBOARD,
     CATEGORIES,
@@ -3151,6 +3149,7 @@ function DocsView() {
 
 function ChessBoard({
   fen,
+  orientation,
   interactive = true,
   locked = false,
   onMove,
@@ -3158,9 +3157,9 @@ function ChessBoard({
   arrows = NO_ARROWS,
   small = false,
   decorative = false,
-  describedBy,
 }: {
   fen: string
+  orientation: cg.Color
   interactive?: boolean
   /** Interactive, but no piece can be moved right now (e.g. the opponent is replying). */
   locked?: boolean
@@ -3170,7 +3169,6 @@ function ChessBoard({
   small?: boolean
   /** The position is already described by an ancestor's accessible name. */
   decorative?: boolean
-  describedBy?: string
 }) {
   const boardRef = React.useRef<HTMLDivElement>(null)
   const apiRef = React.useRef<ChessgroundApi | null>(null)
@@ -3178,6 +3176,7 @@ function ChessBoard({
   const reducedMotion = usePreferReducedMotion()
   const latestRef = React.useRef({
     fen,
+    orientation,
     lastMove,
     arrows,
     locked,
@@ -3189,7 +3188,15 @@ function ChessBoard({
   // Chessground instance outlives each render, and its move handler has to read
   // the position the user is currently looking at, not the one it was built on.
   React.useEffect(() => {
-    latestRef.current = { fen, lastMove, arrows, locked, onMove, reducedMotion }
+    latestRef.current = {
+      fen,
+      orientation,
+      lastMove,
+      arrows,
+      locked,
+      onMove,
+      reducedMotion,
+    }
   })
 
   // Construction only. `viewOnly` and `drawable.visible` cannot be changed
@@ -3206,7 +3213,7 @@ function ChessBoard({
     const color = turnColor(initial.fen)
     const config: ChessgroundConfig = {
       fen: boardOnlyFen(initial.fen),
-      orientation: "white",
+      orientation: initial.orientation,
       turnColor: color,
       check: isCheck(initial.fen) ? color : false,
       // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
@@ -3296,6 +3303,7 @@ function ChessBoard({
 
     api.set({
       fen: boardOnlyFen(fen),
+      orientation,
       turnColor: color,
       check: isCheck(fen) ? color : false,
       // SAFETY: Chessground only reports algebraic squares a1-h8 as move keys.
@@ -3312,7 +3320,16 @@ function ChessBoard({
         ["autoShapes"]: arrows,
       },
     })
-  }, [arrows, fen, interactive, lastMove, locked, reducedMotion, small])
+  }, [
+    arrows,
+    fen,
+    interactive,
+    lastMove,
+    locked,
+    orientation,
+    reducedMotion,
+    small,
+  ])
 
   const summary = React.useMemo(() => boardSummary(fen), [fen])
 
@@ -3322,7 +3339,6 @@ function ChessBoard({
       role={decorative ? undefined : "img"}
       aria-hidden={decorative || undefined}
       aria-label={decorative ? undefined : summary}
-      aria-describedby={decorative ? undefined : describedBy}
       className={cn(
         "chessground-board aspect-square w-full overflow-hidden rounded-lg ring-1 ring-border",
         small && "rounded-md"
