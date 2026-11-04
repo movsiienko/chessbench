@@ -3048,7 +3048,7 @@ function DocsView() {
           {TURN_STEPS.map((step, index) => (
             <li key={step.title} className="bg-background p-4">
               <div className="flex items-center gap-2 text-sm font-medium">
-                <span className="grid size-5 place-items-center rounded-full bg-muted font-mono text-2xs text-muted-foreground">
+                <span className="grid size-5 place-items-center rounded-full font-mono text-2xs text-muted-foreground ring-1 ring-border">
                   {index + 1}
                 </span>
                 {step.title}
