@@ -931,19 +931,28 @@ function SampleNote({ children }: { children: React.ReactNode }) {
  * screen showed nothing. For hints whose text is the point, a press opens the
  * tooltip too, and a second tap closes it; outside press and Escape close it
  * as before. A mouse click keeps it open, since hover already opened it.
+ *
+ * Browsers follow a tap with emulated mouse events, including a `mouseleave`
+ * that Base UI reads as hover ending, so hover closes are ignored after a tap.
  */
 function useTapToOpen() {
   const [open, setOpen] = React.useState(false)
+  const tapped = React.useRef(false)
   return {
-    root: { open, onOpenChange: setOpen },
+    root: {
+      open,
+      onOpenChange: (next: boolean, { reason }: { reason: string }) => {
+        if (!next && reason === "trigger-hover" && tapped.current) return
+        if (!next) tapped.current = false
+        setOpen(next)
+      },
+    },
     trigger: {
       closeOnClick: false,
-      onClick: ({ nativeEvent }: React.MouseEvent) => {
-        // `click` is a PointerEvent in current browsers; without one a tap only opens.
-        const touch =
-          "pointerType" in nativeEvent && nativeEvent.pointerType === "touch"
-        setOpen((wasOpen) => !(wasOpen && touch))
+      onPointerDown: ({ pointerType }: React.PointerEvent) => {
+        tapped.current = pointerType === "touch"
       },
+      onClick: () => setOpen((wasOpen) => !(wasOpen && tapped.current)),
     },
   }
 }
