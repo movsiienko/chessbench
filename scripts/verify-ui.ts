@@ -387,11 +387,11 @@ async function checkAttemptEvidence(page: Page) {
   await page
     .getByRole("button", { name: /Gemini 3.5 Flash.*First move/ })
     .click()
-  if (
-    !(await page.locator(".cb-model-attempts pre").innerText()).includes(
-      reasoning
-    )
-  ) {
+  // The trace is fetched when the panel opens; its Reasoning field appears
+  // once the recorded attempt has loaded. The UI shows the text trimmed.
+  const panel = page.getByRole("region", { name: /Gemini 3.5 Flash/ })
+  await panel.getByText("Reasoning", { exact: true }).first().waitFor()
+  if (!(await panel.innerText()).includes(reasoning.trim())) {
     fail("attempt reasoning", "Transcript omitted recorded reasoning")
   } else ok("attempt reasoning", "Transcript retains recorded reasoning")
 }
