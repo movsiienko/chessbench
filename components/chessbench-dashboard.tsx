@@ -2565,13 +2565,9 @@ function ProblemFocus({
             fen={boardFen}
             hintId={hintId}
             blocked={
-              !locked
-                ? ""
-                : missed
-                  ? "Not played: reset to try the puzzle again."
-                  : ply >= line.length
-                    ? "Not played: the puzzle is solved. Reset to replay it."
-                    : "Not played: wait for the opponent's reply."
+              locked
+                ? "Not played: no move is due. Press Reset to start over."
+                : ""
             }
             onPlay={handleMove}
           />
@@ -2605,8 +2601,6 @@ function ProblemFocus({
                   </>
                 ) : (
                   <>
-                    {/* The state word carries the weight here, not the move, so the
-                    ending reads differently from the in-progress lines. */}
                     <strong>Solved</strong> - all {solverMoves} moves found
                   </>
                 )}
