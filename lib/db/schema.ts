@@ -14,6 +14,7 @@ import type { LichessPuzzleAttemptRow } from "../benchmarks/local-runner"
 export const FINISHED_STATUSES = [
   "ok",
   "wrong_move",
+  "illegal_move",
   "invalid_format",
   "timeout",
 ]

@@ -13,6 +13,7 @@ import type { DrawShape as BoardArrow } from "@lichess-org/chessground/draw"
 import type * as cg from "@lichess-org/chessground/types"
 import {
   ArrowLeft,
+  Ban,
   BarChart3,
   BookOpen,
   Brain,
@@ -20,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  CircleHelp,
   Copy,
   Download,
   Filter,
@@ -31,6 +33,7 @@ import {
   Target,
   Trophy,
   X,
+  type LucideIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -149,6 +152,42 @@ type ModelId = string
 type Score = DashboardData["scoreboard"][number]
 type PuzzleItem = DashboardData["puzzles"][number]
 type SolutionAttempt = PuzzleItem["attempts"][number]
+
+/**
+ * How an unsolved attempt ended, as an icon: a cross for a wrong move, a ban
+ * for an illegal one, a question mark when no move could be read at all.
+ */
+const outcomeIcons: Record<SolutionAttempt["status"], LucideIcon> = {
+  ok: X,
+  wrong_move: X,
+  illegal_move: Ban,
+  invalid_format: CircleHelp,
+  timeout: Clock,
+  error: X,
+}
+
+function OutcomeIcon({
+  attempt,
+  ...props
+}: { attempt: SolutionAttempt } & React.ComponentProps<LucideIcon>) {
+  const Icon = attempt.solved ? Check : outcomeIcons[attempt.status]
+  return <Icon {...props} />
+}
+
+/** "7 illegal · 1 invalid format", leaving out zero counts; empty when both are zero. */
+function unplayableCounts(illegalMoves: number, invalidFormats: number) {
+  return [
+    illegalMoves > 0 && `${illegalMoves} illegal`,
+    invalidFormats > 0 && `${invalidFormats} invalid format`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+/** An unreadable answer is not a chess mistake, so it is drawn neutral, not red. */
+function isUnreadable(attempt: SolutionAttempt) {
+  return !attempt.solved && attempt.status === "invalid_format"
+}
 
 type LabIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
 type LabLogo = {
@@ -314,6 +353,8 @@ function deriveDashboard(data: DashboardData) {
       "avg_move_seconds_measured",
       "elo_estimated",
       "usd_per_1k_puzzles_extrapolated",
+      "illegal_move_attempts",
+      "invalid_format_attempts",
     ]
     const rows = [...SCOREBOARD]
       .sort((a, b) => b.accuracy - a.accuracy)
@@ -330,6 +371,8 @@ function deriveDashboard(data: DashboardData) {
           score.avgMoveTime,
           score.elo,
           score.cost,
+          score.illegalMoves,
+          score.invalidFormats,
         ]
       })
 
@@ -631,6 +674,14 @@ export function LeaderboardView() {
   const avgTokens = average(sorted.map((score) => score.avgTokens))
   const medianMove = median(sorted.map((score) => score.avgMoveTime))
   const meanLegalRate = average(sorted.map((score) => score.legalRate))
+  const illegalMoves = sorted.reduce(
+    (total, score) => total + score.illegalMoves,
+    0
+  )
+  const invalidFormats = sorted.reduce(
+    (total, score) => total + score.invalidFormats,
+    0
+  )
 
   return (
     <div className="space-y-8">
@@ -697,8 +748,11 @@ export function LeaderboardView() {
           icon={BarChart3}
           label="Legal moves"
           value={pct(meanLegalRate, 0)}
-          sub="mean parse and legality rate"
-          note={`${META.evaluations.toLocaleString()} evaluations total`}
+          sub={
+            unplayableCounts(illegalMoves, invalidFormats) ||
+            "no illegal or invalid-format answers"
+          }
+          note={`mean per-entry rate · ${META.evaluations.toLocaleString()} evaluations`}
         />
       </section>
 
@@ -1814,9 +1868,10 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
       */}
       <TableCaption className="sr-only">
         Per-model benchmark results on {META.benchmarkId}, ranked by accuracy.
-        Puzzles, accuracy, legal-move rate, average tokens and average time are
-        measured; Elo and cost per 1,000 puzzles are derived from them. Pending
-        puzzles ended in a provider error and are excluded until retried.
+        Puzzles, accuracy, legal-move rate with its illegal-move and
+        invalid-format counts, average tokens and average time are measured; Elo
+        and cost per 1,000 puzzles are derived from them. Pending puzzles ended
+        in a provider error and are excluded until retried.
       </TableCaption>
       <TableHeader>
         <TableRow>
@@ -1830,7 +1885,12 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
               hint="Estimated, not played: average rating of the puzzles the model faced, adjusted by its solve rate. Rounded to 10 points until the sample reaches 100 puzzles."
             />
           </TableHead>
-          <TableHead className="text-right">Legal move</TableHead>
+          <TableHead className="text-right">
+            <DerivedLabel
+              label="Legal move"
+              hint="Share of attempts that did not end on an illegal move or invalid format. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
+            />
+          </TableHead>
           <TableHead className="text-right">
             <DerivedLabel
               label="Avg tokens"
@@ -1885,6 +1945,11 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
               </TableCell>
               <TableCell className="text-right font-mono">
                 {pct(score.legalRate, 0)}
+                {unplayableCounts(score.illegalMoves, score.invalidFormats) && (
+                  <span className="block text-xs text-muted-foreground">
+                    {unplayableCounts(score.illegalMoves, score.invalidFormats)}
+                  </span>
+                )}
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
                 {tokensText(score.avgTokens, score.n)}
@@ -2726,14 +2791,12 @@ function ProblemFocus({
                             "grid size-6 place-items-center rounded-full",
                             attempt.solved
                               ? "bg-move-correct text-move-correct-foreground"
-                              : "border border-dashed border-move-incorrect text-move-incorrect"
+                              : isUnreadable(attempt)
+                                ? "border border-dashed border-muted-foreground text-muted-foreground"
+                                : "border border-dashed border-move-incorrect text-move-incorrect"
                           )}
                         >
-                          {attempt.solved ? (
-                            <Check className="size-3.5" />
-                          ) : (
-                            <X className="size-3.5" />
-                          )}
+                          <OutcomeIcon attempt={attempt} className="size-3.5" />
                         </span>
                         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                           <ModelDot model={attempt.model} />
@@ -2757,8 +2820,14 @@ function ProblemFocus({
                           >
                             {attempt.firstMove.label}
                           </span>
+                          {/* The hint stays off the row so long copy cannot grow it; the expanded attempt shows it. */}
                           <span className="block text-xs text-muted-foreground">
                             {attempt.outcome}
+                            {attempt.outcomeHint && (
+                              <span className="sr-only">
+                                . {attempt.outcomeHint}
+                              </span>
+                            )}
                           </span>
                         </span>
                         <span className="justify-self-end font-mono text-xs text-muted-foreground tabular-nums">
@@ -2770,6 +2839,14 @@ function ProblemFocus({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
+                      {attempt.outcomeHint && (
+                        <p className="mb-3 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            {attempt.outcome}:
+                          </span>{" "}
+                          {attempt.outcomeHint}
+                        </p>
+                      )}
                       <AttemptTrace
                         puzzle={puzzle}
                         attempt={attempt}
@@ -2804,12 +2881,14 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
   return (
     <Tooltip>
       <TooltipTrigger
-        aria-label={`${model.name}: ${state}`}
+        aria-label={`${model.name}: ${state}${attempt.outcomeHint ? `. ${attempt.outcomeHint}` : ""}`}
         className={cn(
           "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
           attempt.solved
             ? "border border-move-correct/50"
-            : "border border-dashed border-move-incorrect/70"
+            : isUnreadable(attempt)
+              ? "border border-dashed border-muted-foreground"
+              : "border border-dashed border-move-incorrect/70"
         )}
       >
         <ModelDot
@@ -2822,18 +2901,21 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
             "absolute -right-1 -bottom-1 grid size-3 place-items-center rounded-full",
             attempt.solved
               ? "bg-move-correct text-move-correct-foreground"
-              : "bg-move-incorrect text-move-incorrect-foreground"
+              : isUnreadable(attempt)
+                ? "bg-muted-foreground text-background"
+                : "bg-move-incorrect text-move-incorrect-foreground"
           )}
         >
-          {attempt.solved ? (
-            <Check className="size-2" strokeWidth={4} />
-          ) : (
-            <X className="size-2" strokeWidth={4} />
-          )}
+          <OutcomeIcon attempt={attempt} className="size-2" strokeWidth={4} />
         </span>
       </TooltipTrigger>
-      <TooltipContent>
-        {model.name}: {state}
+      <TooltipContent className="flex-col items-start gap-0.5">
+        <span>
+          {model.name}: {state}
+        </span>
+        {attempt.outcomeHint && (
+          <span className="opacity-80">{attempt.outcomeHint}</span>
+        )}
       </TooltipContent>
     </Tooltip>
   )
@@ -3081,7 +3163,7 @@ const METRICS: {
   {
     name: "Legal move",
     kind: "Measured",
-    body: "Share of attempts that did not end on an unparseable or illegal answer. Wrong moves and timeouts still count as legal.",
+    body: "Share of attempts that did not end on an illegal move (reads as a move, but not a legal one here) or an invalid format (no move could be read). Wrong moves and timeouts still count as legal.",
   },
   {
     name: "Avg tokens",
@@ -3220,8 +3302,8 @@ export function DocsView() {
               Not solved
             </dt>
             <dd className="mt-1 text-muted-foreground">
-              Stops at the first wrong move, invalid answer or move over{" "}
-              {timeLimit}.
+              Stops at the first wrong move, illegal move, invalid format or
+              move over {timeLimit}.
             </dd>
           </div>
           <div>

@@ -1,6 +1,10 @@
 import { Chess } from "chess.js"
 
-import { applyUciMove, parseAcceptedMoveAnswer } from "../chess/moves"
+import {
+  applyUciMove,
+  moveToken,
+  parseAcceptedMoveAnswer,
+} from "../chess/moves"
 import {
   LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
   type LichessPuzzleBenchmarkItem,
@@ -43,6 +47,7 @@ export type GenerateBenchmarkText = (input: {
 export type LichessPuzzleTurnResult =
   | "correct"
   | "wrong_move"
+  | "illegal_move"
   | "invalid_format"
   | "timeout"
   | "error"
@@ -50,6 +55,7 @@ export type LichessPuzzleTurnResult =
 export type LichessPuzzleAttemptStatus =
   | "ok"
   | "wrong_move"
+  | "illegal_move"
   | "invalid_format"
   | "timeout"
   | "error"
@@ -234,11 +240,12 @@ export function recordAnswer(
   }
 
   if (!parsedMove) {
+    const result = unplayableResult(rawAnswer)
     return {
       ...next,
-      status: "invalid_format",
+      status: result,
       invalidTurnIndex: turnIndex,
-      turns: [...state.turns, { ...turn, result: "invalid_format" }],
+      turns: [...state.turns, { ...turn, result }],
       done: true,
     }
   }
@@ -269,6 +276,45 @@ export function recordAnswer(
     turns: [...state.turns, { ...turn, result: "correct" }],
     done: lastTurn,
   }
+}
+
+/** An answer that names a move the position does not allow, or no move at all. */
+function unplayableResult(
+  rawAnswer: string
+): "illegal_move" | "invalid_format" {
+  return moveToken(rawAnswer) ? "illegal_move" : "invalid_format"
+}
+
+/**
+ * Attempts scored before `illegal_move` existed filed illegal moves under
+ * `invalid_format`. This reclassifies one on read by the rule `recordAnswer`
+ * applies now, from the final turn's answer, so stored and new attempts agree
+ * without rewriting stored results. Only the failure label changes: solved,
+ * scores, and the legal-move rate come out the same.
+ */
+export function currentStatus(
+  status: LichessPuzzleAttemptStatus,
+  finalAnswer: string
+): LichessPuzzleAttemptStatus {
+  return status === "invalid_format" ? unplayableResult(finalAnswer) : status
+}
+
+/** `currentStatus` for a full stored record, final turn included. */
+export function withCurrentStatus(
+  row: LichessPuzzleAttemptRow
+): LichessPuzzleAttemptRow {
+  const final = row.turns.at(-1)
+  const status = currentStatus(row.status, final?.rawAnswer ?? "")
+
+  return row.status === "invalid_format" && status === "illegal_move"
+    ? {
+        ...row,
+        status,
+        turns: row.turns.map((turn) =>
+          turn === final ? { ...turn, result: status } : turn
+        ),
+      }
+    : row
 }
 
 /**

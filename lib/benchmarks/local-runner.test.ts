@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import { parseAcceptedMoveAnswer } from "../chess/moves"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
-import { runLichessPuzzleAttempt } from "./local-runner"
+import { runLichessPuzzleAttempt, withCurrentStatus } from "./local-runner"
 
 function puzzle(): LichessPuzzleBenchmarkItem {
   return {
@@ -148,7 +148,63 @@ describe("local lichess puzzle attempts", () => {
     assert.equal(row.playerMovePrefixScore, 0)
   })
 
-  test("marks illegal UCI-shaped moves invalid", async () => {
+  test("marks illegal moves illegal, not invalid", async () => {
+    for (const text of ["a1b3", "Qh5", "`Rxe7+`"]) {
+      const row = await runLichessPuzzleAttempt({
+        runId: "run",
+        model: "test/model",
+        item: puzzle(),
+        generate: async () => ({ text, latencyMs: 10 }),
+      })
+
+      assert.equal(row.status, "illegal_move", text)
+      assert.equal(row.turns[0]?.result, "illegal_move")
+      assert.equal(row.solved, false)
+      assert.deepEqual(row.submittedPlayerMoves, [])
+    }
+  })
+
+  test("marks empty and non-move answers invalid format", async () => {
+    for (const text of ["", "I resign", "Nf3 Nc6"]) {
+      const row = await runLichessPuzzleAttempt({
+        runId: "run",
+        model: "test/model",
+        item: puzzle(),
+        generate: async () => ({ text, latencyMs: 10 }),
+      })
+
+      assert.equal(row.status, "invalid_format", text)
+    }
+  })
+
+  test("reclassifies a stored illegal move filed as invalid format", async () => {
+    const row = await runLichessPuzzleAttempt({
+      runId: "run",
+      model: "test/model",
+      item: puzzle(),
+      generate: async () => ({ text: "Bf3", latencyMs: 10 }),
+    })
+    const legacy = {
+      ...row,
+      status: "invalid_format" as const,
+      turns: row.turns.map((turn) => ({
+        ...turn,
+        result: "invalid_format" as const,
+      })),
+    }
+
+    const current = withCurrentStatus(legacy)
+    assert.equal(current.status, "illegal_move")
+    assert.equal(current.turns[0]?.result, "illegal_move")
+    assert.equal(current.solved, row.solved)
+    const unreadable = {
+      ...legacy,
+      turns: [{ ...legacy.turns[0]!, rawAnswer: "?" }],
+    }
+    assert.equal(withCurrentStatus(unreadable).status, "invalid_format")
+  })
+
+  test("keeps illegal UCI-shaped moves out of the submitted line", async () => {
     const row = await runLichessPuzzleAttempt({
       runId: "run",
       model: "test/model",
@@ -156,7 +212,6 @@ describe("local lichess puzzle attempts", () => {
       generate: async () => ({ text: "a1b3", latencyMs: 10 }),
     })
 
-    assert.equal(row.status, "invalid_format")
     assert.equal(row.solved, false)
     assert.deepEqual(row.submittedPlayerMoves, [])
     assert.equal(

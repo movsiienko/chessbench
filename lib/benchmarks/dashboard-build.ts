@@ -3,6 +3,7 @@ import {
   MOVE_TIME_LIMIT_MS,
   type LichessPuzzleBenchmarkItem,
 } from "./lichess-puzzles"
+import { currentStatus } from "./local-runner"
 import { labOf, MODELS, type LabId } from "./models"
 
 export type CategoryId =
@@ -31,7 +32,11 @@ export type DashboardModelInput = {
   colorDark: string
 }
 
-export type DashboardAttemptRow = AttemptSummary & { attemptId: string }
+export type DashboardAttemptRow = AttemptSummary & {
+  attemptId: string
+  /** The final turn's raw answer, so an illegal move can be shown as played. */
+  finalAnswer?: string
+}
 
 /** An attempt as stored, minus its turns. */
 export type StoredAttempt = {
@@ -40,6 +45,7 @@ export type StoredAttempt = {
   reasoningLevel: string
   status: string
   record: AttemptSummary
+  finalAnswer?: string | null
 }
 
 export type DashboardBuildInput = {
@@ -95,7 +101,9 @@ export function entriesFrom(stored: StoredAttempt[]) {
 
       rows[id] = finished.map((attempt) => ({
         ...attempt.record,
+        status: currentStatus(attempt.record.status, attempt.finalAnswer ?? ""),
         attemptId: attempt.attemptId,
+        finalAnswer: attempt.finalAnswer ?? "",
       }))
       // Items whose every attempt so far was a provider error. An error row
       // stays after a successful retry, so rows alone would overcount.
@@ -252,7 +260,12 @@ function buildScoreboardRow(
 ) {
   const count = rows.length
   const solved = rows.filter((row) => row.solved).length
-  const valid = rows.filter((row) => row.status !== "invalid_format").length
+  const illegalMoves = rows.filter(
+    (row) => row.status === "illegal_move"
+  ).length
+  const invalidFormats = rows.filter(
+    (row) => row.status === "invalid_format"
+  ).length
   const accuracy = count === 0 ? 0 : solved / count
   const avgRating = count === 0 ? 0 : average(rows.map((row) => row.rating))
   const totalCost = sum(rows.map((row) => row.costUsd ?? 0))
@@ -275,7 +288,13 @@ function buildScoreboardRow(
       average(rows.map((row) => row.latencyMsTotal)) / 1000,
       1
     ),
-    legalRate: round(count === 0 ? 0 : valid / count, 3),
+    // Share of attempts that never ended on an unplayable answer, illegal or unparseable.
+    legalRate: round(
+      count === 0 ? 0 : (count - illegalMoves - invalidFormats) / count,
+      3
+    ),
+    illegalMoves,
+    invalidFormats,
   }
 }
 
@@ -354,8 +373,8 @@ function buildPuzzle(
         if (!row) {
           return null
         }
-        const { attemptId, ...summary } = row
-        return buildAttemptEvidence(model.id, attemptId, summary)
+        const { attemptId, finalAnswer, ...summary } = row
+        return buildAttemptEvidence(model.id, attemptId, summary, finalAnswer)
       })
       .filter((attempt): attempt is NonNullable<typeof attempt> =>
         Boolean(attempt)
