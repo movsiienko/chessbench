@@ -409,7 +409,7 @@ async function checkStructure(page: Page, external: string[]) {
       named: Boolean(s.querySelector("title")?.textContent),
       focusable: s.getAttribute("tabindex") === "0",
     })),
-    tables: document.querySelectorAll("table.sr-only").length,
+    tables: document.querySelectorAll(".sr-only > table").length,
     h1: document.querySelectorAll("h1").length,
     skip: document.querySelector('a[href="#cb-main"]') !== null,
   }))
@@ -436,6 +436,19 @@ async function checkStructure(page: Page, external: string[]) {
 
   if (!structure.skip) fail("skip link", "no link targeting #cb-main")
   else ok("skip link", "present")
+}
+
+/** A phone-width page must not scroll sideways; wide content scrolls in place. */
+async function checkNoHorizontalOverflow(page: Page) {
+  for (const path of ["/", "/puzzles", "/docs"]) {
+    await page.goto(new URL(path, BASE).href, { waitUntil: "networkidle" })
+    const width = await page.evaluate(
+      () => document.documentElement.scrollWidth
+    )
+    if (width > 390)
+      fail("no horizontal overflow", `${path} is ${width}px wide at 390px`)
+    else ok("no horizontal overflow", `${path} fits 390px`)
+  }
 }
 
 const browser = await chromium.launch()
@@ -477,6 +490,10 @@ for (const reduced of [false, true]) {
   if (!reduced) await checkAttemptEvidence(page)
   await page.close()
 }
+
+const phone = await browser.newPage({ viewport: { width: 390, height: 844 } })
+await checkNoHorizontalOverflow(phone)
+await phone.close()
 
 await browser.close()
 

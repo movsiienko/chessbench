@@ -1055,29 +1055,35 @@ function ChartTable({
   columns: string[]
   rows: Array<{ key: string; header: string; cells: string[] }>
 }) {
+  // The wrapper carries sr-only: a table ignores width and overflow, so on the
+  // table itself it widened the page to ~1400px on phones.
   return (
-    <table className="sr-only">
-      <caption>{caption}</caption>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column} scope="col">
-              {column}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.key}>
-            <th scope="row">{row.header}</th>
-            {row.cells.map((cell, index) => (
-              <td key={`${row.key}-${columns[index + 1] ?? index}`}>{cell}</td>
+    <div className="sr-only">
+      <table>
+        <caption>{caption}</caption>
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column} scope="col">
+                {column}
+              </th>
             ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.key}>
+              <th scope="row">{row.header}</th>
+              {row.cells.map((cell, index) => (
+                <td key={`${row.key}-${columns[index + 1] ?? index}`}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
