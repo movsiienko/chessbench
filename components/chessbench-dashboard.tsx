@@ -926,7 +926,19 @@ function SampleNote({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Column or metric label that opens the derivation behind the number. */
+/**
+ * Base UI tooltips open on hover and keyboard focus only, so a tap on a touch
+ * screen showed nothing. For hints whose text is the point, a press opens the
+ * tooltip too; outside press and Escape close it as before.
+ */
+function useTapToOpen() {
+  const [open, setOpen] = React.useState(false)
+  return {
+    root: { open, onOpenChange: setOpen },
+    trigger: { closeOnClick: false, onClick: () => setOpen(true) },
+  }
+}
+
 /**
  * Column header for a figure that was derived rather than measured, with the
  * derivation in a tooltip.
@@ -937,9 +949,11 @@ function SampleNote({ children }: { children: React.ReactNode }) {
  * label, and it is exactly what a keyboard or screen-reader user needs most.
  */
 function DerivedLabel({ label, hint }: { label: string; hint: string }) {
+  const tap = useTapToOpen()
   return (
-    <Tooltip>
+    <Tooltip {...tap.root}>
       <TooltipTrigger
+        {...tap.trigger}
         render={
           <button
             type="button"
@@ -2964,10 +2978,12 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
   const { modelById } = useDashboard()
   const model = modelById(attempt.model)
   const state = attempt.outcome
+  const tap = useTapToOpen()
 
   return (
-    <Tooltip>
+    <Tooltip {...tap.root}>
       <TooltipTrigger
+        {...tap.trigger}
         aria-label={`${model.name}: ${state}${attempt.outcomeHint ? `. ${attempt.outcomeHint}` : ""}`}
         className={cn(
           "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
