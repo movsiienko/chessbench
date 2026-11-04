@@ -3,7 +3,6 @@ import {
   MOVE_TIME_LIMIT_MS,
   type LichessPuzzleBenchmarkItem,
 } from "./lichess-puzzles"
-import { QUALITY_FILTERS, RATING_BANDS } from "./lichess-puzzle-builder"
 import { labOf, MODELS, type LabId } from "./models"
 
 export type CategoryId =
@@ -51,6 +50,17 @@ export type DashboardBuildInput = {
   /** Pending (provider error) attempts per entry id; excluded from scores. */
   pending: Record<string, number>
   datasetSize: number
+  /** The dataset manifest's `selection`: how the puzzle set was actually built. */
+  selection: DatasetSelection
+}
+
+export type DatasetSelection = {
+  ratingBands: { label: string; selected: number }[]
+  filters: {
+    minPopularity: number
+    minPlays: number
+    maxRatingDeviation: number
+  }
 }
 
 /**
@@ -159,6 +169,7 @@ export function buildDashboardData({
   rows,
   pending,
   datasetSize,
+  selection,
 }: DashboardBuildInput) {
   const itemsById = new Map(items.map((item) => [item.id, item]))
   const rowsFor = (model: DashboardModelInput) => rows[model.id] ?? []
@@ -205,12 +216,15 @@ export function buildDashboardData({
       ratingStep: RATING_STEP,
       maxOutputTokens: "uncapped",
       moveTimeLimitSeconds: MOVE_TIME_LIMIT_MS / 1000,
-      ratingBands: RATING_BANDS.map((band) => ({
+      ratingBands: selection.ratingBands.map((band) => ({
         label: band.label,
-        count: items.filter((item) => item.metadata.ratingBand === band.id)
-          .length,
+        count: band.selected,
       })),
-      qualityFilters: QUALITY_FILTERS,
+      qualityFilters: {
+        minPopularity: selection.filters.minPopularity,
+        minPlays: selection.filters.minPlays,
+        maxRatingDeviation: selection.filters.maxRatingDeviation,
+      },
       eloIsEstimated: true,
       costIsExtrapolated: true,
     },

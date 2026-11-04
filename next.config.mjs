@@ -13,9 +13,13 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Revalidation re-runs the page on a function, which reads the item set.
+  // Revalidation re-runs the page on a function, which reads the item set
+  // and its manifest.
   outputFileTracingIncludes: {
-    "/": ["./data/benchmarks/lichess-puzzles-v1/items.jsonl"],
+    "/": [
+      "./data/benchmarks/lichess-puzzles-v1/items.jsonl",
+      "./data/benchmarks/lichess-puzzles-v1/manifest.json",
+    ],
   },
 }
 

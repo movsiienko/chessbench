@@ -1,17 +1,24 @@
+import { readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "../db/client"
 import { attempts, FINISHED_STATUSES } from "../db/schema"
 import type { AttemptSummary } from "./attempt-evidence"
-import { buildDashboardData, entriesFrom } from "./dashboard-build"
+import {
+  buildDashboardData,
+  entriesFrom,
+  type DatasetSelection,
+} from "./dashboard-build"
 import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
 
 const benchmarkId = "lichess-puzzles-v1"
 
 /** Server-only: every current-protocol entry, summarized for the dashboard. */
 export async function loadDashboardData() {
-  const items = await loadItems(
-    join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
+  const dataset = join(process.cwd(), "data/benchmarks", benchmarkId)
+  const items = await loadItems(join(dataset, "items.jsonl"))
+  const manifest: { selection: DatasetSelection } = JSON.parse(
+    await readFile(join(dataset, "manifest.json"), "utf8")
   )
   const stored = await db
     .select({
@@ -36,6 +43,7 @@ export async function loadDashboardData() {
     ...entriesFrom(stored),
     items,
     datasetSize: items.length,
+    selection: manifest.selection,
   })
 }
 
