@@ -50,7 +50,7 @@ export function playSolverMove(
     lastMove: { from: move.from, to: move.to },
   }
 
-  if (move.uci !== expected.toLowerCase()) {
+  if (move.uci.toLowerCase() !== expected.toLowerCase()) {
     return {
       ...moved,
       feedback: {
