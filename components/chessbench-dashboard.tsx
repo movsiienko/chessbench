@@ -929,13 +929,22 @@ function SampleNote({ children }: { children: React.ReactNode }) {
 /**
  * Base UI tooltips open on hover and keyboard focus only, so a tap on a touch
  * screen showed nothing. For hints whose text is the point, a press opens the
- * tooltip too; outside press and Escape close it as before.
+ * tooltip too, and a second tap closes it; outside press and Escape close it
+ * as before. A mouse click keeps it open, since hover already opened it.
  */
 function useTapToOpen() {
   const [open, setOpen] = React.useState(false)
   return {
     root: { open, onOpenChange: setOpen },
-    trigger: { closeOnClick: false, onClick: () => setOpen(true) },
+    trigger: {
+      closeOnClick: false,
+      onClick: ({ nativeEvent }: React.MouseEvent) => {
+        // `click` is a PointerEvent in current browsers; without one a tap only opens.
+        const touch =
+          "pointerType" in nativeEvent && nativeEvent.pointerType === "touch"
+        setOpen((wasOpen) => !(wasOpen && touch))
+      },
+    },
   }
 }
 
@@ -957,7 +966,7 @@ function DerivedLabel({ label, hint }: { label: string; hint: string }) {
         render={
           <button
             type="button"
-            className="cursor-help border-b border-dashed border-muted-foreground/60 font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="relative cursor-help border-b border-dashed border-muted-foreground/60 font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           >
             {label}
             <span className="sr-only">. {hint}</span>
@@ -2986,7 +2995,7 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
         {...tap.trigger}
         aria-label={`${model.name}: ${state}${attempt.outcomeHint ? `. ${attempt.outcomeHint}` : ""}`}
         className={cn(
-          "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+          "relative grid size-6 place-items-center rounded-full outline-none after:absolute after:-inset-1.25 after:content-[''] focus-visible:ring-3 focus-visible:ring-ring/50",
           attempt.solved
             ? "border border-move-correct/50"
             : isUnreadable(attempt)
