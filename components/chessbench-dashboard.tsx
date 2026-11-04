@@ -3135,8 +3135,9 @@ function DocsView() {
             >
               <dt className="font-medium">
                 {metric.name}
+                {metric.code ? " " : null}
                 {metric.code ? (
-                  <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
+                  <span className="ml-1 font-mono text-xs font-normal text-muted-foreground">
                     {metric.code}
                   </span>
                 ) : null}
