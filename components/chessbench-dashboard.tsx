@@ -2640,12 +2640,13 @@ function ProblemFocus({
           <MetaCell label={`Themes - ${puzzle.themes.length}`}>
             <span className="flex flex-wrap gap-x-2 gap-y-1">
               {puzzle.themes.map((theme) => (
-                <span
+                <Link
                   key={theme}
-                  className="border-b-2 border-[var(--chess-amber)]/60"
+                  href={`/tags/${theme}`}
+                  className="border-b-2 border-[var(--chess-amber)]/60 outline-none hover:border-[var(--chess-amber)] focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {categoryById(theme)?.label ?? theme}
-                </span>
+                </Link>
               ))}
             </span>
           </MetaCell>
