@@ -2481,7 +2481,7 @@ function ProblemFocus({
                 <Link
                   key={theme}
                   href={`/tags/${theme}`}
-                  className="border-b-2 border-[var(--chess-amber)]/60 outline-none hover:border-[var(--chess-amber)] focus-visible:rounded-sm focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="border-b-2 border-[var(--chess-amber)]/60 outline-none hover:border-[var(--chess-amber)] focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {categoryById(theme)?.label ?? theme}
                 </Link>
