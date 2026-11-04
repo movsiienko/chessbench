@@ -2552,7 +2552,7 @@ function ProblemFocus({
   }, [lineState, line])
 
   const handleMove = (move: PlayedMove) =>
-    setLineState(playSolverMove(lineState, line, move))
+    setLineState((state) => playSolverMove(state, line, move))
 
   const reset = () => setLineState(startPuzzleLine(puzzle.fen))
 

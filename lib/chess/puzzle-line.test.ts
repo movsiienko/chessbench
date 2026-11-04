@@ -77,9 +77,11 @@ describe("puzzle line", () => {
     assert.equal(playOpponentReply(state, LINE), null)
   })
 
-  test("reset returns to the puzzle's start", () => {
-    const missed = drag(startPuzzleLine(START), LINE, "d2d4")
-    assert.equal(isLineLocked(missed, LINE), true)
+  test("reset (a fresh start) unlocks the board after a miss", () => {
+    assert.equal(
+      isLineLocked(drag(startPuzzleLine(START), LINE, "d2d4"), LINE),
+      true
+    )
 
     const state = startPuzzleLine(START)
     assert.deepEqual(state, {
@@ -88,7 +90,22 @@ describe("puzzle line", () => {
       ply: 0,
       feedback: null,
     })
+    assert.equal(isLineLocked(state, LINE), false)
     assert.equal(drag(state, LINE, "e2e4").feedback?.result, "correct")
+  })
+
+  test("an illegal scripted reply is not played", () => {
+    const line = ["e2e4", "e7e4"]
+    const state = drag(startPuzzleLine(START), line, "e2e4")
+    assert.equal(playOpponentReply(state, line), null)
+  })
+
+  test("an expected move illegal in the position falls back to readable text", () => {
+    const state = drag(startPuzzleLine(START), ["e2e5"], "d2d4")
+    assert.equal(
+      state.feedback?.result === "miss" && state.feedback.expectedSan,
+      "e2 to e5"
+    )
   })
 
   test("a dragged promotion becomes a queen", () => {
