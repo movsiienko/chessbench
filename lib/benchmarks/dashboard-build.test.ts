@@ -205,7 +205,7 @@ describe("entriesFrom", () => {
       (attempt) => attempt.status === "illegal_move"
     )
     assert.equal(illegal?.outcome, "Illegal move on turn 1")
-    assert.equal(illegal?.firstMove.label, "Bf3 (illegal)")
+    assert.equal(illegal?.firstMove.label, "Bf3")
     assert.equal(illegal?.firstMove.correct, false)
   })
 

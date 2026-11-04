@@ -174,6 +174,16 @@ function OutcomeIcon({
   return <Icon {...props} />
 }
 
+/** "7 illegal · 1 invalid format", leaving out zero counts; empty when both are zero. */
+function unplayableCounts(illegalMoves: number, invalidFormats: number) {
+  return [
+    illegalMoves > 0 && `${illegalMoves} illegal`,
+    invalidFormats > 0 && `${invalidFormats} invalid format`,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+}
+
 /** An unreadable answer is not a chess mistake, so it is drawn neutral, not red. */
 function isUnreadable(attempt: SolutionAttempt) {
   return !attempt.solved && attempt.status === "invalid_format"
@@ -746,8 +756,11 @@ function LeaderboardView() {
           icon={BarChart3}
           label="Legal moves"
           value={pct(meanLegalRate, 0)}
-          sub={`${illegalMoves} illegal, ${invalidFormats} invalid format`}
-          note={`${META.evaluations.toLocaleString()} evaluations total`}
+          sub={
+            unplayableCounts(illegalMoves, invalidFormats) ||
+            "no illegal or invalid-format answers"
+          }
+          note={`mean per-entry rate · ${META.evaluations.toLocaleString()} evaluations`}
         />
       </section>
 
@@ -1909,7 +1922,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           <TableHead className="text-right">
             <DerivedLabel
               label="Legal move"
-              hint="Share of attempts that never ended on an unplayable answer. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
+              hint="Share of attempts that did not end on an illegal move or invalid format. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
             />
           </TableHead>
           <TableHead className="text-right">
@@ -1968,13 +1981,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
                 {pct(score.legalRate, 0)}
                 {score.illegalMoves + score.invalidFormats > 0 && (
                   <span className="block text-xs text-muted-foreground">
-                    {[
-                      score.illegalMoves > 0 && `${score.illegalMoves} illegal`,
-                      score.invalidFormats > 0 &&
-                        `${score.invalidFormats} invalid format`,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {unplayableCounts(score.illegalMoves, score.invalidFormats)}
                   </span>
                 )}
               </TableCell>
@@ -2673,11 +2680,8 @@ function ProblemFocus({
                           >
                             {attempt.firstMove.label}
                           </span>
-                          {/* The hint stays off the row so long copy cannot grow it. */}
-                          <span
-                            className="block text-xs text-muted-foreground"
-                            title={attempt.outcomeHint || undefined}
-                          >
+                          {/* The hint stays off the row so long copy cannot grow it; the expanded attempt shows it. */}
+                          <span className="block text-xs text-muted-foreground">
                             {attempt.outcome}
                             {attempt.outcomeHint && (
                               <span className="sr-only">
@@ -2695,6 +2699,14 @@ function ProblemFocus({
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
+                      {attempt.outcomeHint && (
+                        <p className="mb-3 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">
+                            {attempt.outcome}:
+                          </span>{" "}
+                          {attempt.outcomeHint}
+                        </p>
+                      )}
                       <AttemptTrace puzzle={puzzle} attempt={attempt} />
                     </AccordionContent>
                   </AccordionItem>
@@ -2731,7 +2743,7 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
           attempt.solved
             ? "border border-move-correct/50"
             : isUnreadable(attempt)
-              ? "border border-dashed border-muted-foreground/70"
+              ? "border border-dashed border-muted-foreground"
               : "border border-dashed border-move-incorrect/70"
         )}
       >
@@ -2753,8 +2765,10 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
           <OutcomeIcon attempt={attempt} className="size-2" strokeWidth={4} />
         </span>
       </TooltipTrigger>
-      <TooltipContent>
-        {model.name}: {state}
+      <TooltipContent className="flex-col items-start gap-0.5">
+        <span>
+          {model.name}: {state}
+        </span>
         {attempt.outcomeHint && (
           <span className="block opacity-80">{attempt.outcomeHint}</span>
         )}

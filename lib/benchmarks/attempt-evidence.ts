@@ -60,7 +60,8 @@ export function buildAttemptEvidence<Model extends string>(
       label: playedMove
         ? readableMove(playedMove)
         : illegalToken
-          ? `${illegalToken} (illegal)`
+          ? // Struck through like a wrong move; the outcome line says it was illegal.
+            readableMove(illegalToken)
           : "No valid move",
       correct: playedMove ? row.firstMoveCorrect : illegalFirst ? false : null,
     },

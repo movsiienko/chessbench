@@ -167,7 +167,7 @@ describe("published attempt evidence", () => {
       )
       assert.equal(
         evidence.firstMove.label,
-        hasMove ? "a2 to a3" : illegal ? "Qh5 (illegal)" : "No valid move"
+        hasMove ? "a2 to a3" : illegal ? "Qh5" : "No valid move"
       )
       assert.notEqual(evidence.outcomeHint, "")
       assert.equal(evidence.thinkingTokens, null)
