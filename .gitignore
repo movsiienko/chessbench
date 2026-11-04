@@ -49,8 +49,13 @@ data/
 .env*
 
 # agent skills installed by the Neon integration
-.agents/
-.claude/skills/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+.claude/skills/*
+# project skills (committed)
+!.agents/skills/create-pr
+!.claude/skills/create-pr/
 skills-lock.json
 /.swc
 
