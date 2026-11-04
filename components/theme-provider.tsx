@@ -128,4 +128,4 @@ function ThemeHotkey() {
   return null
 }
 
-export { ThemeProvider, THEME_SHORTCUT, useThemeShortcutLabel }
+export { ThemeProvider, THEME_SHORTCUT, isTypingTarget, useThemeShortcutLabel }

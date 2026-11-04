@@ -60,6 +60,7 @@ import {
 
 import {
   THEME_SHORTCUT,
+  isTypingTarget,
   useThemeShortcutLabel,
 } from "@/components/theme-provider"
 import {
@@ -149,6 +150,7 @@ import {
   playSolverMove,
   startPuzzleLine,
 } from "@/lib/chess/puzzle-line"
+import { PUZZLE_STEP_SHORTCUTS, puzzleStepForKey } from "@/lib/puzzle-step-keys"
 import { cn } from "@/lib/utils"
 
 /** A scoreboard entry id: one model at one reasoning level. */
@@ -2510,6 +2512,42 @@ function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
   )
 }
 
+/** A Previous / Next control, with its keyboard shortcuts in a tooltip. */
+function PuzzleStepLink({
+  href,
+  label,
+  keys,
+  shortcuts,
+  children,
+}: {
+  href: string
+  label: string
+  keys: string[]
+  shortcuts: string
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Link
+            href={href}
+            aria-label={label}
+            aria-keyshortcuts={shortcuts}
+            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
+          >
+            {children}
+          </Link>
+        }
+      />
+      <TooltipContent>
+        {label}
+        <span className="text-background/70">{keys.join(" or ")}</span>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 /** Long enough to see the solver's move land before the reply answers it. */
 const OPPONENT_REPLY_DELAY_MS = 600
 
@@ -2570,6 +2608,32 @@ function ProblemFocus({
     return () => window.clearTimeout(timer)
   }, [lineState, line])
 
+  const router = useRouter()
+  React.useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      const direction = puzzleStepForKey(event)
+
+      if (
+        direction === null ||
+        isTypingTarget(event.target) ||
+        // Widgets that own their arrow keys, and any open dialog or popover.
+        (event.target instanceof Element &&
+          event.target.closest(
+            '[role="slider"], [role="listbox"], [role="menu"], [role="tablist"], [role="radiogroup"]'
+          )) ||
+        document.querySelector('[role="dialog"], [role="alertdialog"]')
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      router.push(direction < 0 ? previousHref : nextHref)
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [router, previousHref, nextHref])
+
   const handleMove = (move: PlayedMove) =>
     setLineState((state) => playSolverMove(state, line, move))
 
@@ -2603,20 +2667,22 @@ function ProblemFocus({
             {String(index + 1).padStart(2, "0")} /{" "}
             {String(total).padStart(2, "0")}
           </span>
-          <Link
+          <PuzzleStepLink
             href={previousHref}
-            aria-label="Previous puzzle"
-            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
+            label="Previous puzzle"
+            keys={["←", "K"]}
+            shortcuts={PUZZLE_STEP_SHORTCUTS.previous}
           >
             <ChevronLeft />
-          </Link>
-          <Link
+          </PuzzleStepLink>
+          <PuzzleStepLink
             href={nextHref}
-            aria-label="Next puzzle"
-            className={buttonVariants({ size: "icon-sm", variant: "outline" })}
+            label="Next puzzle"
+            keys={["→", "J"]}
+            shortcuts={PUZZLE_STEP_SHORTCUTS.next}
           >
             <ChevronRight />
-          </Link>
+          </PuzzleStepLink>
         </div>
       </div>
 
