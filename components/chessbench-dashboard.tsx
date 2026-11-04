@@ -3020,6 +3020,11 @@ const METRICS: {
     body: "Mean total tokens per puzzle, as the provider reports them; a puzzle with no reported count adds 0. ChessBench sets no output cap, so provider defaults apply.",
   },
   {
+    name: "Avg time",
+    kind: "Measured",
+    body: "Mean total model response time per puzzle in seconds, summed over all of its moves, not per move.",
+  },
+  {
     name: "Elo",
     kind: "Estimated",
     body: (
@@ -3185,9 +3190,9 @@ export function DocsView() {
           >
             Lichess puzzle database
           </a>{" "}
-          (CC0) with a fixed seed, so a rebuild returns the same{" "}
-          {META.datasetSize.toLocaleString()}. A puzzle has to pass every
-          filter:
+          (CC0) with a fixed seed, so a rebuild from the same source file
+          returns the same {META.datasetSize.toLocaleString()}. A puzzle has to
+          pass every filter:
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {puzzleFilters.map((filter) => (
