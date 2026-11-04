@@ -210,6 +210,12 @@
     color-mix(in oklch, var(--move-incorrect) 14%, transparent);
 }
 
+/* Neutral: bad puzzle data, not the user's mistake. */
+.cb-move-line[data-result="invalid"]::before {
+  background: var(--muted-foreground);
+  box-shadow: none;
+}
+
 .cb-move-line strong {
   color: var(--foreground);
   font-weight: 600;

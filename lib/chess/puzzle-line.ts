@@ -6,6 +6,8 @@ type PuzzleFeedback =
   // "correct" message is not cut off by the reply that follows.
   | { result: "reply"; san: string; played: string }
   | { result: "miss"; san: string; expectedSan: string }
+  // Bad puzzle data: the scripted reply is not legal, so the line stops here.
+  | { result: "invalid" }
 
 /**
  * Progress through a puzzle line. The line alternates solver and opponent
@@ -23,10 +25,14 @@ export function startPuzzleLine(fen: string): PuzzleLineState {
   return { fen, lastMove: null, ply: 0, feedback: null }
 }
 
-/** The board takes no input after a miss, once solved, or while the reply is due. */
+/**
+ * The board takes no input after a miss or an invalid reply, once solved, or
+ * while the reply is due.
+ */
 export function isLineLocked(state: PuzzleLineState, line: string[]) {
   return (
     state.feedback?.result === "miss" ||
+    state.feedback?.result === "invalid" ||
     state.ply >= line.length ||
     state.ply % 2 === 1
   )
@@ -75,21 +81,29 @@ export function playSolverMove(
   }
 }
 
-/** The scripted opponent reply, or null when none is due (or it is illegal). */
+/**
+ * The scripted opponent reply, or null when none is due. An illegal reply
+ * stops the line with "invalid" feedback instead of leaving it waiting.
+ */
 export function playOpponentReply(
   state: PuzzleLineState,
   line: string[]
 ): PuzzleLineState | null {
   const reply = line[state.ply]
 
-  if (state.feedback?.result === "miss" || state.ply % 2 === 0 || !reply) {
+  if (
+    state.feedback?.result === "miss" ||
+    state.feedback?.result === "invalid" ||
+    state.ply % 2 === 0 ||
+    !reply
+  ) {
     return null
   }
 
   const move = resolveMove(state.fen, reply)
 
   if (!move) {
-    return null
+    return { ...state, feedback: { result: "invalid" } }
   }
 
   const ply = state.ply + 1

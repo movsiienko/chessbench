@@ -2564,7 +2564,9 @@ function ProblemFocus({
         ? `Correct, ${feedback.san}. The opponent is replying.`
         : feedback.result === "reply"
           ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
-          : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
+          : feedback.result === "invalid"
+            ? "This puzzle's next opponent move is invalid. Reset to try again."
+            : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
 
   return (
     <div className="space-y-6">
@@ -2666,7 +2668,13 @@ function ProblemFocus({
             </span>
             <div
               aria-hidden="true"
-              data-result={missed ? "miss" : "success"}
+              data-result={
+                missed
+                  ? "miss"
+                  : feedback?.result === "invalid"
+                    ? "invalid"
+                    : "success"
+              }
               className={cn(
                 "cb-move-line order-3 sm:order-none sm:w-[15.75rem]",
                 !feedback && "invisible"
@@ -2688,6 +2696,8 @@ function ProblemFocus({
                   <>
                     Opponent played <strong>{feedback.san}</strong> - your move
                   </>
+                ) : feedback.result === "invalid" ? (
+                  "Invalid opponent move - reset to retry"
                 ) : (
                   <>
                     <strong>Solved</strong> - all {solverMoves} moves found
