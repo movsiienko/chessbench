@@ -1975,6 +1975,18 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
 type Search = Pick<URLSearchParams, "get" | "getAll" | "toString">
 type Side = "any" | "w" | "b"
 
+// Passed to Select as `items` so the trigger shows the label, not the raw value.
+const SORT_LABELS = {
+  popularity: "Popularity",
+  rating: "Rating high to low",
+  "rating-asc": "Rating low to high",
+}
+const SIDE_LABELS: Record<Side, string> = {
+  any: "Either side",
+  w: "White",
+  b: "Black",
+}
+
 const NO_SEARCH = new URLSearchParams()
 
 /**
@@ -2239,15 +2251,18 @@ function ProblemsView({ search }: { search: Search }) {
           <span className="text-xs text-muted-foreground">Sort</span>
           <Select
             value={sort}
+            items={SORT_LABELS}
             onValueChange={(value) => value && setSort(value)}
           >
-            <SelectTrigger size="sm" className="w-44">
+            <SelectTrigger size="sm" className="w-44" aria-label="Sort">
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
-              <SelectItem value="popularity">Popularity</SelectItem>
-              <SelectItem value="rating">Rating high to low</SelectItem>
-              <SelectItem value="rating-asc">Rating low to high</SelectItem>
+              {Object.entries(SORT_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -2372,18 +2387,21 @@ function FiltersPopover({
           </div>
           <Select
             value={side}
+            items={SIDE_LABELS}
             onValueChange={(value) => {
               // SAFETY: the only SelectItems rendered carry these three values.
               setSide(value as Side)
             }}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" aria-label="Side to move">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="any">Either side</SelectItem>
-              <SelectItem value="w">White</SelectItem>
-              <SelectItem value="b">Black</SelectItem>
+              {Object.entries(SIDE_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
