@@ -140,11 +140,15 @@ import {
   moveArrow,
   piecesSummary,
   playMove,
-  readableMove,
-  resolveMove,
   turnColor,
   type PlayedMove,
 } from "@/lib/chess/moves"
+import {
+  isLineLocked,
+  playOpponentReply,
+  playSolverMove,
+  startPuzzleLine,
+} from "@/lib/chess/puzzle-line"
 import { cn } from "@/lib/utils"
 
 /** A scoreboard entry id: one model at one reasoning level. */
@@ -2510,29 +2514,17 @@ function ProblemFocus({
   onOpenModel: (model: string | null) => void
 }) {
   const { modelById, categoryById } = useDashboard()
-  const [boardFen, setBoardFen] = React.useState(puzzle.fen)
-  const [lastMove, setLastMove] = React.useState<{
-    from: string
-    to: string
-  } | null>(null)
-  // The line alternates solver and opponent moves, starting with the solver, so
-  // an odd `ply` means the scripted reply is due.
   const line = puzzle.solution
-  const [ply, setPly] = React.useState(0)
-  const [feedback, setFeedback] = React.useState<
-    | { result: "correct" | "solved"; san: string }
-    // `played` is the solver move the reply answered, announced with it so the
-    // "correct" message is not cut off by the reply 600 ms later.
-    | { result: "reply"; san: string; played: string }
-    | { result: "miss"; san: string; expectedSan: string }
-    | null
-  >(null)
+  const [lineState, setLineState] = React.useState(() =>
+    startPuzzleLine(puzzle.fen)
+  )
+  const { fen: boardFen, lastMove, ply, feedback } = lineState
 
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
   const missed = feedback?.result === "miss"
   const solverMoves = Math.ceil(line.length / 2)
-  const locked = missed || ply >= line.length || ply % 2 === 1
+  const locked = isLineLocked(lineState, line)
   const correctionArrows = React.useMemo(() => {
     const expected = line[ply]
 
@@ -2545,68 +2537,24 @@ function ProblemFocus({
   }, [feedback, line, ply])
 
   React.useEffect(() => {
-    const reply = line[ply]
+    const next = playOpponentReply(lineState, line)
 
-    if (missed || ply % 2 === 0 || !reply) {
+    if (!next) {
       return
     }
 
-    const timer = window.setTimeout(() => {
-      const move = resolveMove(boardFen, reply)
-
-      if (!move) {
-        return
-      }
-
-      setBoardFen(move.fen)
-      setLastMove({ from: move.from, to: move.to })
-      setPly(ply + 1)
-      setFeedback((previous) =>
-        ply + 1 >= line.length
-          ? { result: "solved", san: move.san }
-          : { result: "reply", san: move.san, played: previous?.san ?? "" }
-      )
-    }, OPPONENT_REPLY_DELAY_MS)
+    const timer = window.setTimeout(
+      () => setLineState(next),
+      OPPONENT_REPLY_DELAY_MS
+    )
 
     return () => window.clearTimeout(timer)
-  }, [boardFen, line, missed, ply])
+  }, [lineState, line])
 
-  const handleMove = (move: PlayedMove) => {
-    const expected = line[ply]
+  const handleMove = (move: PlayedMove) =>
+    setLineState((state) => playSolverMove(state, line, move))
 
-    if (locked || !expected) {
-      return
-    }
-
-    setBoardFen(move.fen)
-    setLastMove({ from: move.from, to: move.to })
-
-    if (move.uci !== expected) {
-      setFeedback({
-        result: "miss",
-        san: move.san,
-        // DESIGN.md forbids raw UCI in user-facing feedback when SAN is
-        // available, so the expected move is resolved against the position the
-        // user moved from.
-        expectedSan:
-          resolveMove(boardFen, expected)?.san ?? readableMove(expected),
-      })
-      return
-    }
-
-    setPly(ply + 1)
-    setFeedback({
-      result: ply + 1 >= line.length ? "solved" : "correct",
-      san: move.san,
-    })
-  }
-
-  const reset = () => {
-    setBoardFen(puzzle.fen)
-    setLastMove(null)
-    setPly(0)
-    setFeedback(null)
-  }
+  const reset = () => setLineState(startPuzzleLine(puzzle.fen))
 
   const announcement = !feedback
     ? ""
