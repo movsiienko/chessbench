@@ -753,7 +753,11 @@ export function LeaderboardView() {
               : compactTokens(average(recordedTokens))
           }
           sub="tokens per attempted puzzle"
-          note={`mean of ${recordedTokens.length} entries, n = ${SAMPLE_LABEL} each`}
+          note={
+            recordedTokens.length === 0
+              ? "no entry has recorded tokens"
+              : `mean of ${recordedTokens.length} entries, n = ${SAMPLE_LABEL} each`
+          }
         />
         <SummaryCard
           icon={Clock}
@@ -1929,14 +1933,14 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           <TableHead className="text-right">
             <DerivedLabel
               label="Avg tokens"
-              hint="Mean total tokens per attempted puzzle. Rounded to 100 tokens until the sample reaches 100 puzzles."
+              hint="Mean total tokens per attempted puzzle that reported a count; — when none did. Rounded to 100 tokens until the sample reaches 100 puzzles."
             />
           </TableHead>
           <TableHead className="text-right">Avg time</TableHead>
           <TableHead className="text-right">
             <DerivedLabel
               label="$ / 1k"
-              hint="Extrapolated: mean recorded cost per puzzle multiplied by 1,000. Rounded to the dollar until the sample reaches 100 puzzles."
+              hint="Extrapolated: mean recorded cost per puzzle multiplied by 1,000; — when no puzzle recorded a cost. Rounded to the dollar until the sample reaches 100 puzzles."
             />
           </TableHead>
         </TableRow>
