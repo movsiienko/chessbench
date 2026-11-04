@@ -1,4 +1,5 @@
 import { join } from "node:path"
+import { cache } from "react"
 import { and, eq, inArray, sql } from "drizzle-orm"
 import { db } from "../db/client"
 import { attempts, FINISHED_STATUSES } from "../db/schema"
@@ -8,8 +9,11 @@ import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
 
 const benchmarkId = "lichess-puzzles-v1"
 
-/** Server-only: every current-protocol entry, summarized for the dashboard. */
-export async function loadDashboardData() {
+/**
+ * Server-only: every current-protocol entry, summarized for the dashboard.
+ * Cached per render, so a page and its layout share one query.
+ */
+export const loadDashboardData = cache(async () => {
   const items = await loadItems(
     join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
   )
@@ -37,6 +41,6 @@ export async function loadDashboardData() {
     items,
     datasetSize: items.length,
   })
-}
+})
 
 export type DashboardData = Awaited<ReturnType<typeof loadDashboardData>>

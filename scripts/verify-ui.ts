@@ -171,40 +171,24 @@ async function checkSeriesContrast(page: Page, theme: string) {
 
 /** The board must be operable, and reduced motion must not break that. */
 async function checkBoardAndMotion(page: Page, reduced: boolean) {
-  await page.getByRole("tab", { name: /problems/i }).click()
+  await page.getByRole("link", { name: /problems/i }).click()
   await page.waitForSelector(".cg-wrap")
-  // Every card shows its puzzle from the solver's side, named in its label.
+  // Every card shows its puzzle from the solver's side. The side is named in
+  // the label of the card's stretched link, a sibling of the board, so the
+  // match goes through the card.
   const misoriented = await page
     .locator(
-      '[aria-label*="Black to move"] .cg-wrap.orientation-white, [aria-label*="White to move"] .cg-wrap.orientation-black'
+      '[data-slot="card"]:has(a[aria-label*="Black to move"]) .cg-wrap.orientation-white, [data-slot="card"]:has(a[aria-label*="White to move"]) .cg-wrap.orientation-black'
     )
     .count()
   if (misoriented) fail("card orientation", `${misoriented} cards face wrong`)
   else ok("card orientation", "every card shows the solver's side")
 
   // A Black-to-solve puzzle, so the orientation check below covers the flip.
-  await page
-    .locator('[role="button"][aria-label*="Black to move"]')
-    .first()
-    .click()
+  await page.locator('a[aria-label*="Black to move"]').first().click()
   await page.waitForSelector(".cg-wrap")
   await page.evaluate(() =>
     document.querySelector(".cg-wrap")?.setAttribute("data-probe", "original")
-  )
-
-  const animating = page.evaluate(
-    () =>
-      new Promise<boolean>((resolve) => {
-        let seen = false
-        let frames = 0
-        const tick = () => {
-          if (document.querySelectorAll(".cg-wrap piece.anim").length)
-            seen = true
-          if (++frames < 30) requestAnimationFrame(tick)
-          else resolve(seen)
-        }
-        requestAnimationFrame(tick)
-      })
   )
 
   // The move has to be legal in *this* puzzle, which is never the opening
@@ -237,10 +221,34 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
       .join("|")
   )
 
-  const input = page.getByPlaceholder(/Nf3 or g1f3/i)
-  await input.fill(new Chess(fen).moves()[0])
-  await page.keyboard.press("Enter")
-  const sawAnimation = await animating
+  // Played as a drag, the way a person plays it, from the square centres of
+  // whichever way round the board is drawn.
+  const { from, to } = new Chess(fen).moves({ verbose: true })[0]
+  const board = page.locator(".cg-wrap")
+  await board.scrollIntoViewIfNeeded()
+  const box = await board.boundingBox()
+  if (!box) {
+    fail("board fixture", "the board has no layout box to drag on")
+    return
+  }
+  const black = await board.evaluate((el) =>
+    el.classList.contains("orientation-black")
+  )
+  const centre = (square: string) => {
+    const file = square.charCodeAt(0) - 97
+    const rank = Number(square[1]) - 1
+    const size = box.width / 8
+    return {
+      x: box.x + ((black ? 7 - file : file) + 0.5) * size,
+      y: box.y + ((black ? rank : 7 - rank) + 0.5) * size,
+    }
+  }
+  const start = centre(from)
+  const end = centre(to)
+  await page.mouse.move(start.x, start.y)
+  await page.mouse.down()
+  await page.mouse.move(end.x, end.y, { steps: 5 })
+  await page.mouse.up()
   await page.waitForTimeout(200)
 
   const state = await page.evaluate(() => ({
@@ -274,26 +282,41 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     )
   else ok("board feedback", "move changes the live region")
 
+  // A dropped piece lands without animating, so motion is checked on Reset,
+  // which moves the piece back through api.set() like any programmatic update.
+  const animating = page.evaluate(
+    () =>
+      new Promise<boolean>((resolve) => {
+        let seen = false
+        let frames = 0
+        const tick = () => {
+          if (document.querySelectorAll(".cg-wrap piece.anim").length)
+            seen = true
+          if (++frames < 30) requestAnimationFrame(tick)
+          else resolve(seen)
+        }
+        requestAnimationFrame(tick)
+      })
+  )
+  await page.getByRole("button", { name: "Reset", exact: true }).click()
+  const sawAnimation = await animating
+
   if (reduced && sawAnimation)
     fail(
       "reduced motion",
       "chessground animated pieces while prefers-reduced-motion was set"
     )
   else if (reduced) ok("reduced motion", "piece animation suppressed")
-  else
-    ok(
-      "piece animation",
-      sawAnimation
-        ? "runs normally"
-        : "did not run (expected outside reduced motion)"
-    )
+  else if (!sawAnimation)
+    fail("piece animation", "Reset did not animate the piece back")
+  else ok("piece animation", "Reset animates the piece back")
 }
 
 /** A failed attempt must not relabel its correct first move or discard evidence. */
 async function checkAttemptEvidence(page: Page) {
   await page.goto(BASE, { waitUntil: "networkidle" })
-  await page.getByRole("tab", { name: /problems/i }).click()
-  await page.getByRole("button", { name: /Puzzle lichess:bHLqd,/ }).click()
+  await page.getByRole("link", { name: /problems/i }).click()
+  await page.getByRole("link", { name: /Puzzle lichess:bHLqd,/ }).click()
   for (const name of [
     "GPT 5.5",
     "DeepSeek V3.2 Thinking",
@@ -354,9 +377,9 @@ async function checkAttemptEvidence(page: Page) {
     (turn) => turn.reasoningText
   )!.reasoningText!
   await page.goto(BASE, { waitUntil: "networkidle" })
-  await page.getByRole("tab", { name: /problems/i }).click()
+  await page.getByRole("link", { name: /problems/i }).click()
   await page
-    .getByRole("button", {
+    .getByRole("link", {
       name: new RegExp(`Puzzle ${withReasoning.itemId},`),
     })
     .click()
