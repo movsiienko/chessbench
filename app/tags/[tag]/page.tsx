@@ -137,7 +137,12 @@ export default async function TagPage({ params }: Props) {
                 {puzzles.map((puzzle) => (
                   <TableRow key={puzzle.id}>
                     <TableCell className="sticky left-0 bg-background font-mono text-xs">
-                      {puzzle.id}
+                      <Link
+                        href={`/puzzles/${encodeURIComponent(puzzle.id)}`}
+                        className="rounded-sm underline underline-offset-4 outline-none hover:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        {puzzle.id}
+                      </Link>
                     </TableCell>
                     <TableCell className="text-right font-mono tabular-nums">
                       {puzzle.rating}
