@@ -1,16 +1,9 @@
 import assert from "node:assert/strict"
 import { describe, test } from "node:test"
-import {
-  applyUciMove,
-  parseAcceptedMoveAnswer,
-  parseMoveInput,
-  readableMove,
-} from "./moves"
+import { applyUciMove, parseAcceptedMoveAnswer, readableMove } from "./moves"
 import { Chess } from "chess.js"
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-const CASTLING = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"
-const PROMOTION = "7k/4P3/8/8/8/8/8/4K3 w - - 0 1"
 
 describe("model move grammar", () => {
   test("rejects illegal UCI-shaped moves", () => {
@@ -83,34 +76,6 @@ describe("model move grammar", () => {
     for (const { answer, fen, expected } of cases) {
       assert.equal(parseAcceptedMoveAnswer(answer, fen), expected, answer)
     }
-  })
-})
-
-describe("human move grammar", () => {
-  test("accepts UCI with a dash and surrounding whitespace", () => {
-    assert.equal(parseMoveInput(START, " e2 - e4 ")?.uci, "e2e4")
-  })
-
-  test("accepts castling spellings", () => {
-    assert.equal(parseMoveInput(CASTLING, "o-o")?.uci, "e1g1")
-    assert.equal(parseMoveInput(CASTLING, "0-0-0")?.uci, "e1c1")
-  })
-
-  test("retries a lowercase piece letter capitalised", () => {
-    assert.equal(parseMoveInput(START, "nf3")?.san, "Nf3")
-  })
-
-  test("defaults a UCI promotion to a queen", () => {
-    const move = parseMoveInput(PROMOTION, "e7e8")
-    assert.equal(move?.uci, "e7e8q")
-    assert.equal(move?.san, "e8=Q+")
-    assert.equal(parseMoveInput(PROMOTION, "e7e8n")?.uci, "e7e8n")
-  })
-
-  test("rejects illegal and empty input", () => {
-    assert.equal(parseMoveInput(START, "e2e5"), null)
-    assert.equal(parseMoveInput(START, "Qxf7"), null)
-    assert.equal(parseMoveInput(START, "   "), null)
   })
 })
 

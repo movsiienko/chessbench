@@ -134,7 +134,6 @@ import {
   isCheck,
   legalDests,
   moveArrow,
-  parseMoveInput,
   piecesSummary,
   playMove,
   readableMove,
@@ -2474,7 +2473,6 @@ function ProblemFocus({
     san: string
   } | null>(null)
 
-  const hintId = React.useId()
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
   const correctionArrows = React.useMemo(() => {
@@ -2606,7 +2604,6 @@ function ProblemFocus({
                 lastMove={lastMove}
                 arrows={correctionArrows}
                 onMove={handleMove}
-                describedBy={hintId}
               />
             </CardContent>
           </Card>
@@ -2618,7 +2615,6 @@ function ProblemFocus({
           <p className="sr-only" role="status">
             {announcement}
           </p>
-          <MoveEntry fen={boardFen} hintId={hintId} onPlay={handleMove} />
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
               {boardFen}
@@ -2804,103 +2800,6 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
         {model.name}: {state}
       </TooltipContent>
     </Tooltip>
-  )
-}
-
-/**
- * Chessground only exposes pointer and drag handlers, so a typed move is the
- * keyboard and switch equivalent of dragging a piece (the same affordance
- * lichess offers). It routes into the same handler as the drag path, so the
- * correct/incorrect feedback is identical whichever way the move arrives.
- */
-function MoveEntry({
-  fen,
-  hintId,
-  onPlay,
-}: {
-  fen: string
-  hintId: string
-  onPlay: (move: PlayedMove) => void
-}) {
-  const inputId = React.useId()
-  const [value, setValue] = React.useState("")
-  const [rejected, setRejected] = React.useState<{
-    fen: string
-    message: string
-  } | null>(null)
-
-  // "... is not a legal move in this position" stops being true once the
-  // position changes, whether by a drag, a typed move, or Reset, so the error is
-  // tied to the position it was raised against rather than cleared in an effect.
-  const error = rejected && rejected.fen === fen ? rejected.message : ""
-
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    const move = parseMoveInput(fen, value)
-
-    if (!move) {
-      setRejected({
-        fen,
-        message: value.trim()
-          ? `${value.trim()} is not a legal move in this position.`
-          : "Type a move first, for example Nf3.",
-      })
-      return
-    }
-
-    setRejected(null)
-    setValue("")
-    onPlay(move)
-  }
-
-  return (
-    <form onSubmit={submit} className="grid gap-2">
-      <label
-        htmlFor={inputId}
-        className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase"
-      >
-        Play a move
-      </label>
-      <div className="flex items-center gap-2">
-        <input
-          id={inputId}
-          value={value}
-          onChange={(event) => {
-            setValue(event.target.value)
-            if (rejected) {
-              setRejected(null)
-            }
-          }}
-          aria-describedby={hintId}
-          aria-invalid={error ? true : undefined}
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          placeholder="Nf3 or g1f3"
-          className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-2.5 font-mono text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
-        />
-        <Button type="submit" size="sm" variant="outline">
-          Play
-        </Button>
-      </div>
-      {/*
-        One element that swaps between hint and error, so nothing is inserted or
-        removed on a failed entry and the row height never moves.
-      */}
-      <p
-        id={hintId}
-        aria-live="polite"
-        className={cn(
-          "text-xs text-muted-foreground",
-          error && "text-destructive"
-        )}
-      >
-        {error ||
-          "Type a move in SAN or UCI and press Enter - the same as dragging the piece."}
-      </p>
-    </form>
   )
 }
 
@@ -3200,7 +3099,6 @@ function ChessBoard({
   arrows = NO_ARROWS,
   small = false,
   decorative = false,
-  describedBy,
 }: {
   fen: string
   interactive?: boolean
@@ -3210,7 +3108,6 @@ function ChessBoard({
   small?: boolean
   /** The position is already described by an ancestor's accessible name. */
   decorative?: boolean
-  describedBy?: string
 }) {
   const boardRef = React.useRef<HTMLDivElement>(null)
   const apiRef = React.useRef<ChessgroundApi | null>(null)
@@ -3360,7 +3257,6 @@ function ChessBoard({
       role={decorative ? undefined : "img"}
       aria-hidden={decorative || undefined}
       aria-label={decorative ? undefined : summary}
-      aria-describedby={decorative ? undefined : describedBy}
       className={cn(
         "chessground-board aspect-square w-full overflow-hidden rounded-lg ring-1 ring-border",
         small && "rounded-md"
