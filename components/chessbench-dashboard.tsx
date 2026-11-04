@@ -451,8 +451,8 @@ function costText(cost: number, n: number) {
 
 function tokensText(tokens: number, n: number) {
   return isPrecise(n)
-    ? tokens.toLocaleString()
-    : `~${(Math.round(tokens / 100) * 100).toLocaleString()}`
+    ? tokens.toLocaleString("en-US")
+    : `~${(Math.round(tokens / 100) * 100).toLocaleString("en-US")}`
 }
 
 function moveTimeText(seconds: number, n: number) {
@@ -702,8 +702,8 @@ export function LeaderboardView() {
           </span>
           <span aria-hidden="true">·</span>
           <span>
-            {META.puzzleCount.toLocaleString()} of{" "}
-            {META.datasetSize.toLocaleString()} lichess puzzles sampled
+            {META.puzzleCount.toLocaleString("en-US")} of{" "}
+            {META.datasetSize.toLocaleString("en-US")} lichess puzzles sampled
           </span>
           <span aria-hidden="true">·</span>
           <span className="inline-flex items-center gap-2 text-foreground">
@@ -756,7 +756,7 @@ export function LeaderboardView() {
             unplayableCounts(illegalMoves, invalidFormats) ||
             "no illegal or invalid-format answers"
           }
-          note={`mean per-entry rate · ${META.evaluations.toLocaleString()} evaluations`}
+          note={`mean per-entry rate · ${META.evaluations.toLocaleString("en-US")} evaluations`}
         />
       </section>
 
@@ -2171,7 +2171,8 @@ function ProblemsView({ search }: { search: Search }) {
       <section className="grid gap-6 border-b pb-7 lg:grid-cols-[1.35fr_0.85fr] lg:items-end">
         <div className="space-y-4">
           <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-            Problem set - {filtered.length} of {PUZZLES.length.toLocaleString()}
+            Problem set - {filtered.length} of{" "}
+            {PUZZLES.length.toLocaleString("en-US")}
           </div>
           <div className="max-w-3xl space-y-3">
             <h1 className="max-w-[20ch] text-4xl font-semibold tracking-tight">
@@ -2181,9 +2182,9 @@ function ProblemsView({ search }: { search: Search }) {
               Every board is a lichess-style position tagged by the themes that
               solve it. Click a board to inspect the position, play a legal
               move, and compare model traces. These are the{" "}
-              {META.puzzleCount.toLocaleString()} puzzles models have been run
-              on, sampled from the {META.datasetSize.toLocaleString()}-puzzle
-              benchmark.
+              {META.puzzleCount.toLocaleString("en-US")} puzzles models have
+              been run on, sampled from the{" "}
+              {META.datasetSize.toLocaleString("en-US")}-puzzle benchmark.
             </p>
           </div>
         </div>
@@ -2807,7 +2808,7 @@ function ProblemFocus({
                         <span className="justify-self-end font-mono text-xs text-muted-foreground tabular-nums">
                           {attempt.thinkingTokens === null
                             ? "Tokens not recorded"
-                            : `${attempt.thinkingTokens.toLocaleString()} tok`}{" "}
+                            : `${attempt.thinkingTokens.toLocaleString("en-US")} tok`}{" "}
                           - {(attempt.thinkingMs / 1000).toFixed(1)}s
                         </span>
                       </div>
@@ -3218,7 +3219,7 @@ export function DocsView() {
         </h1>
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
           Each entry, a model at one reasoning level, has answered{" "}
-          {SAMPLE_LABEL} of the {META.datasetSize.toLocaleString()}{" "}
+          {SAMPLE_LABEL} of the {META.datasetSize.toLocaleString("en-US")}{" "}
           {META.benchmarkId} puzzles so far, all with the same prompt, time
           limit and scorer.
         </p>
@@ -3226,7 +3227,9 @@ export function DocsView() {
 
       <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-4">
         <MetaCell label="Puzzle set">
-          <span className="font-mono">{META.datasetSize.toLocaleString()}</span>{" "}
+          <span className="font-mono">
+            {META.datasetSize.toLocaleString("en-US")}
+          </span>{" "}
           from Lichess
         </MetaCell>
         <MetaCell label="Per entry">
@@ -3316,8 +3319,8 @@ export function DocsView() {
             Lichess puzzle database
           </a>{" "}
           (CC0) with a fixed seed, so a rebuild from the same source file
-          returns the same {META.datasetSize.toLocaleString()}. A puzzle has to
-          pass every filter:
+          returns the same {META.datasetSize.toLocaleString("en-US")}. A puzzle
+          has to pass every filter:
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {puzzleFilters.map((filter) => (

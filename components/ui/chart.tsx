@@ -298,7 +298,8 @@ function ChartTooltipContent({
                           {z
                             .number()
                             .safeParse(item.value)
-                            .data?.toLocaleString() ?? String(item.value)}
+                            .data?.toLocaleString("en-US") ??
+                            String(item.value)}
                         </span>
                       )}
                     </div>
