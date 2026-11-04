@@ -2853,11 +2853,13 @@ function AttemptTrace({
             )}
             {turn.errorMessage ? (
               <TraceField label="Error">
-                <p className="text-xs text-destructive">{turn.errorMessage}</p>
+                <p className="text-xs wrap-anywhere text-destructive">
+                  {turn.errorMessage}
+                </p>
               </TraceField>
             ) : (
               <TraceField label="Answer">
-                <pre className="rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs whitespace-pre-wrap">
+                <pre className="rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
                   {turn.rawAnswer || "(empty)"}
                 </pre>
               </TraceField>
@@ -2912,7 +2914,7 @@ function TurnReasoning({
           {vendor} doesn&apos;t expose this model&apos;s reasoning.
         </p>
       ) : (
-        <div className="max-h-72 overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 whitespace-pre-wrap">
+        <div className="max-h-72 max-w-[75ch] overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 wrap-anywhere whitespace-pre-wrap">
           {reasoning.text}
         </div>
       )}
