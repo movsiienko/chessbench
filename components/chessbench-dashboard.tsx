@@ -545,7 +545,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
                   href={href}
                   aria-label={label}
                   aria-current={current ? "page" : undefined}
-                  className="relative inline-flex h-9 min-w-6 items-center justify-center gap-1.5 rounded-md text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-foreground/60 uppercase transition-colors outline-none after:absolute after:inset-x-0 after:bottom-[-5px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:text-foreground aria-[current=page]:after:opacity-100 dark:text-muted-foreground dark:hover:text-foreground dark:aria-[current=page]:text-foreground [&_svg]:size-4 [&_svg]:shrink-0"
+                  className="relative inline-flex h-9 min-w-6 items-center justify-center gap-1.5 rounded-md text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-muted-foreground uppercase transition-colors outline-none after:absolute after:inset-x-0 after:bottom-[-5px] after:h-0.5 after:bg-foreground after:opacity-0 after:transition-opacity hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-[current=page]:text-foreground aria-[current=page]:after:opacity-100 [&_svg]:size-4 [&_svg]:shrink-0"
                 >
                   <Icon aria-hidden />
                   <span className="hidden sm:inline">{label}</span>
