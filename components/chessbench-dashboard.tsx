@@ -2673,12 +2673,16 @@ function ProblemFocus({
                           >
                             {attempt.firstMove.label}
                           </span>
-                          <span className="block text-xs text-muted-foreground">
-                            <span className="font-medium">
-                              {attempt.outcome}
-                            </span>
+                          {/* The hint stays off the row so long copy cannot grow it. */}
+                          <span
+                            className="block text-xs text-muted-foreground"
+                            title={attempt.outcomeHint || undefined}
+                          >
+                            {attempt.outcome}
                             {attempt.outcomeHint && (
-                              <> · {attempt.outcomeHint}</>
+                              <span className="sr-only">
+                                . {attempt.outcomeHint}
+                              </span>
                             )}
                           </span>
                         </span>
