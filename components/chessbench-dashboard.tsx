@@ -2918,7 +2918,7 @@ function MetaCell({
 const TURN_STEPS = [
   {
     title: "Position",
-    body: "The model gets the FEN and the side to move.",
+    body: "The model gets the position as a FEN.",
   },
   {
     title: "One move",
@@ -2950,7 +2950,7 @@ const METRICS: {
   {
     name: "Avg tokens",
     kind: "Measured",
-    body: "Mean total tokens per puzzle, as the provider reports them. Output tokens are not capped.",
+    body: "Mean total tokens per puzzle, as the provider reports them. ChessBench sets no output cap, so provider defaults apply.",
   },
   {
     name: "Elo",
@@ -2959,7 +2959,7 @@ const METRICS: {
       <>
         Mean rating of the puzzles faced, plus{" "}
         <span className="font-mono text-xs">400 · log10(p / (1 - p))</span> for
-        accuracy <span className="font-mono text-xs">p</span>.
+        accuracy <span className="font-mono text-xs">p</span>, clamped to 1-99%.
       </>
     ),
   },
@@ -2984,11 +2984,11 @@ const RUN_FACTS = [
   },
   {
     title: "Retried",
-    body: "A failed call is retried up to four times, unless the provider rejects the request as invalid. A turn that still fails is left pending for the next run.",
+    body: "A failed call is retried up to four times, unless the provider marks the error as not retryable, such as an invalid request. A turn that still fails is left pending for the next run.",
   },
   {
     title: "Reasoning",
-    body: "One provider-neutral level, from none to max, that each provider maps to its own effort or token budget.",
+    body: "The provider default, or one provider-neutral level from none to max that each provider maps to its own effort or token budget.",
   },
 ]
 
@@ -3010,7 +3010,7 @@ function DocsView() {
       : `${META.ratingBands.length}`
 
   const limits = [
-    `Each model answered ${SAMPLE_LABEL} puzzles, so one puzzle moves accuracy by ${puzzleWeight(MIN_SAMPLE).toFixed(0)} points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
+    `Each model answered ${SAMPLE_LABEL} puzzles, so one puzzle moves accuracy by up to ${puzzleWeight(MIN_SAMPLE).toFixed(0)} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
     "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry is one model at one reasoning level, with one attempt per puzzle.",
@@ -3018,14 +3018,15 @@ function DocsView() {
   ]
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 text-pretty">
       <section className="space-y-3">
         <h1 className="text-4xl font-semibold tracking-tight">
           How ChessBench works
         </h1>
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-          Every model is scored on puzzles from the same {META.benchmarkId} set,
-          with the same prompt, time limit and scorer.
+          Each model has answered {SAMPLE_LABEL} of the{" "}
+          {META.datasetSize.toLocaleString()} {META.benchmarkId} puzzles so far,
+          all with the same prompt, time limit and scorer.
         </p>
       </section>
 
@@ -3037,7 +3038,7 @@ function DocsView() {
         <MetaCell label="Rating bands">
           <span className="font-mono">{bandSummary}</span> puzzles
         </MetaCell>
-        <MetaCell label="Per model">
+        <MetaCell label="Answered so far">
           <span className="font-mono">{SAMPLE_LABEL}</span> answered
         </MetaCell>
         <MetaCell label="Move time limit">
@@ -3099,23 +3100,30 @@ function DocsView() {
       </DocsSection>
 
       <DocsSection title="The puzzle set">
-        <div className="grid auto-cols-fr grid-flow-col gap-px overflow-hidden rounded-lg border bg-border">
+        <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:auto-cols-fr sm:grid-flow-col">
           {META.ratingBands.map((band) => (
             <div
               key={band.label}
-              className="bg-background px-2 py-3 text-center"
+              className="flex items-baseline justify-between bg-background px-4 py-2 sm:block sm:px-2 sm:py-3 sm:text-center"
             >
-              <div className="font-mono text-xs sm:text-sm">{band.label}</div>
-              <div className="mt-1 text-2xs text-muted-foreground">
+              <div className="font-mono text-sm">{band.label}</div>
+              <div className="text-xs text-muted-foreground sm:mt-1">
                 {band.count} puzzles
               </div>
             </div>
           ))}
         </div>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
-          Sampled from the public Lichess puzzle database with a fixed seed, so
-          a rebuild returns the same {META.datasetSize.toLocaleString()}. A
-          puzzle has to pass every filter:
+          Sampled from the{" "}
+          <a
+            href="https://database.lichess.org/#puzzles"
+            className="text-foreground underline underline-offset-4"
+          >
+            Lichess puzzle database
+          </a>{" "}
+          (CC0) with a fixed seed, so a rebuild returns the same{" "}
+          {META.datasetSize.toLocaleString()}. A puzzle has to pass every
+          filter:
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {puzzleFilters.map((filter) => (
@@ -3171,6 +3179,16 @@ function DocsView() {
             <li key={limit}>{limit}</li>
           ))}
         </ul>
+        <p className="mt-4 text-sm text-muted-foreground">
+          To rebuild the puzzle set or rerun a model, see the{" "}
+          <a
+            href="https://github.com/movsiienko/chessbench#readme"
+            className="text-foreground underline underline-offset-4"
+          >
+            README
+          </a>
+          .
+        </p>
       </DocsSection>
     </div>
   )
@@ -3185,7 +3203,7 @@ function DocsSection({
 }) {
   return (
     <section className="grid gap-4 border-t pt-6 lg:grid-cols-[14rem_1fr] lg:gap-8">
-      <h2 className="text-base font-medium">{title}</h2>
+      <h2 className="text-lg font-medium">{title}</h2>
       <div className="max-w-4xl min-w-0">{children}</div>
     </section>
   )
