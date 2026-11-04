@@ -2369,8 +2369,11 @@ function ProblemFocus({
   const line = puzzle.solution
   const [ply, setPly] = React.useState(0)
   const [feedback, setFeedback] = React.useState<
-    | { result: "correct" | "reply" | "solved"; san: string }
-    | { result: "miss"; san: string; expected: string; expectedSan: string }
+    | { result: "correct" | "solved"; san: string }
+    // `played` is the solver move the reply answered, announced with it so the
+    // "correct" message is not cut off by the reply 600 ms later.
+    | { result: "reply"; san: string; played: string }
+    | { result: "miss"; san: string; expectedSan: string }
     | null
   >(null)
 
@@ -2380,13 +2383,15 @@ function ProblemFocus({
   const missed = feedback?.result === "miss"
   const locked = missed || ply >= line.length || ply % 2 === 1
   const correctionArrows = React.useMemo(() => {
-    if (feedback?.result !== "miss") {
+    const expected = line[ply]
+
+    if (feedback?.result !== "miss" || !expected) {
       return []
     }
 
-    const arrow = moveArrow(feedback.expected)
+    const arrow = moveArrow(expected)
     return arrow ? [arrow] : []
-  }, [feedback])
+  }, [feedback, line, ply])
 
   React.useEffect(() => {
     const reply = line[ply]
@@ -2405,10 +2410,11 @@ function ProblemFocus({
       setBoardFen(move.fen)
       setLastMove({ from: move.from, to: move.to })
       setPly(ply + 1)
-      setFeedback({
-        result: ply + 1 >= line.length ? "solved" : "reply",
-        san: move.san,
-      })
+      setFeedback((previous) =>
+        ply + 1 >= line.length
+          ? { result: "solved", san: move.san }
+          : { result: "reply", san: move.san, played: previous?.san ?? "" }
+      )
     }, OPPONENT_REPLY_DELAY_MS)
 
     return () => window.clearTimeout(timer)
@@ -2428,7 +2434,6 @@ function ProblemFocus({
       setFeedback({
         result: "miss",
         san: move.san,
-        expected,
         // DESIGN.md forbids raw UCI in user-facing feedback when SAN is
         // available, so the expected move is resolved against the position the
         // user moved from.
@@ -2459,7 +2464,7 @@ function ProblemFocus({
       : feedback.result === "correct"
         ? `Correct, ${feedback.san}. The opponent is replying.`
         : feedback.result === "reply"
-          ? `The opponent played ${feedback.san}. Your move.`
+          ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
           : `Puzzle solved with ${feedback.san}.`
 
   return (
@@ -2555,7 +2560,20 @@ function ProblemFocus({
           <p className="sr-only" role="status">
             {announcement}
           </p>
-          <MoveEntry fen={boardFen} hintId={hintId} onPlay={handleMove} />
+          <MoveEntry
+            fen={boardFen}
+            hintId={hintId}
+            blocked={
+              !locked
+                ? ""
+                : missed
+                  ? "Not played: reset to try the puzzle again."
+                  : ply >= line.length
+                    ? "Not played: the puzzle is solved. Reset to replay it."
+                    : "Not played: wait for the opponent's reply."
+            }
+            onPlay={handleMove}
+          />
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
               {boardFen}
@@ -2747,10 +2765,16 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
 function MoveEntry({
   fen,
   hintId,
+  blocked,
   onPlay,
 }: {
   fen: string
   hintId: string
+  /**
+   * Why no move can be played right now, if the board is locked. The form stays
+   * enabled so focus is not dropped mid-entry; a submit shows this instead.
+   */
+  blocked: string
   onPlay: (move: PlayedMove) => void
 }) {
   const inputId = React.useId()
@@ -2767,6 +2791,11 @@ function MoveEntry({
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
+    if (blocked) {
+      setRejected({ fen, message: blocked })
+      return
+    }
 
     const move = parseMoveInput(fen, value)
 
