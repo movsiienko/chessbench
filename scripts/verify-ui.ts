@@ -174,18 +174,12 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
   await page.getByRole("tab", { name: /problems/i }).click()
   await page.waitForSelector(".cg-wrap")
   // Every card shows its puzzle from the solver's side, named in its label.
-  const misoriented = await page.evaluate(() =>
-    [...document.querySelectorAll('[role="button"][aria-label*="Puzzle"]')]
-      .filter((card) => {
-        const side = card.getAttribute("aria-label")?.includes("Black to move")
-          ? "black"
-          : "white"
-        return !card.querySelector(`.cg-wrap.orientation-${side}`)
-      })
-      .map((card) => card.getAttribute("aria-label")?.split(",")[0])
-  )
-  if (misoriented.length)
-    fail("card orientation", `wrong side at the bottom: ${misoriented}`)
+  const misoriented = await page
+    .locator(
+      '[aria-label*="Black to move"] .cg-wrap.orientation-white, [aria-label*="White to move"] .cg-wrap.orientation-black'
+    )
+    .count()
+  if (misoriented) fail("card orientation", `${misoriented} cards face wrong`)
   else ok("card orientation", "every card shows the solver's side")
 
   // A Black-to-solve puzzle, so the orientation check below covers the flip.
