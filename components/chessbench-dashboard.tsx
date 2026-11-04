@@ -2711,9 +2711,7 @@ function ProblemFocus({
             visual status line below reserves its space with `invisible`, which
             some screen readers skip when the text changes in the same tick.
           */}
-          <p className="sr-only" role="status">
-            {announcement}
-          </p>
+          <output className="sr-only">{announcement}</output>
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
               {boardFen}

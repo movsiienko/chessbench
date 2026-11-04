@@ -217,7 +217,7 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
   else fail("board orientation", `expected ${want} for ${fen}`)
 
   const statusBefore = await page.evaluate(() =>
-    [...document.querySelectorAll('[role="status"]')]
+    [...document.querySelectorAll('output, [role="status"]')]
       .map((el) => el.textContent?.trim() ?? "")
       .join("|")
   )
@@ -256,7 +256,7 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
     survived:
       document.querySelector(".cg-wrap")?.getAttribute("data-probe") ===
       "original",
-    status: [...document.querySelectorAll('[role="status"]')]
+    status: [...document.querySelectorAll('output, [role="status"]')]
       .map((el) => el.textContent?.trim() ?? "")
       .join("|"),
   }))
