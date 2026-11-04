@@ -264,7 +264,11 @@ function buildScoreboardRow(
   ).length
   const accuracy = count === 0 ? 0 : solved / count
   const avgRating = count === 0 ? 0 : average(rows.map((row) => row.rating))
-  const totalCost = sum(rows.map((row) => row.costUsd ?? 0))
+  // A provider can leave cost or tokens unreported (null); those attempts are
+  // left out of the mean instead of counting as 0, and an entry with none
+  // recorded gets null.
+  const costs = rows.flatMap((row) => row.costUsd ?? [])
+  const tokens = rows.flatMap((row) => row.totalTokens ?? [])
   // One puzzle's worth of accuracy: the band shows where the Elo estimate
   // lands if the model solves or misses one more puzzle at this sample size.
   const step = count === 0 ? 0 : 1 / count
@@ -278,8 +282,8 @@ function buildScoreboardRow(
     eloLow: estimateElo(avgRating, Math.max(0, accuracy - step)),
     eloHigh: estimateElo(avgRating, Math.min(1, accuracy + step)),
     // Extrapolated from a small sample, so it is emitted at whole-dollar precision.
-    cost: round(count === 0 ? 0 : (totalCost / count) * 1000, 0),
-    avgTokens: Math.round(average(rows.map((row) => row.totalTokens ?? 0))),
+    cost: costs.length === 0 ? null : round(average(costs) * 1000, 0),
+    avgTokens: tokens.length === 0 ? null : Math.round(average(tokens)),
     avgMoveTime: round(
       average(rows.map((row) => row.latencyMsTotal)) / 1000,
       1
