@@ -87,6 +87,38 @@ test("asks the model for the requested reasoning level, provider-neutrally", asy
   assert.equal(model.doGenerateCalls[0]?.providerOptions?.anthropic, undefined)
 })
 
+// Open models such as Qwen return readable reasoning through the Gateway as
+// reasoning content; it must come back as text, which the runner stores.
+test("captures readable reasoning text for the trace", async () => {
+  globalThis.AI_SDK_DEFAULT_PROVIDER = customProvider({
+    languageModels: {
+      "alibaba/test": new MockLanguageModelV4({
+        doGenerate: async () => ({
+          content: [
+            { type: "reasoning", text: "Rd8 is mate." },
+            { type: "text", text: "d1d8" },
+          ],
+          finishReason: { unified: "stop", raw: "stop" },
+          warnings: [],
+          usage: {
+            inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+            outputTokens: { total: 9, text: 1, reasoning: 8 },
+          },
+        }),
+      }),
+    },
+  })
+
+  const response = await createGenerate({
+    reasoning: "medium",
+    maxOutputTokens: null,
+    gatewayTags: null,
+  })({ model: "alibaba/test", messages: [{ role: "user", content: "Move?" }] })
+
+  assert.equal(response.text, "d1d8")
+  assert.equal(response.reasoningText, "Rd8 is mate.")
+})
+
 test("leaves retries to the workflow: a provider error surfaces after one call", async () => {
   const model = new MockLanguageModelV4({
     doGenerate: async () => {

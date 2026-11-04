@@ -13,6 +13,7 @@ import {
   attemptJson,
   attemptTranscript,
   buildAttemptEvidence,
+  turnReasoning,
 } from "./attempt-evidence"
 
 // The six sets published before results moved to Postgres, imported by
@@ -126,6 +127,52 @@ describe("published attempt evidence", () => {
     assert.equal(reasoningTurns, 21)
   })
 
+  test("shows readable reasoning and hides signed or encrypted reasoning", () => {
+    const turn = {
+      turnIndex: 0,
+      prompt: "Move?",
+      rawAnswer: "e2e4",
+      parsedMove: "e2e4",
+      expectedMove: "e2e4",
+      result: "correct" as const,
+      errorMessage: "",
+    }
+    // Gemini: readable text.
+    assert.deepEqual(
+      turnReasoning({ ...turn, reasoningText: "Develop.", reasoning: [] }),
+      { text: "Develop." }
+    )
+    // Claude's signature and GPT's encrypted content: no readable text.
+    for (const metadata of [
+      { anthropic: { signature: "Ess2" } },
+      { openai: { reasoningEncryptedContent: "gAAA" } },
+    ]) {
+      const reasoning = [
+        { type: "reasoning", text: "", providerMetadata: metadata },
+      ]
+      assert.equal(
+        turnReasoning({ ...turn, reasoningText: "", reasoning }),
+        "hidden"
+      )
+      assert.ok(
+        attemptTranscript({
+          ...gpt5[0]!,
+          turns: [{ ...turn, reasoning }],
+        }).includes("Reasoning: not returned as readable text")
+      )
+    }
+    // Grok: reasoning tokens billed, no reasoning returned.
+    assert.equal(
+      turnReasoning({ ...turn, reasoning: [], usage: { reasoningTokens: 9 } }),
+      "hidden"
+    )
+    // DeepSeek and Qwen stored runs: the model did not reason.
+    assert.equal(
+      turnReasoning({ ...turn, reasoning: [], usage: { reasoningTokens: 0 } }),
+      null
+    )
+  })
+
   test("distinguishes a wrong first move, invalid answer, and provider error", () => {
     const original = gpt5[0]!
     for (const status of ["wrong_move", "invalid_format", "error"] as const) {
@@ -148,6 +195,7 @@ describe("published attempt evidence", () => {
             expectedMove: "c2c4",
             result: status,
             errorMessage: status === "error" ? "Provider unavailable" : "",
+            reasoningText: "Recorded provider reasoning",
             reasoning: [
               { type: "reasoning", text: "Recorded provider reasoning" },
             ],
