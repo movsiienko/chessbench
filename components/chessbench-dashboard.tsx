@@ -371,10 +371,10 @@ function deriveDashboard(data: DashboardData) {
           score.n,
           score.accuracy,
           score.legalRate,
-          score.avgTokens,
+          score.avgTokens ?? "",
           score.avgMoveTime,
           score.elo,
-          score.cost,
+          score.cost ?? "",
           score.illegalMoves,
           score.invalidFormats,
         ]
@@ -453,6 +453,16 @@ function tokensText(tokens: number, n: number) {
   return isPrecise(n)
     ? tokens.toLocaleString("en-US")
     : `~${(Math.round(tokens / 100) * 100).toLocaleString("en-US")}`
+}
+
+/** A table cell's stand-in for a value the provider never reported. */
+function NotRecorded() {
+  return (
+    <span title="Not recorded">
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">Not recorded</span>
+    </span>
+  )
 }
 
 function moveTimeText(seconds: number, n: number) {
@@ -675,7 +685,7 @@ export function LeaderboardView() {
 
   const leaderModel = modelById(leader.model)
   const modelCount = new Set(MODELS.map((model) => model.model)).size
-  const avgTokens = average(sorted.map((score) => score.avgTokens))
+  const recordedTokens = sorted.flatMap((score) => score.avgTokens ?? [])
   const medianMove = median(sorted.map((score) => score.avgMoveTime))
   const meanLegalRate = average(sorted.map((score) => score.legalRate))
   const illegalMoves = sorted.reduce(
@@ -737,9 +747,17 @@ export function LeaderboardView() {
         <SummaryCard
           icon={Brain}
           label="Avg thinking"
-          value={compactTokens(avgTokens)}
+          value={
+            recordedTokens.length === 0
+              ? "—"
+              : compactTokens(average(recordedTokens))
+          }
           sub="tokens per attempted puzzle"
-          note={`mean of ${MODELS.length} entries, n = ${SAMPLE_LABEL} each`}
+          note={
+            recordedTokens.length === 0
+              ? "no entry has recorded tokens"
+              : `mean of ${recordedTokens.length} entries, n = ${SAMPLE_LABEL} each`
+          }
         />
         <SummaryCard
           icon={Clock}
@@ -1614,28 +1632,36 @@ type TradeoffPoint = {
   model: string
   short: string
   accuracy: number
-  cost: number
-  tokens: number
+  /** Cost per 1k puzzles or mean tokens, whichever the plot shows. */
+  value: number
   n: number
 }
 
 function TradeoffScatter() {
   const { SCOREBOARD, modelById, SAMPLE_LABEL } = useDashboard()
-  const data: TradeoffPoint[] = SCOREBOARD.map((score) => ({
-    id: score.model,
-    model: modelById(score.model).name,
-    short: modelById(score.model).shortName,
-    accuracy: Number((score.accuracy * 100).toFixed(1)),
-    cost: score.cost,
-    tokens: score.avgTokens,
-    n: score.n,
-  }))
+  // An entry with no recorded value has no x position, so it is left off.
+  const pointsOf = (key: "cost" | "avgTokens"): TradeoffPoint[] =>
+    SCOREBOARD.flatMap((score) => {
+      const value = score[key]
+      return value === null
+        ? []
+        : [
+            {
+              id: score.model,
+              model: modelById(score.model).name,
+              short: modelById(score.model).shortName,
+              accuracy: Number((score.accuracy * 100).toFixed(1)),
+              value,
+              n: score.n,
+            },
+          ]
+    })
 
   return (
     <SeriesScope className="grid gap-4 lg:grid-cols-2">
       <TradeoffPlot
         metric="cost"
-        data={data}
+        data={pointsOf("cost")}
         note={
           <>
             Cost per 1,000 puzzles is the mean cost of {SAMPLE_LABEL} recorded
@@ -1646,7 +1672,7 @@ function TradeoffScatter() {
       />
       <TradeoffPlot
         metric="tokens"
-        data={data}
+        data={pointsOf("avgTokens")}
         note={
           <>
             Mean total tokens per attempted puzzle across {SAMPLE_LABEL}
@@ -1669,12 +1695,11 @@ function TradeoffScatter() {
  */
 function edgeAnchor(
   point: TradeoffPoint,
-  metricMax: number,
-  metric: "cost" | "tokens"
+  metricMax: number
 ): "start" | "middle" | "end" {
   if (metricMax === 0) return "middle"
 
-  const share = point[metric] / metricMax
+  const share = point.value / metricMax
 
   if (share <= 0.12) return "start"
   if (share >= 0.88) return "end"
@@ -1690,8 +1715,11 @@ function TradeoffPlot({
   data: TradeoffPoint[]
   note: React.ReactNode
 }) {
-  const { seriesMark, MIN_SAMPLE } = useDashboard()
+  const { seriesMark, MIN_SAMPLE, SCOREBOARD, modelById } = useDashboard()
   const isCost = metric === "cost"
+  const unplotted = SCOREBOARD.filter(
+    (score) => !data.some((point) => point.id === score.model)
+  ).map((score) => modelById(score.model).name)
   const heading = isCost
     ? "Cost / 1k puzzles · extrapolated"
     : "Thinking tokens / puzzle"
@@ -1709,7 +1737,7 @@ function TradeoffPlot({
   // point sits above (Qwen3 reached Grok that way), and recharts ignores `dx`
   // on a LabelList. So coincident points get one shared label naming all of
   // them, anchored on the first, and the rest render nothing.
-  const metricMax = Math.max(...data.map((point) => point[metric]), 0)
+  const metricMax = Math.max(...data.map((point) => point.value), 0)
   // Accuracy is already a 0-100 percentage here; the metric axis runs from 0 to
   // its own maximum.
   const nearby = (a: TradeoffPoint, b: TradeoffPoint) =>
@@ -1717,7 +1745,7 @@ function TradeoffPlot({
     // percentage points - the same 8% of the axis the metric side uses. It read
     // 0.08 against a 0-100 value, which only ever matched an exact tie.
     Math.abs(a.accuracy - b.accuracy) <= 8 &&
-    (metricMax === 0 || Math.abs(a[metric] - b[metric]) / metricMax <= 0.08)
+    (metricMax === 0 || Math.abs(a.value - b.value) / metricMax <= 0.08)
 
   const clusters: TradeoffPoint[][] = []
 
@@ -1754,7 +1782,7 @@ function TradeoffPlot({
       </div>
       <ChartContainer
         config={{
-          [metric]: { label: axisName },
+          value: { label: axisName },
           accuracy: { label: "Accuracy" },
         }}
         className="aspect-auto h-[260px] w-full"
@@ -1766,7 +1794,7 @@ function TradeoffPlot({
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis
-            dataKey={metric}
+            dataKey="value"
             name={axisName}
             type="number"
             tickFormatter={(value) =>
@@ -1789,7 +1817,7 @@ function TradeoffPlot({
                   // SAFETY: recharts hands the formatter the row from `data` behind the hovered series entry.
                   const row = item?.payload as TradeoffPoint | undefined
                   const n = row?.n ?? MIN_SAMPLE
-                  const isMetric = item?.dataKey === metric
+                  const isMetric = item?.dataKey === "value"
 
                   return (
                     <div className="flex w-full min-w-48 items-center justify-between gap-3 leading-none">
@@ -1827,7 +1855,7 @@ function TradeoffPlot({
                 dataKey="plotLabel"
                 position="top"
                 offset={10}
-                textAnchor={edgeAnchor(point, metricMax, metric)}
+                textAnchor={edgeAnchor(point, metricMax)}
                 className="fill-muted-foreground text-2xs"
               />
             </Scatter>
@@ -1842,7 +1870,7 @@ function TradeoffPlot({
           key: point.id,
           header: point.model,
           cells: [
-            metricText(isCost ? point.cost : point.tokens, point.n),
+            metricText(point.value, point.n),
             accuracyText(point.accuracy / 100, point.n),
             `${point.n}`,
           ],
@@ -1860,6 +1888,13 @@ function TradeoffPlot({
               .join("; ")}{" "}
             land on the same spot here and share one label; the shapes are drawn
             over each other.
+          </>
+        )}
+        {unplotted.length > 0 && (
+          <>
+            {" "}
+            Not plotted, no {isCost ? "cost" : "token count"} recorded:{" "}
+            {unplotted.join(", ")}.
           </>
         )}
       </SampleNote>
@@ -1904,14 +1939,14 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           <TableHead className="text-right">
             <DerivedLabel
               label="Avg tokens"
-              hint="Mean total tokens per attempted puzzle. Rounded to 100 tokens until the sample reaches 100 puzzles."
+              hint="Mean total tokens per attempted puzzle that reported a count; — when none did. Rounded to 100 tokens until the sample reaches 100 puzzles."
             />
           </TableHead>
           <TableHead className="text-right">Avg time</TableHead>
           <TableHead className="text-right">
             <DerivedLabel
               label="$ / 1k"
-              hint="Extrapolated: mean recorded cost per puzzle multiplied by 1,000. Rounded to the dollar until the sample reaches 100 puzzles."
+              hint="Extrapolated: mean recorded cost per puzzle multiplied by 1,000; — when no puzzle recorded a cost. Rounded to the dollar until the sample reaches 100 puzzles."
             />
           </TableHead>
         </TableRow>
@@ -1962,13 +1997,21 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
                 )}
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
-                {tokensText(score.avgTokens, score.n)}
+                {score.avgTokens === null ? (
+                  <NotRecorded />
+                ) : (
+                  tokensText(score.avgTokens, score.n)
+                )}
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
                 {moveTimeText(score.avgMoveTime, score.n)}
               </TableCell>
               <TableCell className="text-right font-mono text-muted-foreground">
-                {costText(score.cost, score.n)}
+                {score.cost === null ? (
+                  <NotRecorded />
+                ) : (
+                  costText(score.cost, score.n)
+                )}
               </TableCell>
             </TableRow>
           )
@@ -3149,7 +3192,7 @@ const METRICS: {
   {
     name: "Avg tokens",
     kind: "Measured",
-    body: "Mean total tokens per puzzle, as the provider reports them; a puzzle with no reported count adds 0. ChessBench sets no output cap, so provider defaults apply.",
+    body: "Mean total tokens per puzzle, as the provider reports them; a puzzle with no reported count is left out of the mean, and an entry with none shows —. ChessBench sets no output cap, so provider defaults apply.",
   },
   {
     name: "Avg time",
@@ -3171,7 +3214,7 @@ const METRICS: {
   {
     name: "$ / 1k",
     kind: "Extrapolated",
-    body: "Mean recorded cost per puzzle, multiplied by 1,000; a puzzle with no recorded cost adds 0.",
+    body: "Mean recorded cost per puzzle, multiplied by 1,000; a puzzle with no recorded cost is left out of the mean, and an entry with none shows —.",
   },
 ]
 

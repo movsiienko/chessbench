@@ -168,6 +168,47 @@ describe("buildDashboardData", () => {
   })
 })
 
+describe("scoreboard cost and tokens", () => {
+  const scoreboardOf = (rows: DashboardAttemptRow[]) =>
+    buildDashboardData({
+      models: models.slice(0, 1),
+      items,
+      rows: { a: rows },
+      pending: {},
+      datasetSize: 3,
+      selection,
+    }).scoreboard[0]
+
+  test("averages only attempts that recorded a value", () => {
+    const score = scoreboardOf([
+      { ...row("a", "p1", 1500, true), totalTokens: 100, costUsd: 0.002 },
+      { ...row("a", "p2", 1500, true), totalTokens: null, costUsd: null },
+      { ...row("a", "p3", 1500, true), totalTokens: 300, costUsd: 0.004 },
+    ])
+
+    assert.equal(score?.avgTokens, 200)
+    assert.equal(score?.cost, 3)
+  })
+
+  test("is null when no attempt recorded it", () => {
+    const score = scoreboardOf([
+      { ...row("a", "p1", 1500, true), totalTokens: null, costUsd: null },
+    ])
+
+    assert.equal(score?.avgTokens, null)
+    assert.equal(score?.cost, null)
+  })
+
+  test("keeps a recorded 0 as 0", () => {
+    const score = scoreboardOf([
+      { ...row("a", "p1", 1500, true), totalTokens: 0, costUsd: 0 },
+    ])
+
+    assert.equal(score?.avgTokens, 0)
+    assert.equal(score?.cost, 0)
+  })
+})
+
 describe("entriesFrom", () => {
   const stored = (itemId: string, status: string) => ({
     attemptId: `${itemId}-${status}`,
