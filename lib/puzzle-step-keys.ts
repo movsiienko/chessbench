@@ -11,6 +11,7 @@ export const PUZZLE_STEP_SHORTCUTS = {
 type StepKey = Pick<
   KeyboardEvent,
   | "key"
+  | "code"
   | "altKey"
   | "ctrlKey"
   | "metaKey"
@@ -36,14 +37,17 @@ export function puzzleStepForKey(event: StepKey): -1 | 1 | null {
     return null
   }
 
-  switch (event.key.toLowerCase()) {
-    case "arrowleft":
-    case "k":
-      return -1
-    case "arrowright":
-    case "j":
-      return 1
-    default:
-      return null
+  // Synthetic keydowns (autofill, extensions) can lack `key`. `code` keeps
+  // J/K on their physical keys under non-Latin layouts.
+  const key = event.key?.toLowerCase()
+
+  if (key === "arrowleft" || key === "k" || event.code === "KeyK") {
+    return -1
   }
+
+  if (key === "arrowright" || key === "j" || event.code === "KeyJ") {
+    return 1
+  }
+
+  return null
 }

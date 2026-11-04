@@ -2619,7 +2619,7 @@ function ProblemFocus({
         // Widgets that own their arrow keys, and any open dialog or popover.
         (event.target instanceof Element &&
           event.target.closest(
-            '[role="slider"], [role="listbox"], [role="menu"], [role="tablist"], [role="radiogroup"]'
+            'audio, video, [role="slider"], [role="spinbutton"], [role="combobox"], [role="listbox"], [role="menu"], [role="menubar"], [role="tablist"], [role="radiogroup"], [role="toolbar"], [role="grid"], [role="tree"]'
           )) ||
         document.querySelector('[role="dialog"], [role="alertdialog"]')
       ) {
