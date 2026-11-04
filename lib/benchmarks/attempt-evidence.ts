@@ -34,7 +34,7 @@ const outcomeLabels: Record<LichessPuzzleAttemptStatus, string> = {
 const outcomeHints: Record<LichessPuzzleAttemptStatus, string> = {
   ok: "Ended without completing the line.",
   wrong_move: "A legal move, but not the solution.",
-  illegal_move: "A move the position does not allow.",
+  illegal_move: "Reads as a move, but not a legal one here.",
   invalid_format: "No move could be read from the answer.",
   timeout: "No answer within the move time limit.",
   error: "The provider returned an error.",
@@ -50,6 +50,7 @@ export function buildAttemptEvidence<Model extends string>(
   const playedMove = row.submittedPlayerMoves[0] ?? ""
   const illegalFirst =
     row.status === "illegal_move" && row.invalidTurnIndex === 0
+  const illegalToken = illegalFirst ? moveToken(finalAnswer) : ""
   return {
     attemptId,
     model,
@@ -58,8 +59,8 @@ export function buildAttemptEvidence<Model extends string>(
       uci: playedMove,
       label: playedMove
         ? readableMove(playedMove)
-        : illegalFirst && moveToken(finalAnswer)
-          ? `${moveToken(finalAnswer)} (illegal)`
+        : illegalToken
+          ? `${illegalToken} (illegal)`
           : "No valid move",
       correct: playedMove ? row.firstMoveCorrect : illegalFirst ? false : null,
     },

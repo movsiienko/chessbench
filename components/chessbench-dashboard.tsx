@@ -339,12 +339,12 @@ function deriveDashboard(data: DashboardData) {
       "puzzles_evaluated",
       "solved_rate_measured",
       "legal_move_rate_measured",
-      "illegal_move_attempts",
-      "invalid_format_attempts",
       "avg_total_tokens_measured",
       "avg_move_seconds_measured",
       "elo_estimated",
       "usd_per_1k_puzzles_extrapolated",
+      "illegal_move_attempts",
+      "invalid_format_attempts",
     ]
     const rows = [...SCOREBOARD]
       .sort((a, b) => b.accuracy - a.accuracy)
@@ -357,12 +357,12 @@ function deriveDashboard(data: DashboardData) {
           score.n,
           score.accuracy,
           score.legalRate,
-          score.illegalMoves,
-          score.invalidFormats,
           score.avgTokens,
           score.avgMoveTime,
           score.elo,
           score.cost,
+          score.illegalMoves,
+          score.invalidFormats,
         ]
       })
 
@@ -1909,7 +1909,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           <TableHead className="text-right">
             <DerivedLabel
               label="Legal move"
-              hint="Share of attempts that never ended on an unplayable answer. Illegal: a move the position does not allow. Invalid format: no move could be read from the answer."
+              hint="Share of attempts that never ended on an unplayable answer. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
             />
           </TableHead>
           <TableHead className="text-right">

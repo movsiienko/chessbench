@@ -95,7 +95,7 @@ export function parseAcceptedMoveAnswer(
 // Pieces (`Nf3`, `Nbd2`, `Ng1-f3`), pawns (`e4`, `exd5`, `e2-e4`, `e8=Q`) and
 // castling, as chess.js reads them, with no origin square required to be real.
 const SAN =
-  /^(?:O-O(?:-O)?|[KQRBN](?:[a-h]?[1-8]?|[a-h][1-8]-)x?[a-h][1-8]|(?:[a-h]x|[a-h][1-8][-x]?)?[a-h][1-8](?:=?[QRBN])?)[+#]?$/
+  /^(?:O-O(?:-O)?|[KQRBN](?:[a-h]?[1-8]?|[a-h][1-8]-)x?[a-h][1-8]|P?(?:[a-h]x|[a-h][1-8][-x]?)?[a-h][1-8](?:=?[QRBNqrbn])?)[+#]?$/
 
 /**
  * The answer as one move token in the accepted notation, legal or not, after

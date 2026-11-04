@@ -306,15 +306,15 @@ export function withCurrentStatus(
   const final = row.turns.at(-1)
   const status = currentStatus(row.status, final?.rawAnswer ?? "")
 
-  return status !== "illegal_move" || status === row.status
-    ? row
-    : {
+  return row.status === "invalid_format" && status === "illegal_move"
+    ? {
         ...row,
         status,
         turns: row.turns.map((turn) =>
           turn === final ? { ...turn, result: status } : turn
         ),
       }
+    : row
 }
 
 /**

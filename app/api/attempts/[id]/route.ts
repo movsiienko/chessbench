@@ -4,7 +4,9 @@ import { withCurrentStatus } from "@/lib/benchmarks/local-runner"
 import { attempts, FINISHED_STATUSES } from "@/lib/db/schema"
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-// Only finished outcomes are cached forever; pending errors get retried.
+// Only finished outcomes are cached; pending errors get retried. The CDN keeps
+// them for the deployment, while browsers revalidate, because the outcome label
+// is derived on read and can change with a deploy.
 
 /** One attempt's full record, turns included. Finished attempts never change. */
 export async function GET(
@@ -27,7 +29,7 @@ export async function GET(
 
   return Response.json(withCurrentStatus(row.record), {
     headers: {
-      "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
+      "Cache-Control": "public, max-age=0, s-maxage=31536000, must-revalidate",
     },
   })
 }
