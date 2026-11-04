@@ -80,6 +80,11 @@ function row(
   }
 }
 
+const selection = {
+  ratingBands: [{ label: "<1200", selected: 2 }],
+  filters: { minPopularity: 80, minPlays: 300, maxRatingDeviation: 110 },
+}
+
 const models = [
   { id: "a", name: "GPT 5.5", vendor: "OpenAI", lab: "openai" as const },
   {
@@ -126,6 +131,7 @@ describe("buildDashboardData", () => {
     },
     pending: { a: 1 },
     datasetSize: 3,
+    selection,
   })
 
   test("emits the elo estimate with its one-puzzle band", () => {
@@ -154,6 +160,7 @@ describe("buildDashboardData", () => {
   test("emits rating bounds, sample size, and short names", () => {
     assert.deepEqual(data.meta.ratingBounds, [1000, 2050])
     assert.deepEqual(data.meta.sampleSize, { min: 3, max: 3 })
+    assert.deepEqual(data.meta.ratingBands, selection.ratingBands)
     assert.deepEqual(
       data.models.map((model) => model.shortName),
       ["GPT", "Claude"]
@@ -192,6 +199,7 @@ describe("entriesFrom", () => {
       ...entriesFrom([]),
       items,
       datasetSize: 3,
+      selection,
     })
 
     assert.deepEqual(data.scoreboard, [])

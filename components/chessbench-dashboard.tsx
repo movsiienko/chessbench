@@ -800,32 +800,6 @@ export function LeaderboardView() {
   )
 }
 
-function Metric({
-  label,
-  value,
-  mono,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-}) {
-  return (
-    <div>
-      <div className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-        {label}
-      </div>
-      <div
-        className={cn(
-          "mt-1 text-xl font-semibold tabular-nums",
-          mono && "font-mono"
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  )
-}
-
 function SummaryCard({
   icon: Icon,
   label,
@@ -3077,142 +3051,301 @@ function MetaCell({
   )
 }
 
+const TURN_STEPS = [
+  {
+    title: "Position",
+    body: "The model gets the position as a FEN.",
+  },
+  {
+    title: "One move",
+    body: "It answers with exactly one legal move in UCI or SAN, and nothing else.",
+  },
+  {
+    title: "Reply",
+    body: "If it is correct, the expected opponent reply is sent as a UCI move and the next move is asked for in the same conversation.",
+  },
+]
+
+const METRICS: {
+  name: string
+  code?: string
+  kind: string
+  body: React.ReactNode
+}[] = [
+  {
+    name: "Accuracy",
+    code: "solved_rate",
+    kind: "Measured",
+    body: "Share of puzzles where every player move of the solution line was correct. The headline number.",
+  },
+  {
+    name: "Legal move",
+    kind: "Measured",
+    body: "Share of attempts that did not end on an unparseable or illegal answer. Wrong moves and timeouts still count as legal.",
+  },
+  {
+    name: "Avg tokens",
+    kind: "Measured",
+    body: "Mean total tokens per puzzle, as the provider reports them; a puzzle with no reported count adds 0. ChessBench sets no output cap, so provider defaults apply.",
+  },
+  {
+    name: "Avg time",
+    kind: "Measured",
+    body: "Mean total model response time per puzzle in seconds, summed over all of its moves, not per move.",
+  },
+  {
+    name: "Elo",
+    kind: "Estimated",
+    body: (
+      <>
+        Mean rating of the puzzles faced, plus{" "}
+        <span className="font-mono text-xs">400 · log10(p / (1 - p))</span> for
+        accuracy <span className="font-mono text-xs">p</span> (clamped to
+        1-99%).
+      </>
+    ),
+  },
+  {
+    name: "$ / 1k",
+    kind: "Extrapolated",
+    body: "Mean recorded cost per puzzle, multiplied by 1,000; a puzzle with no recorded cost adds 0.",
+  },
+]
+
+// ponytail: copies of ATTEMPTS_IN_PARALLEL and playTurn.maxRetries in
+// benchmark-workflow.ts; importing that workflow module here would pull it into
+// the dashboard build, so update this text when those change.
+const RUN_FACTS = [
+  {
+    title: "Durable",
+    body: "Runs execute on Vercel Workflows, one step per turn, in batches of five attempts.",
+  },
+  {
+    title: "Paid once",
+    body: "Each model and puzzle is claimed in Postgres before the paid call, so overlapping runs never play the same puzzle at once.",
+  },
+  {
+    title: "Retried",
+    body: "A failed call is retried up to four times, unless the provider marks the error as not retryable, such as an invalid request. A turn that still fails is left pending for the next run.",
+  },
+  {
+    title: "Reasoning",
+    body: "The provider default, or one provider-neutral level from none to max that each provider maps to its own effort or token budget.",
+  },
+]
+
 export function DocsView() {
-  const {
-    SCOREBOARD,
-    CATEGORIES,
-    META,
-    MIN_SAMPLE,
-    SAMPLE_LABEL,
-    RATING_BOUNDS,
-  } = useDashboard()
-  const maxMoveTime = Math.max(
-    0,
-    ...SCOREBOARD.map((score) => score.avgMoveTime)
-  )
+  const { META, MIN_SAMPLE, SAMPLE_LABEL } = useDashboard()
+  const timeLimit = `${META.moveTimeLimitSeconds} s`
+  const filters = META.qualityFilters
+  const puzzleFilters = [
+    `Popularity ≥ ${filters.minPopularity}`,
+    `≥ ${filters.minPlays} plays`,
+    `Rating deviation ≤ ${filters.maxRatingDeviation}`,
+    "No mate-in-one",
+    "Every move replayed in chess.js",
+  ]
+
+  const limits = [
+    `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
+    "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
+    `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
+    "Each entry gets one attempt per puzzle.",
+    "Elo and cost are derived from that small sample and rounded to the precision it supports.",
+  ]
 
   return (
-    <div className="space-y-8">
-      <section className="space-y-4 border-b pb-8">
-        <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-          Documentation - v{META.version}
-        </div>
-        <h1 className="max-w-[20ch] text-4xl font-semibold tracking-tight">
-          How we evaluate.
+    <div className="space-y-10 text-pretty">
+      <section className="space-y-3">
+        <h1 className="text-4xl font-semibold tracking-tight">
+          How ChessBench works
         </h1>
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-          Every number on this site comes from one run of the same{" "}
-          {META.benchmarkId} set: the same puzzles, the same single-move prompt
-          and the same scorer for every model. This page records how the puzzles
-          were chosen, what each model was asked, what counts as solved, and
-          which figures are measured rather than derived from the measurement.
+          Each entry, a model at one reasoning level, has answered{" "}
+          {SAMPLE_LABEL} of the {META.datasetSize.toLocaleString()}{" "}
+          {META.benchmarkId} puzzles so far, all with the same prompt, time
+          limit and scorer.
         </p>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
-        <Card>
-          <CardHeader>
-            <CardDescription>Protocol</CardDescription>
-            <CardTitle as="h2">Evaluation protocol</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6 leading-7 text-muted-foreground">
-            <p>
-              The benchmark is {META.datasetSize.toLocaleString()} puzzles from
-              the public lichess puzzle database, 100 from each of five rating
-              bands: under 1200, 1200-1599, 1600-1999, 2000-2399, and 2400 and
-              up. Sampling is seeded, so the same set comes back every time it
-              is rebuilt. A puzzle qualifies only at 80 or more popularity, 300
-              or more recorded plays, and a rating deviation of 110 or less;
-              mate-in-one puzzles are dropped, because a second, equally valid
-              mate would be scored as a miss; and every trigger and solution
-              move is replayed with chess.js before the puzzle is admitted.
-            </p>
-            <Separator />
-            <div>
-              <h3 className="font-medium text-foreground">Prompt contract</h3>
-              <p className="mt-2">
-                Each model receives a position in FEN, the side to move, and a
-                strict instruction to output exactly one legal move token in UCI
-                or SAN, with no extra text. Answers are normalized to UCI for
-                scoring, and invalid formats are counted separately from
-                valid-but-wrong moves. Longer puzzles are played out turn by
-                turn: a correct move is answered with the expected opponent
-                reply and a request for the next move in the same conversation,
-                and a puzzle ends at the first wrong move, unusable answer, or
-                provider error. The legal move column is the share of attempts
-                that did not end on an unusable answer.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">Scoring</h3>
-              <p className="mt-2">
-                Accuracy is the share of puzzles where the model played every
-                player move of the solution line correctly, one move per turn,
-                before the attempt stopped. That is the only measured headline
-                number.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">Derived figures</h3>
-              <p className="mt-2">
-                Elo is an estimate, not a played rating: the average rating of
-                the puzzles a model faced plus{" "}
-                <span className="font-mono">400 · log10(p / (1 - p))</span> for
-                solve rate <span className="font-mono">p</span>. Cost per 1,000
-                puzzles extrapolates the mean recorded cost of {SAMPLE_LABEL}{" "}
-                attempts. Both are shown rounded to the precision this sample
-                supports, and there is currently one benchmark round, so no
-                rating progression exists yet.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">Sample size</h3>
-              <p className="mt-2">
-                Each model answered {SAMPLE_LABEL} of the{" "}
-                {META.datasetSize.toLocaleString()} benchmark puzzles, so one
-                puzzle is worth {puzzleWeight(MIN_SAMPLE).toFixed(0)} percentage
-                points. Theme buckets are thinner still: a bucket with no puzzle
-                in the sample is reported as absent rather than scored.
-              </p>
-            </div>
-            <div>
-              <h3 className="font-medium text-foreground">Thinking tokens</h3>
-              <p className="mt-2">
-                Reasoning-enabled models report reasoning plus visible output
-                tokens. Traces stay attached to each puzzle so model behaviour
-                can be audited.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>At a glance</CardDescription>
-            <CardTitle as="h2">Benchmark shape</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-5">
-            <Metric
-              label="Puzzles sampled"
-              value={`${META.puzzleCount.toLocaleString()} / ${META.datasetSize.toLocaleString()}`}
-              mono
-            />
-            <Metric label="Themes" value={CATEGORIES.length.toString()} mono />
-            <Metric
-              label="Rating range"
-              value={`${RATING_BOUNDS[0]}-${RATING_BOUNDS[1]}`}
-              mono
-            />
-            <Metric
-              label="Time / move"
-              value={`<= ${Math.ceil(maxMoveTime)}s`}
-              mono
-            />
-            <Metric label="Rows / model" value={SAMPLE_LABEL} mono />
-            <Metric label="Token cap" value={META.maxOutputTokens} mono />
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-4">
+        <MetaCell label="Puzzle set">
+          <span className="font-mono">{META.datasetSize.toLocaleString()}</span>{" "}
+          from Lichess
+        </MetaCell>
+        <MetaCell label="Per entry">
+          <span className="font-mono">{SAMPLE_LABEL}</span> answered
+        </MetaCell>
+        <MetaCell label="Move time limit">
+          <span className="font-mono">{timeLimit}</span>
+        </MetaCell>
+        <MetaCell label="Updated">
+          <span className="font-mono">{META.lastUpdated}</span>
+        </MetaCell>
       </div>
+
+      <DocsSection title="How a puzzle is played">
+        <ol className="grid gap-px overflow-hidden rounded-lg border bg-border md:grid-cols-3">
+          {TURN_STEPS.map((step, index) => (
+            <li key={step.title} className="bg-background p-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <span className="grid size-5 place-items-center rounded-full font-mono text-2xs text-muted-foreground ring-1 ring-border">
+                  {index + 1}
+                </span>
+                {step.title}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {step.body}
+              </p>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <RotateCcw className="size-3" aria-hidden />
+          Steps 2 and 3 repeat until the line ends.
+        </p>
+        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="flex items-center gap-1.5 font-medium">
+              <Check className="size-4" aria-hidden />
+              Solved
+            </dt>
+            <dd className="mt-1 text-muted-foreground">
+              Every player move of the solution played correctly.
+            </dd>
+          </div>
+          <div>
+            <dt className="flex items-center gap-1.5 font-medium">
+              <X className="size-4" aria-hidden />
+              Not solved
+            </dt>
+            <dd className="mt-1 text-muted-foreground">
+              Stops at the first wrong move, invalid answer or move over{" "}
+              {timeLimit}.
+            </dd>
+          </div>
+          <div>
+            <dt className="flex items-center gap-1.5 font-medium">
+              <Clock className="size-4" aria-hidden />
+              Pending
+            </dt>
+            <dd className="mt-1 text-muted-foreground">
+              A provider error. Not a result: kept out of scores and retried on
+              the next run.
+            </dd>
+          </div>
+        </dl>
+      </DocsSection>
+
+      <DocsSection title="The puzzle set">
+        <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:auto-cols-fr sm:grid-flow-col">
+          {META.ratingBands.map((band) => (
+            <div
+              key={band.label}
+              className="flex items-baseline justify-between bg-background px-4 py-2 sm:block sm:px-2 sm:py-3 sm:text-center"
+            >
+              <div className="font-mono text-sm">{band.label}</div>
+              <div className="text-xs text-muted-foreground sm:mt-1">
+                {band.selected} puzzles
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+          Sampled from the{" "}
+          <a
+            href="https://database.lichess.org/#puzzles"
+            className="text-foreground underline underline-offset-4"
+          >
+            Lichess puzzle database
+          </a>{" "}
+          (CC0) with a fixed seed, so a rebuild from the same source file
+          returns the same {META.datasetSize.toLocaleString()}. A puzzle has to
+          pass every filter:
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-2">
+          {puzzleFilters.map((filter) => (
+            <li key={filter}>
+              <Badge variant="outline">{filter}</Badge>
+            </li>
+          ))}
+        </ul>
+      </DocsSection>
+
+      <DocsSection title="Metrics">
+        <dl className="divide-y rounded-lg border">
+          {METRICS.map((metric) => (
+            <div
+              key={metric.name}
+              className="grid gap-1 px-4 py-3 text-sm sm:grid-cols-[10rem_7rem_1fr] sm:items-baseline sm:gap-4"
+            >
+              <dt className="font-medium">
+                {metric.name}
+                {metric.code ? (
+                  <>
+                    {" "}
+                    <span className="font-mono text-xs font-normal text-muted-foreground">
+                      {metric.code}
+                    </span>
+                  </>
+                ) : null}
+              </dt>
+              <dd className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                {metric.kind}
+              </dd>
+              <dd className="leading-6 text-muted-foreground">{metric.body}</dd>
+            </div>
+          ))}
+        </dl>
+      </DocsSection>
+
+      <DocsSection title="How runs work">
+        <dl className="divide-y rounded-lg border">
+          {RUN_FACTS.map((fact) => (
+            <div
+              key={fact.title}
+              className="grid gap-1 px-4 py-3 text-sm sm:grid-cols-[10rem_1fr] sm:items-baseline sm:gap-4"
+            >
+              <dt className="font-medium">{fact.title}</dt>
+              <dd className="leading-6 text-muted-foreground">{fact.body}</dd>
+            </div>
+          ))}
+        </dl>
+      </DocsSection>
+
+      <DocsSection title="Limits">
+        <ul className="max-w-2xl list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground marker:text-muted-foreground">
+          {limits.map((limit) => (
+            <li key={limit}>{limit}</li>
+          ))}
+        </ul>
+        <p className="mt-4 text-sm text-muted-foreground">
+          To rebuild the puzzle set or rerun a model, see the{" "}
+          <a
+            href="https://github.com/movsiienko/chessbench#readme"
+            className="text-foreground underline underline-offset-4"
+          >
+            README
+          </a>
+          .
+        </p>
+      </DocsSection>
     </div>
+  )
+}
+
+function DocsSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="grid gap-4 border-t pt-6 lg:grid-cols-[14rem_1fr] lg:gap-8">
+      <h2 className="text-lg font-medium">{title}</h2>
+      <div className="max-w-4xl min-w-0">{children}</div>
+    </section>
   )
 }
 

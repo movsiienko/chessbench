@@ -55,6 +55,10 @@ const data = buildDashboardData({
   ...entries,
   items,
   datasetSize: items.length,
+  selection: {
+    ratingBands: [],
+    filters: { minPopularity: 0, minPlays: 0, maxRatingDeviation: 0 },
+  },
 })
 const gpt5 = records.filter((record) => record.model === "openai/gpt-5.5")
 
