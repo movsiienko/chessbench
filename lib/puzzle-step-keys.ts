@@ -1,11 +1,11 @@
 /**
  * Keyboard shortcuts for the puzzle page's Previous / Next controls: the
- * arrows, plus J (next) and K (previous) as in feed readers. Each string is a
- * valid `aria-keyshortcuts` value.
+ * arrows, plus J (next) and K (previous) as in feed readers. `aria` is an
+ * `aria-keyshortcuts` value; `label` is the visible hint.
  */
 export const PUZZLE_STEP_SHORTCUTS = {
-  previous: "ArrowLeft K",
-  next: "ArrowRight J",
+  previous: { aria: "ArrowLeft K", label: "← or K" },
+  next: { aria: "ArrowRight J", label: "→ or J" },
 } as const
 
 type StepKey = Pick<

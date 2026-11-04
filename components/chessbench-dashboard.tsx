@@ -2516,14 +2516,12 @@ function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
 function PuzzleStepLink({
   href,
   label,
-  keys,
-  shortcuts,
+  shortcut,
   children,
 }: {
   href: string
   label: string
-  keys: string[]
-  shortcuts: string
+  shortcut: { aria: string; label: string }
   children: React.ReactNode
 }) {
   return (
@@ -2533,7 +2531,7 @@ function PuzzleStepLink({
           <Link
             href={href}
             aria-label={label}
-            aria-keyshortcuts={shortcuts}
+            aria-keyshortcuts={shortcut.aria}
             className={buttonVariants({ size: "icon-sm", variant: "outline" })}
           >
             {children}
@@ -2542,7 +2540,7 @@ function PuzzleStepLink({
       />
       <TooltipContent>
         {label}
-        <span className="text-background/70">{keys.join(" or ")}</span>
+        <span className="text-background/70">{shortcut.label}</span>
       </TooltipContent>
     </Tooltip>
   )
@@ -2616,10 +2614,11 @@ function ProblemFocus({
       if (
         direction === null ||
         isTypingTarget(event.target) ||
-        // Widgets that own their arrow keys, and any open dialog or popover.
+        // Widgets that own their arrow keys, and any open dialog or popover
+        // (Base UI unmounts closed popups unless they are keepMounted).
         (event.target instanceof Element &&
           event.target.closest(
-            'audio, video, [role="slider"], [role="spinbutton"], [role="combobox"], [role="listbox"], [role="menu"], [role="menubar"], [role="tablist"], [role="radiogroup"], [role="toolbar"], [role="grid"], [role="tree"]'
+            'audio, video, [role="slider"], [role="spinbutton"], [role="combobox"], [role="listbox"], [role="menu"], [role="menubar"], [role="tablist"], [role="radiogroup"], [role="toolbar"], [role="grid"], [role="tree"], [role="application"]'
           )) ||
         document.querySelector('[role="dialog"], [role="alertdialog"]')
       ) {
@@ -2670,16 +2669,14 @@ function ProblemFocus({
           <PuzzleStepLink
             href={previousHref}
             label="Previous puzzle"
-            keys={["←", "K"]}
-            shortcuts={PUZZLE_STEP_SHORTCUTS.previous}
+            shortcut={PUZZLE_STEP_SHORTCUTS.previous}
           >
             <ChevronLeft />
           </PuzzleStepLink>
           <PuzzleStepLink
             href={nextHref}
             label="Next puzzle"
-            keys={["→", "J"]}
-            shortcuts={PUZZLE_STEP_SHORTCUTS.next}
+            shortcut={PUZZLE_STEP_SHORTCUTS.next}
           >
             <ChevronRight />
           </PuzzleStepLink>
