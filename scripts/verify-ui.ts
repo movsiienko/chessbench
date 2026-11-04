@@ -16,6 +16,7 @@ import { isDeepStrictEqual } from "node:util"
 import { parseAttemptRows } from "../lib/benchmarks/csv"
 import { Chess } from "chess.js"
 import { chromium, type Page } from "playwright"
+import { isFirstParty } from "./first-party"
 
 const BASE = process.env.VERIFY_URL ?? "http://localhost:3000"
 
@@ -448,14 +449,7 @@ for (const reduced of [false, true]) {
 
   const external: string[] = []
   page.on("request", (r) => {
-    const { hostname } = new URL(r.url())
-    // Only genuinely remote hosts count. `next dev` opens its own HMR socket on
-    // a second local port, which is tooling, not a visitor-facing request.
-    const local =
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "[::1]"
-    if (!local) external.push(hostname)
+    if (!isFirstParty(r.url(), BASE)) external.push(new URL(r.url()).hostname)
   })
   page.on("pageerror", (e) => fail("console", `uncaught error: ${e.message}`))
 
