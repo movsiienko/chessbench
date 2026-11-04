@@ -2864,9 +2864,9 @@ function AttemptTrace({
               </TraceField>
             ) : (
               <TraceField label="Answer">
-                <pre className="rounded-md border bg-muted/50 px-3 py-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
-                  {turn.rawAnswer || "(empty)"}
-                </pre>
+                <p className="font-mono text-sm wrap-anywhere whitespace-pre-wrap">
+                  {turn.rawAnswer || "No answer returned."}
+                </p>
               </TraceField>
             )}
             <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
