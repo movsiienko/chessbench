@@ -1979,7 +1979,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
               </TableCell>
               <TableCell className="text-right font-mono">
                 {pct(score.legalRate, 0)}
-                {score.illegalMoves + score.invalidFormats > 0 && (
+                {unplayableCounts(score.illegalMoves, score.invalidFormats) && (
                   <span className="block text-xs text-muted-foreground">
                     {unplayableCounts(score.illegalMoves, score.invalidFormats)}
                   </span>
@@ -2770,7 +2770,7 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
           {model.name}: {state}
         </span>
         {attempt.outcomeHint && (
-          <span className="block opacity-80">{attempt.outcomeHint}</span>
+          <span className="opacity-80">{attempt.outcomeHint}</span>
         )}
       </TooltipContent>
     </Tooltip>
