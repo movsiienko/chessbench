@@ -5,7 +5,6 @@ import { puzzleStepForKey } from "./puzzle-step-keys"
 const press = (key: string, extra: Partial<KeyboardEvent> = {}) =>
   puzzleStepForKey({
     key,
-    code: "",
     altKey: false,
     ctrlKey: false,
     metaKey: false,
@@ -15,18 +14,22 @@ const press = (key: string, extra: Partial<KeyboardEvent> = {}) =>
     ...extra,
   })
 
-test("arrows and J/K step through puzzles", () => {
+test("the arrows step through puzzles", () => {
   assert.equal(press("ArrowLeft"), -1)
-  assert.equal(press("k"), -1)
-  assert.equal(press("K"), -1) // Caps Lock
   assert.equal(press("ArrowRight"), 1)
-  assert.equal(press("j"), 1)
-  assert.equal(press("л", { code: "KeyK" }), -1) // Ukrainian layout
-  assert.equal(press("о", { code: "KeyJ" }), 1)
 })
 
 test("other keys do nothing", () => {
-  for (const key of ["ArrowUp", "ArrowDown", "h", "l", " ", "Enter"]) {
+  for (const key of [
+    "ArrowUp",
+    "ArrowDown",
+    "j",
+    "k",
+    "J",
+    "K",
+    " ",
+    "Enter",
+  ]) {
     assert.equal(press(key), null)
   }
 })
@@ -41,6 +44,6 @@ test("modified, held and already-handled keys do nothing", () => {
     { defaultPrevented: true },
   ]) {
     assert.equal(press("ArrowRight", extra), null)
-    assert.equal(press("j", extra), null)
+    assert.equal(press("ArrowLeft", extra), null)
   }
 })

@@ -1,17 +1,17 @@
 /**
- * Keyboard shortcuts for the puzzle page's Previous / Next controls: the
- * arrows, plus J (next) and K (previous) as in feed readers. `aria` is an
- * `aria-keyshortcuts` value; `label` is the visible hint.
+ * Keyboard shortcuts for the puzzle page's Previous / Next controls. Arrows
+ * only: bare letter keys would fire on stray or dictated keystrokes
+ * (WCAG 2.1.4). `aria` is an `aria-keyshortcuts` value; `label` is the
+ * visible hint.
  */
 export const PUZZLE_STEP_SHORTCUTS = {
-  previous: { aria: "ArrowLeft K", label: "← or K" },
-  next: { aria: "ArrowRight J", label: "→ or J" },
+  previous: { aria: "ArrowLeft", label: "←" },
+  next: { aria: "ArrowRight", label: "→" },
 } as const
 
 type StepKey = Pick<
   KeyboardEvent,
   | "key"
-  | "code"
   | "altKey"
   | "ctrlKey"
   | "metaKey"
@@ -37,17 +37,5 @@ export function puzzleStepForKey(event: StepKey): -1 | 1 | null {
     return null
   }
 
-  // Synthetic keydowns (autofill, extensions) can lack `key`. `code` keeps
-  // J/K on their physical keys under non-Latin layouts.
-  const key = event.key?.toLowerCase()
-
-  if (key === "arrowleft" || key === "k" || event.code === "KeyK") {
-    return -1
-  }
-
-  if (key === "arrowright" || key === "j" || event.code === "KeyJ") {
-    return 1
-  }
-
-  return null
+  return event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : null
 }
