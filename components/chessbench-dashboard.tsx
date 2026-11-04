@@ -851,8 +851,8 @@ export function LeaderboardView() {
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Note: results are generated from local canonical benchmark CSV
-        snapshots. ChessBench is not affiliated with any model provider.
+        Results come from benchmark runs on Vercel Workflows, stored in
+        Postgres. ChessBench is not affiliated with any model provider.
       </p>
     </div>
   )
