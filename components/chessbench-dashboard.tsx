@@ -2926,7 +2926,7 @@ const TURN_STEPS = [
   },
   {
     title: "Reply",
-    body: "If it is correct, the expected opponent reply is played and the next move is asked for in the same conversation.",
+    body: "If it is correct, the expected opponent reply is sent as a UCI move and the next move is asked for in the same conversation.",
   },
 ]
 
@@ -2945,12 +2945,12 @@ const METRICS: {
   {
     name: "Legal move",
     kind: "Measured",
-    body: "Share of attempts that did not end on an invalid answer.",
+    body: "Share of attempts that did not end on an unparseable or illegal answer. Wrong moves and timeouts still count as legal.",
   },
   {
     name: "Avg tokens",
     kind: "Measured",
-    body: "Mean total tokens per puzzle, as the provider reports them. ChessBench sets no output cap, so provider defaults apply.",
+    body: "Mean total tokens per puzzle, as the provider reports them; a puzzle with no reported count adds 0. ChessBench sets no output cap, so provider defaults apply.",
   },
   {
     name: "Elo",
@@ -2967,7 +2967,7 @@ const METRICS: {
   {
     name: "$ / 1k",
     kind: "Extrapolated",
-    body: "Mean recorded cost per puzzle, multiplied by 1,000.",
+    body: "Mean recorded cost per puzzle, multiplied by 1,000; a puzzle with no recorded cost adds 0.",
   },
 ]
 
@@ -2977,11 +2977,11 @@ const METRICS: {
 const RUN_FACTS = [
   {
     title: "Durable",
-    body: "Runs execute on Vercel Workflows, one step per turn and five attempts at a time.",
+    body: "Runs execute on Vercel Workflows, one step per turn, in batches of five attempts.",
   },
   {
     title: "Paid once",
-    body: "Each model and puzzle is claimed in Postgres before the paid call, so overlapping runs never pay twice for a puzzle.",
+    body: "Each model and puzzle is claimed in Postgres before the paid call, so overlapping runs never play the same puzzle at once.",
   },
   {
     title: "Retried",
@@ -3004,17 +3004,12 @@ function DocsView() {
     "No mate-in-one",
     "Every move replayed in chess.js",
   ]
-  const bandCounts = new Set(META.ratingBands.map((band) => band.count))
-  const bandSummary =
-    bandCounts.size === 1
-      ? `${META.ratingBands.length} × ${META.ratingBands[0]?.count ?? 0}`
-      : `${META.ratingBands.length}`
 
   const limits = [
-    `With so few puzzles per model, one puzzle moves accuracy by up to ${puzzleWeight(MIN_SAMPLE).toFixed(0)} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
+    `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
     "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
-    "Each entry is one model at one reasoning level, with one attempt per puzzle.",
+    "Each entry gets one attempt per puzzle.",
     "Elo and cost are derived from that small sample and rounded to the precision it supports.",
   ]
 
@@ -3025,9 +3020,10 @@ function DocsView() {
           How ChessBench works
         </h1>
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-          Each model has answered {SAMPLE_LABEL} of the{" "}
-          {META.datasetSize.toLocaleString()} {META.benchmarkId} puzzles so far,
-          all with the same prompt, time limit and scorer.
+          Each entry, a model at one reasoning level, has answered{" "}
+          {SAMPLE_LABEL} of the {META.datasetSize.toLocaleString()}{" "}
+          {META.benchmarkId} puzzles so far, all with the same prompt, time
+          limit and scorer.
         </p>
       </section>
 
@@ -3036,14 +3032,14 @@ function DocsView() {
           <span className="font-mono">{META.datasetSize.toLocaleString()}</span>{" "}
           from Lichess
         </MetaCell>
-        <MetaCell label="Rating bands">
-          <span className="font-mono">{bandSummary}</span> puzzles
-        </MetaCell>
-        <MetaCell label="Per model">
+        <MetaCell label="Per entry">
           <span className="font-mono">{SAMPLE_LABEL}</span> answered
         </MetaCell>
         <MetaCell label="Move time limit">
           <span className="font-mono">{timeLimit}</span>
+        </MetaCell>
+        <MetaCell label="Updated">
+          <span className="font-mono">{META.lastUpdated}</span>
         </MetaCell>
       </div>
 
@@ -3177,7 +3173,7 @@ function DocsView() {
       </DocsSection>
 
       <DocsSection title="Limits">
-        <ul className="max-w-2xl list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground marker:text-border">
+        <ul className="max-w-2xl list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground marker:text-muted-foreground">
           {limits.map((limit) => (
             <li key={limit}>{limit}</li>
           ))}
