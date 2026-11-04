@@ -12,7 +12,7 @@ async function puzzleId({ params }: Props) {
 // Puzzles first run after the last build render on first visit, then stay cached.
 export async function generateStaticParams() {
   const { puzzles } = await loadDashboardData()
-  return puzzles.map(({ id }) => ({ id: encodeURIComponent(id) }))
+  return puzzles.map(({ id }) => ({ id }))
 }
 
 export async function generateMetadata(props: Props) {
