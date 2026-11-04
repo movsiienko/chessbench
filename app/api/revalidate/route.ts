@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return new Response("Not found", { status: 404 })
   }
 
-  revalidatePath("/")
-  revalidatePath("/tags/[tag]", "page")
+  // Every dashboard page shares the layout that loads the data.
+  revalidatePath("/", "layout")
   return Response.json({ revalidated: true })
 }
