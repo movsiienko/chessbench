@@ -48,11 +48,12 @@ Scoring lives in `lib/benchmarks/local-runner.ts`, one turn at a time
 
 The primary metric is `solved_rate`: a puzzle is solved when the model plays
 every player move of the solution line correctly, one move per turn. The
-attempt stops at the first wrong move, invalid format, exceeded move time limit
-(270 seconds), or provider error, and only a completed line counts as solved.
+attempt stops at the first wrong move, illegal move, invalid format, exceeded
+move time limit (270 seconds), or provider error, and only a completed line counts as solved.
 Provider errors are pending, not results: scores exclude them and the next run
 retries them. Secondary metrics include first move accuracy and player-move
-prefix score.
+prefix score; the leaderboard also counts illegal moves and invalid formats
+separately.
 
 ## Benchmark Runs
 
@@ -118,8 +119,8 @@ step is the only one.
 
 Attempts are recorded in Neon Postgres (schema in `lib/db/schema.ts`,
 migrations in `drizzle/`). Vercel applies migrations before every build;
-production and preview use `chessbench-db`, where each preview deployment gets
-its own branch of production data. Local development uses the separate
+production and preview deployments share the same `chessbench-db` database, so
+a preview build migrates, and a preview run writes to, production data. Local development uses the separate
 `chessbench-dev-db`:
 
 ```bash
@@ -131,12 +132,14 @@ Generate a migration after editing the schema with `bun x drizzle-kit generate`.
 
 ## Dashboard Data
 
-`app/page.tsx` is prerendered at build from Postgres: every current-protocol
+The dashboard (`app/(dashboard)/layout.tsx`, via `loadDashboardData` in
+`lib/benchmarks/dashboard-load.ts`) and each `/tags/[tag]` page are prerendered
+at build from Postgres: every current-protocol
 model and reasoning level with finished attempts becomes a scoreboard entry
-(`entriesFrom` in `lib/benchmarks/dashboard-build.ts`). The page carries attempt
+(`entriesFrom` in `lib/benchmarks/dashboard-build.ts`). The pages carry attempt
 summaries only; a transcript fetches its full record from
 `/api/attempts/<id>`, which the CDN caches permanently. After new results land,
-regenerate the page on the production domain:
+regenerate the pages on the production domain:
 
 ```bash
 curl -X POST https://<production-domain>/api/revalidate \

@@ -6,7 +6,7 @@ ChessBench compares model chess puzzle solving through reproducible benchmark ru
 
 **Item**: A benchmark puzzle with an initial position, expected forcing line, and source metadata.
 
-**Attempt**: One model's sequence of turns on one item under one protocol and reasoning level, stopping at the first wrong move, invalid answer, exceeded move time limit, or provider error.
+**Attempt**: One model's sequence of turns on one item under one protocol and reasoning level, stopping at the first wrong move, illegal move, invalid-format answer, exceeded move time limit, or provider error.
 
 **Turn**: One request for the player's next move and the model's recorded answer and outcome; a correct turn can reveal the expected opponent reply.
 
