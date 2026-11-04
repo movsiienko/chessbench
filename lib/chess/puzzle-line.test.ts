@@ -19,6 +19,16 @@ function drag(state: PuzzleLineState, line: string[], uci: string) {
 }
 
 describe("puzzle line", () => {
+  test("matches a solution with an uppercase promotion letter", () => {
+    const line = ["e7e8Q"]
+    const state = drag(
+      startPuzzleLine("8/4P3/8/8/8/8/k7/4K3 w - - 0 1"),
+      line,
+      "e7e8q"
+    )
+    assert.deepEqual(state.feedback, { result: "solved", san: "e8=Q" })
+  })
+
   test("plays a multi-move line: move, opponent reply, next move", () => {
     let state = startPuzzleLine(START)
     assert.equal(isLineLocked(state, LINE), false)
