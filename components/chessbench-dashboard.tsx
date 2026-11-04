@@ -2254,7 +2254,7 @@ function ProblemsView({ search }: { search: Search }) {
             items={SORT_LABELS}
             onValueChange={(value) => value && setSort(value)}
           >
-            <SelectTrigger size="sm" className="w-44">
+            <SelectTrigger size="sm" className="w-44" aria-label="Sort">
               <SelectValue />
             </SelectTrigger>
             <SelectContent align="end">
@@ -2393,7 +2393,7 @@ function FiltersPopover({
               setSide(value as Side)
             }}
           >
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full" aria-label="Side to move">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
