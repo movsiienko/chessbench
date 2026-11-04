@@ -186,7 +186,9 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
   else ok("card orientation", "every card shows the solver's side")
 
   // A Black-to-solve puzzle, so the orientation check below covers the flip.
+  // The list's own card boards match `.cg-wrap`, so wait for the route.
   await page.locator('a[aria-label*="Black to move"]').first().click()
+  await page.waitForURL(/\/puzzles\/[^/?#]+/)
   await page.waitForSelector(".cg-wrap")
   await page.evaluate(() =>
     document.querySelector(".cg-wrap")?.setAttribute("data-probe", "original")
