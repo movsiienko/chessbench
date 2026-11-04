@@ -319,7 +319,8 @@ function buildPuzzle(
     side: item.position.sideToMove,
     rating: item.metadata.rating,
     popularity: item.metadata.popularity,
-    solution: item.expected.playerUciMoves,
+    /** The full forcing line: player moves with the opponent replies between them. */
+    solution: item.expected.uciLine,
     caption: `${item.metadata.lichessPuzzleId}: ${formatTheme(
       item.metadata.primaryTheme
     )} puzzle rated ${item.metadata.rating}.`,

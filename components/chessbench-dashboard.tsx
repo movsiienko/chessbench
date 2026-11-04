@@ -2447,6 +2447,9 @@ function ProblemCard({ puzzle, href }: { puzzle: PuzzleItem; href: string }) {
   )
 }
 
+/** Long enough to see the solver's move land before the reply answers it. */
+const OPPONENT_REPLY_DELAY_MS = 600
+
 function ProblemFocus({
   puzzle,
   index,
@@ -2472,61 +2475,108 @@ function ProblemFocus({
     from: string
     to: string
   } | null>(null)
-  const [feedback, setFeedback] = React.useState<{
-    ok: boolean
-    played: string
-    expected: string
-    san: string
-  } | null>(null)
+  // The line alternates solver and opponent moves, starting with the solver, so
+  // an odd `ply` means the scripted reply is due.
+  const line = puzzle.solution
+  const [ply, setPly] = React.useState(0)
+  const [feedback, setFeedback] = React.useState<
+    | { result: "correct" | "solved"; san: string }
+    // `played` is the solver move the reply answered, announced with it so the
+    // "correct" message is not cut off by the reply 600 ms later.
+    | { result: "reply"; san: string; played: string }
+    | { result: "miss"; san: string; expectedSan: string }
+    | null
+  >(null)
 
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
+  const missed = feedback?.result === "miss"
+  const solverMoves = Math.ceil(line.length / 2)
+  const locked = missed || ply >= line.length || ply % 2 === 1
   const correctionArrows = React.useMemo(() => {
-    if (!feedback || feedback.ok) {
+    const expected = line[ply]
+
+    if (feedback?.result !== "miss" || !expected) {
       return []
     }
 
-    const arrow = moveArrow(feedback.expected)
+    const arrow = moveArrow(expected)
     return arrow ? [arrow] : []
-  }, [feedback])
+  }, [feedback, line, ply])
 
-  // DESIGN.md forbids raw UCI in user-facing feedback when SAN is available, so
-  // the expected move is resolved back to SAN from the starting position.
-  const expectedMove = React.useMemo(() => {
-    const expected = puzzle.solution[0]
+  React.useEffect(() => {
+    const reply = line[ply]
 
-    if (!expected) {
-      return ""
+    if (missed || ply % 2 === 0 || !reply) {
+      return
     }
 
-    return resolveMove(puzzle.fen, expected)?.san ?? readableMove(expected)
-  }, [puzzle])
+    const timer = window.setTimeout(() => {
+      const move = resolveMove(boardFen, reply)
+
+      if (!move) {
+        return
+      }
+
+      setBoardFen(move.fen)
+      setLastMove({ from: move.from, to: move.to })
+      setPly(ply + 1)
+      setFeedback((previous) =>
+        ply + 1 >= line.length
+          ? { result: "solved", san: move.san }
+          : { result: "reply", san: move.san, played: previous?.san ?? "" }
+      )
+    }, OPPONENT_REPLY_DELAY_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [boardFen, line, missed, ply])
 
   const handleMove = (move: PlayedMove) => {
-    const played = move.uci
-    const expected = puzzle.solution[0]
-    if (!expected) {
+    const expected = line[ply]
+
+    if (locked || !expected) {
       return
     }
 
     setBoardFen(move.fen)
     setLastMove({ from: move.from, to: move.to })
+
+    if (move.uci !== expected) {
+      setFeedback({
+        result: "miss",
+        san: move.san,
+        // DESIGN.md forbids raw UCI in user-facing feedback when SAN is
+        // available, so the expected move is resolved against the position the
+        // user moved from.
+        expectedSan:
+          resolveMove(boardFen, expected)?.san ?? readableMove(expected),
+      })
+      return
+    }
+
+    setPly(ply + 1)
     setFeedback({
-      ok: played === expected,
-      played,
-      expected,
+      result: ply + 1 >= line.length ? "solved" : "correct",
       san: move.san,
     })
   }
 
-  const playedMove = feedback
-    ? feedback.san || readableMove(feedback.played)
-    : ""
+  const reset = () => {
+    setBoardFen(puzzle.fen)
+    setLastMove(null)
+    setPly(0)
+    setFeedback(null)
+  }
+
   const announcement = !feedback
     ? ""
-    : feedback.ok
-      ? `Correct. ${playedMove} is the puzzle move.`
-      : `Not the puzzle move. You played ${playedMove}. The puzzle move is ${expectedMove}.`
+    : feedback.result === "miss"
+      ? `Not the puzzle move. You played ${feedback.san}. The puzzle move is ${feedback.expectedSan}.`
+      : feedback.result === "correct"
+        ? `Correct, ${feedback.san}. The opponent is replying.`
+        : feedback.result === "reply"
+          ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
+          : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
 
   return (
     <div className="space-y-6">
@@ -2610,6 +2660,7 @@ function ProblemFocus({
                 orientation={puzzle.side === "w" ? "white" : "black"}
                 lastMove={lastMove}
                 arrows={correctionArrows}
+                locked={locked}
                 onMove={handleMove}
               />
             </CardContent>
@@ -2628,38 +2679,36 @@ function ProblemFocus({
             </span>
             <div
               aria-hidden="true"
-              data-result={feedback?.ok ? "success" : "miss"}
+              data-result={missed ? "miss" : "success"}
               className={cn(
                 "cb-move-line order-3 sm:order-none sm:w-[15.75rem]",
                 !feedback && "invisible"
               )}
             >
               <span>
-                {feedback ? (
-                  feedback.ok ? (
-                    <>
-                      Move accepted: <strong>{playedMove}</strong>
-                    </>
-                  ) : (
-                    <>
-                      <strong>{playedMove}</strong> missed - try{" "}
-                      <strong>{expectedMove}</strong>
-                    </>
-                  )
-                ) : (
+                {!feedback ? (
                   "Move pending"
+                ) : feedback.result === "miss" ? (
+                  <>
+                    <strong>{feedback.san}</strong> missed - try{" "}
+                    <strong>{feedback.expectedSan}</strong>
+                  </>
+                ) : feedback.result === "correct" ? (
+                  <>
+                    Correct: <strong>{feedback.san}</strong> - opponent replying
+                  </>
+                ) : feedback.result === "reply" ? (
+                  <>
+                    Opponent played <strong>{feedback.san}</strong> - your move
+                  </>
+                ) : (
+                  <>
+                    <strong>Solved</strong> - all {solverMoves} moves found
+                  </>
                 )}
               </span>
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setBoardFen(puzzle.fen)
-                setLastMove(null)
-                setFeedback(null)
-              }}
-            >
+            <Button size="sm" variant="ghost" onClick={reset}>
               <RotateCcw data-icon="inline-start" />
               Reset
             </Button>
@@ -3102,6 +3151,7 @@ function ChessBoard({
   fen,
   orientation,
   interactive = true,
+  locked = false,
   onMove,
   lastMove,
   arrows = NO_ARROWS,
@@ -3111,6 +3161,8 @@ function ChessBoard({
   fen: string
   orientation: cg.Color
   interactive?: boolean
+  /** Interactive, but no piece can be moved right now (e.g. the opponent is replying). */
+  locked?: boolean
   onMove?: (move: PlayedMove) => void
   lastMove?: { from: string; to: string } | null
   arrows?: BoardArrow[]
@@ -3127,6 +3179,7 @@ function ChessBoard({
     orientation,
     lastMove,
     arrows,
+    locked,
     onMove,
     reducedMotion,
   })
@@ -3140,6 +3193,7 @@ function ChessBoard({
       orientation,
       lastMove,
       arrows,
+      locked,
       onMove,
       reducedMotion,
     }
@@ -3179,8 +3233,9 @@ function ChessBoard({
       },
       movable: {
         free: false,
-        color: interactive ? color : undefined,
-        dests: interactive ? legalDests(initial.fen) : undefined,
+        color: interactive && !initial.locked ? color : undefined,
+        dests:
+          interactive && !initial.locked ? legalDests(initial.fen) : undefined,
         showDests: interactive,
         rookCastle: true,
         events: {
@@ -3257,15 +3312,24 @@ function ChessBoard({
         : undefined,
       animation: boardAnimation(reducedMotion, small),
       movable: {
-        color: interactive ? color : undefined,
-        dests: interactive ? legalDests(fen) : undefined,
+        color: interactive && !locked ? color : undefined,
+        dests: interactive && !locked ? legalDests(fen) : undefined,
       },
       drawable: {
         // Chessground owns this key name.
         ["autoShapes"]: arrows,
       },
     })
-  }, [arrows, fen, interactive, lastMove, orientation, reducedMotion, small])
+  }, [
+    arrows,
+    fen,
+    interactive,
+    lastMove,
+    locked,
+    orientation,
+    reducedMotion,
+    small,
+  ])
 
   const summary = React.useMemo(() => boardSummary(fen), [fen])
 
