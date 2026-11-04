@@ -215,9 +215,29 @@ async function checkBoardAndMotion(page: Page, reduced: boolean) {
       .join("|")
   )
 
-  const input = page.getByPlaceholder(/Nf3 or g1f3/i)
-  await input.fill(new Chess(fen).moves()[0])
-  await page.keyboard.press("Enter")
+  // Played as a drag, the way a person plays it, from the square centres of
+  // whichever way round the board is drawn.
+  const { from, to } = new Chess(fen).moves({ verbose: true })[0]
+  const board = page.locator(".cg-wrap")
+  const box = await board.boundingBox()
+  const black = await board.evaluate((el) =>
+    el.classList.contains("orientation-black")
+  )
+  const centre = (square: string) => {
+    const file = square.charCodeAt(0) - 97
+    const rank = Number(square[1]) - 1
+    const size = box!.width / 8
+    return {
+      x: box!.x + ((black ? 7 - file : file) + 0.5) * size,
+      y: box!.y + ((black ? rank : 7 - rank) + 0.5) * size,
+    }
+  }
+  const start = centre(from)
+  const end = centre(to)
+  await page.mouse.move(start.x, start.y)
+  await page.mouse.down()
+  await page.mouse.move(end.x, end.y, { steps: 5 })
+  await page.mouse.up()
   const sawAnimation = await animating
   await page.waitForTimeout(200)
 
