@@ -24,6 +24,7 @@ describe("model move grammar", () => {
       "Ng1-h4",
       "Pe2-e5",
       "e7-e8q",
+      "ef4",
     ]) {
       assert.notEqual(moveToken(answer), "", answer)
     }

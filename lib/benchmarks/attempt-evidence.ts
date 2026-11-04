@@ -36,7 +36,7 @@ const outcomeHints: Record<LichessPuzzleAttemptStatus, string> = {
   ok: "Ended without completing the line.",
   wrong_move: "A legal move, but not the solution.",
   illegal_move: "Reads as a move, but not a legal one here.",
-  invalid_format: "No move could be read from the answer.",
+  invalid_format: "The answer was not a single move token.",
   timeout: "No answer within the move time limit.",
   error: "The provider returned an error.",
 }

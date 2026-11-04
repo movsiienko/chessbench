@@ -155,7 +155,7 @@ type SolutionAttempt = PuzzleItem["attempts"][number]
 
 /**
  * How an unsolved attempt ended, as an icon: a cross for a wrong move, a ban
- * for an illegal one, a question mark when no move could be read at all.
+ * for an illegal one, a question mark when the answer was not one move token.
  */
 const outcomeIcons: Record<SolutionAttempt["status"], LucideIcon> = {
   ok: X,
@@ -1888,7 +1888,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           <TableHead className="text-right">
             <DerivedLabel
               label="Legal move"
-              hint="Share of attempts that did not end on an illegal move or invalid format. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
+              hint="Share of attempts that did not end on an illegal move or invalid format. Illegal: reads as a move, but not a legal one here. Invalid format: the answer was not a single move token."
             />
           </TableHead>
           <TableHead className="text-right">
@@ -3163,7 +3163,7 @@ const METRICS: {
   {
     name: "Legal move",
     kind: "Measured",
-    body: "Share of attempts that did not end on an illegal move (reads as a move, but not a legal one here) or an invalid format (no move could be read). Wrong moves and timeouts still count as legal.",
+    body: "Share of attempts that did not end on an illegal move (reads as a move, but not a legal one here) or an invalid format (the answer was not a single move token). Wrong moves and timeouts still count as legal.",
   },
   {
     name: "Avg tokens",
