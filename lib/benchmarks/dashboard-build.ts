@@ -215,14 +215,12 @@ export function buildDashboardData({
       ),
       datasetSize,
       lastUpdated: latestDate(allRows).slice(0, 10),
-      version: "0.8.0",
       benchmarkId: "lichess-puzzles-v1",
       rowsByModel: Object.fromEntries(
         models.map((model) => [model.id, rowsFor(model).length])
       ),
       ratingBounds: ratingBoundsOf(ratings),
       ratingStep: RATING_STEP,
-      maxOutputTokens: "uncapped",
       moveTimeLimitSeconds: MOVE_TIME_LIMIT_MS / 1000,
       ratingBands: selection.ratingBands,
       qualityFilters: {
@@ -230,8 +228,6 @@ export function buildDashboardData({
         minPlays: selection.filters.minPlays,
         maxRatingDeviation: selection.filters.maxRatingDeviation,
       },
-      eloIsEstimated: true,
-      costIsExtrapolated: true,
     },
   }
 }
