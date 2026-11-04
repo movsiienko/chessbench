@@ -2314,7 +2314,7 @@ function ProblemCard({
       <CardContent className="pt-0">
         <ChessBoard
           fen={puzzle.fen}
-          orientation={turnColor(puzzle.fen)}
+          orientation={puzzle.side === "w" ? "white" : "black"}
           interactive={false}
           small
           decorative
@@ -2501,7 +2501,7 @@ function ProblemFocus({
             <CardContent>
               <ChessBoard
                 fen={boardFen}
-                orientation={turnColor(puzzle.fen)}
+                orientation={puzzle.side === "w" ? "white" : "black"}
                 lastMove={lastMove}
                 arrows={correctionArrows}
                 onMove={handleMove}
