@@ -1972,7 +1972,7 @@ function usePuzzleFilters(search: Search) {
   const { PUZZLES, RATING_BOUNDS } = useDashboard()
 
   // SAFETY: an unknown theme id matches no puzzle and shows as a removable chip.
-  const selectedThemes = search.getAll("theme") as CategoryId[]
+  const selectedThemes = [...new Set(search.getAll("theme"))] as CategoryId[]
   const sideParam = search.get("side")
   const side: Side = sideParam === "w" || sideParam === "b" ? sideParam : "any"
   // Hand-edited links: clamp to the slider's bounds and drop reversed ranges.
@@ -2018,13 +2018,9 @@ function usePuzzleFilters(search: Search) {
   /**
    * Native history calls, which Next syncs into `useSearchParams`: same-page
    * query changes need no server round trip. Reads the live URL, not the
-   * render snapshot, so two quick changes do not overwrite each other. Pushes
-   * a history entry unless `replace`, which slider drags use.
+   * render snapshot, so two quick changes do not overwrite each other.
    */
-  const setParams = (
-    changes: Record<string, string | string[] | null>,
-    replace = false
-  ) => {
+  const setParams = (changes: Record<string, string | string[] | null>) => {
     const next = new URLSearchParams(window.location.search)
     for (const [key, value] of Object.entries(changes)) {
       next.delete(key)
@@ -2034,7 +2030,7 @@ function usePuzzleFilters(search: Search) {
     }
     const query = next.toString()
     const href = query ? `?${query}` : window.location.pathname
-    window.history[replace ? "replaceState" : "pushState"](null, "", href)
+    window.history.pushState(null, "", href)
   }
 
   return {
@@ -2045,15 +2041,12 @@ function usePuzzleFilters(search: Search) {
       setParams({ side: value === "any" ? null : value }),
     ratingRange,
     setRatingRange: (range: [number, number]) =>
-      setParams(
-        {
-          rating:
-            range[0] === RATING_BOUNDS[0] && range[1] === RATING_BOUNDS[1]
-              ? null
-              : `${range[0]}-${range[1]}`,
-        },
-        true
-      ),
+      setParams({
+        rating:
+          range[0] === RATING_BOUNDS[0] && range[1] === RATING_BOUNDS[1]
+            ? null
+            : `${range[0]}-${range[1]}`,
+      }),
     sort,
     setSort: (value: string) =>
       setParams({ sort: value === "popularity" ? null : value }),
@@ -2274,6 +2267,16 @@ function FiltersPopover({
   onClear: () => void
 }) {
   const { CATEGORIES, PUZZLES, RATING_STEP, RATING_BOUNDS } = useDashboard()
+  // The thumb follows a local draft while dragging; the URL (and a history
+  // entry) changes once, on release, not on every pointer move.
+  const [draftRange, setDraftRange] = React.useState<[number, number] | null>(
+    null
+  )
+  const toRange = (value: number | readonly number[]): [number, number] => {
+    const range = Array.isArray(value) ? value : RATING_BOUNDS
+    return [range[0] ?? RATING_BOUNDS[0], range[1] ?? RATING_BOUNDS[1]]
+  }
+  const shownRange = draftRange ?? ratingRange
   const filterCount =
     selectedThemes.length +
     (side !== "any" ? 1 : 0) +
@@ -2356,20 +2359,18 @@ function FiltersPopover({
           <div className="flex items-center justify-between text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
             <span>Rating</span>
             <span className="font-mono tracking-normal">
-              {ratingRange[0]}-{ratingRange[1]}
+              {shownRange[0]}-{shownRange[1]}
             </span>
           </div>
           <Slider
             min={RATING_BOUNDS[0]}
             max={RATING_BOUNDS[1]}
             step={RATING_STEP}
-            value={ratingRange}
-            onValueChange={(value) => {
-              const range = Array.isArray(value) ? value : RATING_BOUNDS
-              setRatingRange([
-                range[0] ?? RATING_BOUNDS[0],
-                range[1] ?? RATING_BOUNDS[1],
-              ])
+            value={shownRange}
+            onValueChange={(value) => setDraftRange(toRange(value))}
+            onValueCommitted={(value) => {
+              setRatingRange(toRange(value))
+              setDraftRange(null)
             }}
           />
           <p className="text-xs text-muted-foreground">
