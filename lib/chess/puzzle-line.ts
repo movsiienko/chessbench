@@ -1,11 +1,20 @@
-import { readableMove, resolveMove, type PlayedMove } from "./moves"
+import { resolveMove, type PlayedMove } from "./moves"
 
 type PuzzleFeedback =
   | { result: "correct" | "solved"; san: string }
   // `played` is the solver move the reply answered, announced with it so the
   // "correct" message is not cut off by the reply that follows.
   | { result: "reply"; san: string; played: string }
-  | { result: "miss"; san: string; expectedSan: string }
+  // `before` is the position the wrong move was played from, so Show solution
+  // can take it back. The expected move is deliberately not stored here: a
+  // miss must not give the answer away.
+  | {
+      result: "miss"
+      san: string
+      before: Pick<PuzzleLineState, "fen" | "lastMove">
+    }
+  // The solver asked for the move instead of finding it.
+  | { result: "shown"; san: string }
   // Bad puzzle data: the scripted reply is not legal, so the line stops here.
   | { result: "invalid" }
 
@@ -19,10 +28,12 @@ export type PuzzleLineState = {
   lastMove: { from: string; to: string } | null
   ply: number
   feedback: PuzzleFeedback | null
+  /** Show solution was used at least once, so the line is not a clean solve. */
+  shown: boolean
 }
 
 export function startPuzzleLine(fen: string): PuzzleLineState {
-  return { fen, lastMove: null, ply: 0, feedback: null }
+  return { fen, lastMove: null, ply: 0, feedback: null, shown: false }
 }
 
 // ponytail: in memory, so progress is lost on reload; move to sessionStorage
@@ -76,11 +87,7 @@ export function playSolverMove(
       feedback: {
         result: "miss",
         san: move.san,
-        // DESIGN.md forbids raw UCI in user-facing feedback when SAN is
-        // available, so the expected move is resolved against the position the
-        // user moved from.
-        expectedSan:
-          resolveMove(state.fen, expected)?.san ?? readableMove(expected),
+        before: { fen: state.fen, lastMove: state.lastMove },
       },
     }
   }
@@ -92,6 +99,35 @@ export function playSolverMove(
       result: state.ply + 1 >= line.length ? "solved" : "correct",
       san: move.san,
     },
+  }
+}
+
+/**
+ * Plays the expected solver move for the user, taking back a wrong move first.
+ * Returns the same state when no solver move is due (reply pending, line over,
+ * or bad puzzle data), so callers can compare by identity to disable the control.
+ */
+export function showSolution(
+  state: PuzzleLineState,
+  line: string[]
+): PuzzleLineState {
+  const base =
+    state.feedback?.result === "miss"
+      ? { ...state, ...state.feedback.before, feedback: null }
+      : state
+  const expected = line[base.ply]
+  const move = expected && resolveMove(base.fen, expected)
+
+  if (!move || isLineLocked(base, line)) {
+    return state
+  }
+
+  const played = playSolverMove(base, line, move)
+  return {
+    ...played,
+    shown: true,
+    // Ending the line by asking is not a solve.
+    feedback: { result: "shown", san: move.san },
   }
 }
 
@@ -122,6 +158,7 @@ export function playOpponentReply(
 
   const ply = state.ply + 1
   return {
+    ...state,
     fen: move.fen,
     lastMove: { from: move.from, to: move.to },
     ply,

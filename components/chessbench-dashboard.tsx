@@ -9,7 +9,6 @@ import * as React from "react"
 import { Chessground } from "@lichess-org/chessground"
 import type { Api as ChessgroundApi } from "@lichess-org/chessground/api"
 import type { Config as ChessgroundConfig } from "@lichess-org/chessground/config"
-import type { DrawShape as BoardArrow } from "@lichess-org/chessground/draw"
 import type * as cg from "@lichess-org/chessground/types"
 import {
   ArrowLeft,
@@ -24,6 +23,7 @@ import {
   CircleHelp,
   Copy,
   Download,
+  Eye,
   Filter,
   Moon,
   Puzzle,
@@ -138,7 +138,6 @@ import {
   boardSummary,
   isCheck,
   legalDests,
-  moveArrow,
   piecesSummary,
   playMove,
   turnColor,
@@ -150,6 +149,7 @@ import {
   playSolverMove,
   restorePuzzleLine,
   savePuzzleLine,
+  showSolution,
   startPuzzleLine,
 } from "@/lib/chess/puzzle-line"
 import { PUZZLE_STEP_SHORTCUTS, puzzleStepForKey } from "@/lib/puzzle-step-keys"
@@ -517,8 +517,6 @@ function compactTokens(value: number) {
 
   return Math.round(value).toString()
 }
-
-const NO_ARROWS: BoardArrow[] = []
 
 function boardAnimation(reducedMotion: boolean, small: boolean) {
   return reducedMotion
@@ -2660,25 +2658,16 @@ function ProblemFocus({
     () => savePuzzleLine(puzzle.id, lineState),
     [puzzle.id, lineState]
   )
-  const { fen: boardFen, lastMove, ply, feedback } = lineState
+  const { fen: boardFen, lastMove, feedback, shown } = lineState
 
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
   // Token labels are mono, so the longest is the widest (in ch).
   const tokenCh = Math.max(...attempts.map((a) => tokenLabel(a).length))
-  const missed = feedback?.result === "miss"
   const solverMoves = Math.ceil(line.length / 2)
   const locked = isLineLocked(lineState, line)
-  const correctionArrows = React.useMemo(() => {
-    const expected = line[ply]
-
-    if (feedback?.result !== "miss" || !expected) {
-      return []
-    }
-
-    const arrow = moveArrow(expected)
-    return arrow ? [arrow] : []
-  }, [feedback, line, ply])
+  const solution = showSolution(lineState, line)
+  const sideName = puzzle.side === "w" ? "White" : "Black"
 
   React.useEffect(() => {
     const next = playOpponentReply(lineState, line)
@@ -2727,17 +2716,27 @@ function ProblemFocus({
 
   const reset = () => setLineState(startPuzzleLine(puzzle.fen))
 
+  // A line finished with help is not a solve, so it reads as neutral.
+  const result =
+    feedback?.result === "solved" && shown
+      ? "shown"
+      : (feedback?.result ?? "pending")
+
   const announcement = !feedback
     ? ""
     : feedback.result === "miss"
-      ? `Not the puzzle move. You played ${feedback.san}. The puzzle move is ${feedback.expectedSan}.`
-      : feedback.result === "correct"
-        ? `Correct, ${feedback.san}. The opponent is replying.`
-        : feedback.result === "reply"
-          ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
-          : feedback.result === "invalid"
-            ? "This puzzle's next opponent move is invalid. Reset to try again."
-            : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
+      ? `Wrong. ${feedback.san} is not the puzzle move. Reset to try again, or show the solution.`
+      : feedback.result === "shown"
+        ? `Solution shown: ${feedback.san}.`
+        : feedback.result === "correct"
+          ? `Correct, ${feedback.san}. The opponent is replying.`
+          : feedback.result === "reply"
+            ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
+            : feedback.result === "invalid"
+              ? "This puzzle's next opponent move is invalid. Reset to try again."
+              : shown
+                ? `Line complete with ${feedback.san}, with the solution shown.`
+                : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
 
   return (
     <div className="space-y-6">
@@ -2816,70 +2815,89 @@ function ProblemFocus({
       <section className="grid gap-6 xl:grid-cols-[minmax(360px,560px)_1fr]">
         <div className="space-y-3">
           <Card className="rounded-lg">
-            <CardContent>
+            <CardContent className="space-y-3">
+              {/*
+                The result sits above the board so it stays in the first
+                viewport at 1280x900 and 390px. The announcement is always
+                mounted, separate from the visual line, so a screen reader
+                hears each change once.
+              */}
+              <output className="sr-only">{announcement}</output>
+              <div className="flex items-center gap-1">
+                <div
+                  aria-hidden="true"
+                  data-result={result}
+                  className="cb-move-line min-w-0 flex-1"
+                >
+                  <span className="min-w-0 truncate">
+                    {!feedback ? (
+                      <>Find the best move for {sideName}</>
+                    ) : feedback.result === "miss" ? (
+                      <>
+                        <strong>Wrong</strong> - {feedback.san} is not the
+                        puzzle move
+                      </>
+                    ) : feedback.result === "shown" ? (
+                      <>
+                        Solution: <strong>{feedback.san}</strong>
+                      </>
+                    ) : feedback.result === "correct" ? (
+                      <>
+                        Correct: <strong>{feedback.san}</strong> - opponent
+                        replying
+                      </>
+                    ) : feedback.result === "reply" ? (
+                      <>
+                        Opponent played <strong>{feedback.san}</strong> - your
+                        move
+                      </>
+                    ) : feedback.result === "invalid" ? (
+                      <>
+                        Correct, but <strong>puzzle error</strong> - reset
+                      </>
+                    ) : shown ? (
+                      <>
+                        <strong>Line complete</strong> - solution shown
+                      </>
+                    ) : (
+                      <>
+                        <strong>Solved</strong> - all {solverMoves} moves found
+                      </>
+                    )}
+                  </span>
+                </div>
+                {/* Labels collapse to icons on phones; the sr-only text keeps the accessible name. */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="max-sm:px-1.5"
+                  disabled={solution === lineState}
+                  onClick={() => setLineState(solution)}
+                >
+                  <Eye data-icon="inline-start" />
+                  <span className="max-sm:sr-only">Show solution</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="max-sm:px-1.5"
+                  onClick={reset}
+                >
+                  <RotateCcw data-icon="inline-start" />
+                  <span className="max-sm:sr-only">Reset</span>
+                </Button>
+              </div>
               <ChessBoard
                 fen={boardFen}
                 orientation={puzzle.side === "w" ? "white" : "black"}
                 lastMove={lastMove}
-                arrows={correctionArrows}
                 locked={locked}
                 onMove={handleMove}
               />
             </CardContent>
           </Card>
-          {/*
-            Always mounted and never toggled between hidden and visible: the
-            visual status line below reserves its space with `invisible`, which
-            some screen readers skip when the text changes in the same tick.
-          */}
-          <output className="sr-only">{announcement}</output>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
-            <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
-              {boardFen}
-            </span>
-            <div
-              aria-hidden="true"
-              data-result={
-                missed || feedback?.result === "invalid"
-                  ? feedback.result
-                  : "success"
-              }
-              className={cn(
-                "cb-move-line order-3 sm:order-none sm:w-[15.75rem]",
-                !feedback && "invisible"
-              )}
-            >
-              <span>
-                {!feedback ? (
-                  "Move pending"
-                ) : feedback.result === "miss" ? (
-                  <>
-                    <strong>{feedback.san}</strong> missed - try{" "}
-                    <strong>{feedback.expectedSan}</strong>
-                  </>
-                ) : feedback.result === "correct" ? (
-                  <>
-                    Correct: <strong>{feedback.san}</strong> - opponent replying
-                  </>
-                ) : feedback.result === "reply" ? (
-                  <>
-                    Opponent played <strong>{feedback.san}</strong> - your move
-                  </>
-                ) : feedback.result === "invalid" ? (
-                  <>
-                    Correct, but <strong>puzzle error</strong> - reset
-                  </>
-                ) : (
-                  <>
-                    <strong>Solved</strong> - all {solverMoves} moves found
-                  </>
-                )}
-              </span>
-            </div>
-            <Button size="sm" variant="ghost" onClick={reset}>
-              <RotateCcw data-icon="inline-start" />
-              Reset
-            </Button>
+          <div className="truncate font-mono text-xs text-muted-foreground">
+            {boardFen}
           </div>
         </div>
 
@@ -3600,7 +3618,6 @@ function ChessBoard({
   locked = false,
   onMove,
   lastMove,
-  arrows = NO_ARROWS,
   small = false,
   decorative = false,
 }: {
@@ -3611,7 +3628,6 @@ function ChessBoard({
   locked?: boolean
   onMove?: (move: PlayedMove) => void
   lastMove?: { from: string; to: string } | null
-  arrows?: BoardArrow[]
   small?: boolean
   /** The position is already described by an ancestor's accessible name. */
   decorative?: boolean
@@ -3624,7 +3640,6 @@ function ChessBoard({
     fen,
     orientation,
     lastMove,
-    arrows,
     locked,
     onMove,
     reducedMotion,
@@ -3638,7 +3653,6 @@ function ChessBoard({
       fen,
       orientation,
       lastMove,
-      arrows,
       locked,
       onMove,
       reducedMotion,
@@ -3713,8 +3727,6 @@ function ChessBoard({
         visible: interactive && !small,
         defaultSnapToValidMove: true,
         eraseOnMovablePieceClick: false,
-        // Chessground owns this key name.
-        ["autoShapes"]: initial.arrows,
       },
     }
 
@@ -3761,21 +3773,8 @@ function ChessBoard({
         color: interactive && !locked ? color : undefined,
         dests: interactive && !locked ? legalDests(fen) : undefined,
       },
-      drawable: {
-        // Chessground owns this key name.
-        ["autoShapes"]: arrows,
-      },
     })
-  }, [
-    arrows,
-    fen,
-    interactive,
-    lastMove,
-    locked,
-    orientation,
-    reducedMotion,
-    small,
-  ])
+  }, [fen, interactive, lastMove, locked, orientation, reducedMotion, small])
 
   const summary = React.useMemo(() => boardSummary(fen), [fen])
 

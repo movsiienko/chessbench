@@ -7,6 +7,7 @@ import {
   playSolverMove,
   restorePuzzleLine,
   savePuzzleLine,
+  showSolution,
   startPuzzleLine,
   type PuzzleLineState,
 } from "./puzzle-line"
@@ -74,7 +75,7 @@ describe("puzzle line", () => {
     assert.equal(state && isLineLocked(state, line), true)
   })
 
-  test("a wrong move is shown, locks the board and names the puzzle move", () => {
+  test("a wrong move is shown and locks the board without naming the puzzle move", () => {
     const state = drag(startPuzzleLine(START), LINE, "d2d4")
     assert.equal(state.ply, 0)
     assert.notEqual(state.fen, START)
@@ -82,7 +83,7 @@ describe("puzzle line", () => {
     assert.deepEqual(state.feedback, {
       result: "miss",
       san: "d4",
-      expectedSan: "e4",
+      before: { fen: START, lastMove: null },
     })
     assert.equal(isLineLocked(state, LINE), true)
     assert.equal(drag(state, LINE, "c7c5"), state)
@@ -101,6 +102,7 @@ describe("puzzle line", () => {
       lastMove: null,
       ply: 0,
       feedback: null,
+      shown: false,
     })
     assert.equal(isLineLocked(state, LINE), false)
     assert.equal(drag(state, LINE, "e2e4").feedback?.result, "correct")
@@ -122,12 +124,28 @@ describe("puzzle line", () => {
     )
   })
 
-  test("an expected move illegal in the position falls back to readable text", () => {
-    const state = drag(startPuzzleLine(START), ["e2e5"], "d2d4")
-    assert.equal(
-      state.feedback?.result === "miss" && state.feedback.expectedSan,
-      "e2 to e5"
-    )
+  test("show solution takes back a miss and plays the puzzle move", () => {
+    const missed = drag(startPuzzleLine(START), LINE, "d2d4")
+    const shown = showSolution(missed, LINE)
+    assert.equal(shown.ply, 1)
+    assert.equal(shown.shown, true)
+    assert.deepEqual(shown.lastMove, { from: "e2", to: "e4" })
+    assert.deepEqual(shown.feedback, { result: "shown", san: "e4" })
+    // The scripted reply follows as usual, and the flag survives it.
+    const replied = playOpponentReply(shown, LINE)
+    assert.equal(replied?.feedback?.result, "reply")
+    assert.equal(replied?.shown, true)
+    // Nothing to show while the reply is due or after the line ends.
+    assert.equal(showSolution(shown, LINE), shown)
+    assert.ok(replied)
+    const done = showSolution(replied, LINE)
+    assert.equal(done.ply, LINE.length)
+    assert.equal(showSolution(done, LINE), done)
+  })
+
+  test("show solution does nothing when the expected move is illegal", () => {
+    const missed = drag(startPuzzleLine(START), ["e2e5"], "d2d4")
+    assert.equal(showSolution(missed, ["e2e5"]), missed)
   })
 
   test("a dragged promotion becomes a queen", () => {
@@ -140,7 +158,7 @@ describe("puzzle line", () => {
     assert.deepEqual(drag(startPuzzleLine(fen), ["e7e8n"], "e7e8").feedback, {
       result: "miss",
       san: "e8=Q+",
-      expectedSan: "e8=N",
+      before: { fen, lastMove: null },
     })
   })
 

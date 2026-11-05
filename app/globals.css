@@ -225,7 +225,19 @@
     color-mix(in oklch, var(--move-incorrect) 14%, transparent);
 }
 
-/* Neutral: bad puzzle data, not the user's mistake. */
+/* The two outcomes of an attempt carry a tint, so the result reads at a glance. */
+.cb-move-line[data-result="miss"] {
+  background: color-mix(in oklch, var(--move-incorrect) 10%, transparent);
+}
+
+.cb-move-line[data-result="solved"] {
+  background: color-mix(in oklch, var(--move-correct) 12%, transparent);
+}
+
+/* Neutral: waiting for a move, a shown solution (not a solve), or bad puzzle
+   data (not the user's mistake). */
+.cb-move-line[data-result="pending"]::before,
+.cb-move-line[data-result="shown"]::before,
 .cb-move-line[data-result="invalid"]::before {
   background: var(--muted-foreground);
   box-shadow: none;
@@ -241,7 +253,10 @@
   /* The first-move column keeps "Wrong move on turn 1" on one line; the last
      fits "20,742 thinking tok" and grows for longer counts instead of
      spilling into the column gap. */
-  grid-template-columns: 24px minmax(0, 1.45fr) minmax(8.5rem, 0.8fr) minmax(8.5rem, max-content);
+  grid-template-columns: 24px minmax(0, 1.45fr) minmax(8.5rem, 0.8fr) minmax(
+      8.5rem,
+      max-content
+    );
   min-height: 3.75rem;
   align-items: center;
   column-gap: 0.75rem;
