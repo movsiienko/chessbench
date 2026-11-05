@@ -1966,7 +1966,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           </TableHead>
           <TableHead className="text-right">
             <DerivedLabel
-              label="Legal move"
+              label="Legal moves"
               hint="Share of attempts that did not end on an illegal move or invalid format. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
             />
           </TableHead>
@@ -2254,7 +2254,7 @@ function ProblemsView({ search }: { search: Search }) {
       <section className="grid gap-6 border-b pb-7 lg:grid-cols-[1.35fr_0.85fr] lg:items-end">
         <div className="space-y-4">
           <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-            Problem set - {filtered.length} of{" "}
+            Problem set - {filtered.length.toLocaleString("en-US")} of{" "}
             {PUZZLES.length.toLocaleString("en-US")}
           </div>
           <div className="max-w-3xl space-y-3">
@@ -2769,7 +2769,7 @@ function ProblemFocus({
           <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
             Puzzle {puzzle.id}
           </div>
-          <h1 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight">
+          <h1 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight text-balance">
             {puzzle.caption}
           </h1>
         </div>
@@ -2917,12 +2917,15 @@ function ProblemFocus({
                         >
                           <OutcomeIcon attempt={attempt} className="size-3.5" />
                         </span>
-                        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="flex min-w-0 items-center gap-x-2">
                           <ModelDot model={attempt.model} />
-                          <span className="truncate font-semibold">
+                          <span
+                            className="truncate font-semibold"
+                            title={model.name}
+                          >
                             {model.name}
                           </span>
-                          <span className="cb-provider-pill truncate">
+                          <span className="cb-provider-pill shrink-0">
                             {model.vendor}
                           </span>
                         </span>
@@ -2949,7 +2952,7 @@ function ProblemFocus({
                             )}
                           </span>
                         </span>
-                        <span className="justify-self-end font-mono text-xs text-muted-foreground tabular-nums">
+                        <span className="justify-self-end font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
                           {attempt.thinkingTokens === null
                             ? "Tokens not recorded"
                             : `${attempt.thinkingTokens.toLocaleString("en-US")} tok`}{" "}
@@ -3282,7 +3285,7 @@ const METRICS: {
     body: "Share of puzzles where every player move of the solution line was correct. The headline number.",
   },
   {
-    name: "Legal move",
+    name: "Legal moves",
     kind: "Measured",
     body: "Share of attempts that did not end on an illegal move (reads as a move, but not a legal one here) or an invalid format (no move could be read). Wrong moves and timeouts still count as legal.",
   },
