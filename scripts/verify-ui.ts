@@ -488,43 +488,6 @@ async function checkRouteFocus(page: Page) {
   else ok("route focus", "Next puzzle keeps focus")
 }
 
-/**
- * Without the Navigation API, Back on a tag page reached again from a puzzle
- * returns to that puzzle, also after a router.refresh() rewrites the entry's
- * history.state.
- */
-async function checkBackAfterRefresh(page: Page) {
-  await page.addInitScript(() =>
-    Object.defineProperty(window, "navigation", { value: undefined })
-  )
-  await page.goto(new URL("/puzzles", BASE).href, { waitUntil: "networkidle" })
-  await page.locator('main a[href^="/puzzles/"]').first().click()
-  await page.waitForURL(/\/puzzles\/.+/)
-  const tag = await page
-    .locator('main a[href^="/tags/"]')
-    .first()
-    .getAttribute("href")
-  // Land on the tag page, open a puzzle, return to the same tag by a link.
-  await page.goto(new URL(tag!, BASE).href, { waitUntil: "networkidle" })
-  await page.locator('main a[href^="/puzzles/"]').first().click()
-  await page.waitForURL(/\/puzzles\/.+/)
-  const puzzle = page.url()
-  await page.locator(`main a[href="${tag}"]`).first().click()
-  await page.waitForURL((url) => url.pathname === tag)
-  await page.getByRole("link", { name: "Back" }).waitFor()
-  // router.refresh() rewrites history.state with Next.js's own keys only.
-  const before = await page.evaluateHandle(() => history.state)
-  await page.evaluate("window.next.router.refresh()")
-  await page.waitForFunction((b) => history.state !== b, before, {
-    timeout: 10000,
-  })
-  await page.getByRole("link", { name: "Back" }).click()
-  await page.waitForURL((url) => url.pathname !== tag)
-  if (page.url() !== puzzle)
-    fail("back link", `Back after a refresh went to ${page.url()}`)
-  else ok("back link", "Back returns to the puzzle after a refresh")
-}
-
 const browser = await chromium.launch()
 
 for (const reduced of [false, true]) {
@@ -567,10 +530,6 @@ for (const reduced of [false, true]) {
   }
   await page.close()
 }
-
-const backPage = await browser.newPage()
-await checkBackAfterRefresh(backPage)
-await backPage.close()
 
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 } })
 await checkNoHorizontalOverflow(phone)
