@@ -2874,8 +2874,11 @@ function ProblemFocus({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="max-sm:px-1.5"
+                  // Disabled while the reply plays; stays focusable so a
+                  // keyboard user's focus is not dropped mid-line.
+                  className="max-sm:px-1.5 data-disabled:pointer-events-none data-disabled:opacity-50"
                   disabled={solution === lineState}
+                  focusableWhenDisabled
                   onClick={() => setLineState(solution)}
                 >
                   <Eye data-icon="inline-start" />
