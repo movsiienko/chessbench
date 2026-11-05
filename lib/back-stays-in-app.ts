@@ -5,6 +5,27 @@ export const PUSHED_ENTRY = "chessbenchPushed"
 export type EntryState = { [PUSHED_ENTRY]?: true } | null
 
 /**
+ * Next.js-internal key on every history state the app router writes. Internal,
+ * so a test asserts the installed Next.js still writes it (JUS-66). If it is
+ * renamed, refreshes drop the mark and Back follows the link: never off-site.
+ */
+export const NEXT_ENTRY = "__NA"
+
+/**
+ * The state to write when Next.js replaces the entry whose state is `current`
+ * with `data`: Next.js drops custom keys on router.refresh(), server actions and
+ * same-URL navigations, but a replace keeps the entry, so carry its mark over.
+ */
+export function keepPushedMark<T extends { [NEXT_ENTRY]?: boolean } | null>(
+  current: EntryState,
+  data: T
+) {
+  return current?.[PUSHED_ENTRY] === true && data?.[NEXT_ENTRY] === true
+    ? { ...data, [PUSHED_ENTRY]: true }
+    : data
+}
+
+/**
  * Whether a BackLink mounting on the entry with `state` at `href` is on an entry
  * this tab just pushed, so its previous entry is a ChessBench page.
  *

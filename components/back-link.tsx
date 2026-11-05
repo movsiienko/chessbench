@@ -8,6 +8,7 @@ import {
   backStaysInApp,
   type EntryState,
   isNewPushedEntry,
+  keepPushedMark,
   PUSHED_ENTRY,
 } from "@/lib/back-stays-in-app"
 
@@ -19,18 +20,9 @@ if (typeof window !== "undefined" && !window.navigation) {
   addEventListener("popstate", () => {
     lastPopHref = location.href
   })
-  // Next.js drops custom history.state on router.refresh(), server actions and
-  // same-URL navigations (its own writes carry __NA). A replace keeps the
-  // entry, so carry its mark over.
   const replaceState = history.replaceState.bind(history)
   history.replaceState = (data, unused, url) =>
-    replaceState(
-      history.state?.[PUSHED_ENTRY] === true && data?.__NA
-        ? { ...data, [PUSHED_ENTRY]: true }
-        : data,
-      unused,
-      url
-    )
+    replaceState(keepPushedMark(history.state, data), unused, url)
 }
 
 /**
