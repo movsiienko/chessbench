@@ -3300,11 +3300,11 @@ const TURN_STEPS = [
   },
   {
     title: "One move",
-    body: "It answers with exactly one legal move in UCI or SAN, and nothing else.",
+    body: "It answers with exactly one legal move in SAN, such as Nf3, and nothing else. The prompt asks only for SAN, but a UCI answer such as g1f3 is accepted too.",
   },
   {
     title: "Reply",
-    body: "If it is correct, the expected opponent reply is sent as a UCI move and the next move is asked for in the same conversation.",
+    body: "If it is correct, the expected opponent reply is sent in SAN and the next move is asked for in the same conversation.",
   },
 ]
 
@@ -3394,6 +3394,7 @@ export function DocsView() {
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry gets one attempt per puzzle.",
     "Elo and cost are derived from that small sample and rounded to the precision it supports.",
+    "Every result here ran under the same protocol: prompt, answer parser, scorer and time limit. Changing any of them starts a new protocol and hides earlier results, which are not comparable. The previous protocol accepted UCI or SAN and sent opponent replies in UCI; this one asks for SAN and sends replies in SAN.",
   ]
 
   return (

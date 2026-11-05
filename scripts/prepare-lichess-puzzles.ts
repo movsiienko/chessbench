@@ -86,7 +86,7 @@ const manifest = {
     sourceColumns: columns,
     itemFile: "items.jsonl",
     promptContract:
-      "Runners build prompts at execution time from position.fen. The local runner asks for exactly one legal move token in UCI or standard algebraic (SAN) notation with no explanation or extra text, normalizes accepted answers to UCI, reveals expected opponent replies after correct moves, and stops on the first wrong or invalid move.",
+      "Runners build prompts at execution time from position.fen. The local runner asks for exactly one legal move token in standard algebraic notation (SAN) with no explanation or extra text, still accepts UCI, normalizes accepted answers to UCI, reveals expected opponent replies in SAN after correct moves, and stops on the first wrong or invalid move.",
     expectedAnswer:
       "expected.uciLine contains the full forcing line after the Lichess setup move; expected.playerUciMoves contains only the side-to-move moves.",
   },

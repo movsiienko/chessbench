@@ -43,7 +43,7 @@ function puzzle(): LichessPuzzleBenchmarkItem {
 }
 
 describe("local lichess puzzle attempts", () => {
-  test("runs a puzzle as UCI/SAN multi-turn interaction", async () => {
+  test("asks for SAN, states replies in SAN, and still accepts UCI", async () => {
     const answers = ["c2c4", "b3c4", "e3e4"]
 
     const row = await runLichessPuzzleAttempt({
@@ -73,23 +73,23 @@ describe("local lichess puzzle attempts", () => {
           "Find the best move for the side to move.",
           "Output contract:",
           "Return exactly one legal chess move for the side to move.",
-          "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+          "Notation: standard algebraic notation (SAN), such as Nf3, Rxa6, O-O, or exd8=Q+.",
           "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
         ].join("\n"),
         [
-          "Opponent played: b5c4.",
+          "Opponent played: bxc4",
           "Find the next move.",
           "Output contract:",
           "Return exactly one legal chess move for the side to move.",
-          "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+          "Notation: standard algebraic notation (SAN), such as Nf3, Rxa6, O-O, or exd8=Q+.",
           "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
         ].join("\n"),
         [
-          "Opponent played: d5c4.",
+          "Opponent played: Kxc4",
           "Find the next move.",
           "Output contract:",
           "Return exactly one legal chess move for the side to move.",
-          "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+          "Notation: standard algebraic notation (SAN), such as Nf3, Rxa6, O-O, or exd8=Q+.",
           "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
         ].join("\n"),
       ]
