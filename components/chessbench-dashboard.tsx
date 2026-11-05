@@ -3389,7 +3389,8 @@ export function DocsView() {
   ]
 
   const limits = [
-    `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
+    // A new protocol starts with no results, and "up to 0 percentage points" would read as no uncertainty.
+    `${MIN_SAMPLE > 0 ? `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. ` : ""}Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
     "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry gets one attempt per puzzle.",
