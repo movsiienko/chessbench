@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-05-26T14:39:33Z",
+  "generatedAt": "2026-11-05T12:26:11Z",
   "title": "Design System: ChessBench",
   "extensions": {
     "colorMeta": {
@@ -9,12 +9,12 @@
         "displayName": "Analysis Background",
         "canonical": "oklch(1 0 0)",
         "tonalRamp": [
-          "oklch(0.15 0 0)",
-          "oklch(0.25 0 0)",
-          "oklch(0.37 0 0)",
-          "oklch(0.56 0 0)",
-          "oklch(0.70 0 0)",
-          "oklch(0.86 0 0)",
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.269 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.922 0 0)",
           "oklch(0.97 0 0)",
           "oklch(1 0 0)"
         ]
@@ -26,12 +26,12 @@
         "tonalRamp": [
           "oklch(0.145 0 0)",
           "oklch(0.205 0 0)",
-          "oklch(0.269 0 0)",
-          "oklch(0.371 0 0)",
-          "oklch(0.439 0 0)",
-          "oklch(0.556 0 0)",
-          "oklch(0.708 0 0)",
-          "oklch(0.922 0 0)"
+          "oklch(0.4 0 0)",
+          "oklch(0.5 0 0)",
+          "oklch(0.66 0 0)",
+          "oklch(0.78 0 0)",
+          "oklch(0.82 0 0)",
+          "oklch(0.97 0 0)"
         ]
       },
       "chess-amber": {
@@ -40,12 +40,12 @@
         "canonical": "oklch(0.72 0.14 70)",
         "tonalRamp": [
           "oklch(0.20 0.08 70)",
-          "oklch(0.32 0.10 70)",
+          "oklch(0.32 0.08 70)",
           "oklch(0.44 0.12 70)",
           "oklch(0.58 0.16 55)",
           "oklch(0.72 0.14 70)",
           "oklch(0.78 0.14 70)",
-          "oklch(0.88 0.08 78)",
+          "oklch(0.85 0.13 75)",
           "oklch(0.94 0.05 80)"
         ]
       },
@@ -59,7 +59,7 @@
           "#8e8066",
           "#aa9a7b",
           "#c6b895",
-          "#d8caad",
+          "#d7c6a5",
           "#e7dac2",
           "#efe6d2"
         ]
@@ -72,7 +72,7 @@
           "#3e2a1d",
           "#543827",
           "#6c4933",
-          "#825c41",
+          "#8c6848",
           "#996f50",
           "#b58863",
           "#c9a07c",
@@ -185,7 +185,7 @@
       "refersTo": "status-line",
       "description": "Reserved feedback line for accepted or corrected board moves.",
       "html": "<div class=\"ds-status-line\"><span>Move accepted: <strong>Bxc6</strong></span></div>",
-      "css": ".ds-status-line{display:flex;min-height:2rem;align-items:center;gap:.5rem;border-radius:.5rem;padding:.25rem .625rem;color:var(--muted-foreground);font-family:var(--font-sans);font-size:.8125rem}.ds-status-line::before{content:\"\";width:.61rem;height:.61rem;flex:0 0 auto;border-radius:999px;background:oklch(.72 .12 150);box-shadow:0 0 0 .16rem oklch(.72 .12 150 / 12%)}.ds-status-line strong{color:var(--foreground);font-weight:600}"
+      "css": ".ds-status-line{display:flex;min-height:2rem;align-items:center;gap:.5rem;border-radius:.5rem;padding:.25rem .625rem;color:var(--muted-foreground);font-family:var(--font-sans);font-size:.8125rem}.ds-status-line::before{content:\"\";width:.61rem;height:.61rem;flex:0 0 auto;border-radius:999px;background:var(--move-correct);box-shadow:0 0 0 .16rem color-mix(in oklch,var(--move-correct) 14%,transparent)}.ds-status-line strong{color:var(--foreground);font-weight:600}"
     },
     {
       "name": "Model Attempt Row",
@@ -193,7 +193,7 @@
       "refersTo": "model-attempt-row",
       "description": "Accordion row combining model identity, played move, and thinking metadata.",
       "html": "<div class=\"ds-model-row\"><span class=\"ds-check\">✓</span><span class=\"ds-model\"><span class=\"ds-icon\"></span><strong>GPT-5</strong><span class=\"ds-provider\">OpenAI</span></span><span class=\"ds-played\"><small>Played</small><b>b5 → c6</b></span><span class=\"ds-time\">400 tok - 3.7s</span></div>",
-      "css": ".ds-model-row{display:grid;grid-template-columns:24px minmax(0,1.45fr) minmax(80px,.8fr) minmax(96px,.75fr);min-height:3.75rem;align-items:center;column-gap:.75rem;padding-right:.75rem;border-bottom:1px solid var(--border);font-family:var(--font-sans)}.ds-check{display:grid;width:1.5rem;height:1.5rem;place-items:center;border-radius:999px;background:oklch(.55 .18 150);color:var(--primary-foreground);font-size:.75rem}.ds-model{display:flex;min-width:0;flex-wrap:wrap;align-items:center;gap:.25rem .5rem}.ds-icon{width:1rem;height:1rem;border-radius:999px;background:var(--foreground)}.ds-model strong{font-size:.875rem;font-weight:600}.ds-provider{color:var(--muted-foreground);font-family:var(--font-mono);font-size:.66rem;line-height:1}.ds-played small{display:block;color:var(--muted-foreground);font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}.ds-played b{font-family:var(--font-mono);font-size:.875rem}.ds-time{justify-self:end;color:var(--muted-foreground);font-family:var(--font-mono);font-size:.75rem}"
+      "css": ".ds-model-row{display:grid;grid-template-columns:24px minmax(0,1.45fr) minmax(80px,.8fr) minmax(96px,.75fr);min-height:3.75rem;align-items:center;column-gap:.75rem;padding-right:.75rem;border-bottom:1px solid var(--border);font-family:var(--font-sans)}.ds-check{display:grid;width:1.5rem;height:1.5rem;place-items:center;border-radius:999px;background:var(--move-correct);color:var(--move-correct-foreground);font-size:.75rem}.ds-model{display:flex;min-width:0;flex-wrap:wrap;align-items:center;gap:.25rem .5rem}.ds-icon{width:1rem;height:1rem;border-radius:999px;background:var(--foreground)}.ds-model strong{font-size:.875rem;font-weight:600}.ds-provider{color:var(--muted-foreground);font-family:var(--font-mono);font-size:.66rem;line-height:1}.ds-played small{display:block;color:var(--muted-foreground);font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}.ds-played b{font-family:var(--font-mono);font-size:.875rem}.ds-time{justify-self:end;color:var(--muted-foreground);font-family:var(--font-mono);font-size:.75rem}"
     }
   ],
   "narrative": {
