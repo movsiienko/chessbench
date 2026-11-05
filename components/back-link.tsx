@@ -2,8 +2,24 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
-import { backStaysInApp } from "@/lib/back-stays-in-app"
+import {
+  backStaysInApp,
+  type EntryState,
+  isNewPushedEntry,
+  PUSHED_ENTRY,
+} from "@/lib/back-stays-in-app"
+
+// Without the Navigation API, BackLink marks entries this tab pushed by client
+// navigation (see isNewPushedEntry).
+let lastState: EntryState | undefined
+let lastPopHref: string | undefined
+if (typeof window !== "undefined") {
+  addEventListener("popstate", () => {
+    lastPopHref = location.href
+  })
+}
 
 /**
  * Goes back when the previous entry in this tab is a ChessBench page, else
@@ -11,6 +27,17 @@ import { backStaysInApp } from "@/lib/back-stays-in-app"
  */
 export function BackLink(props: React.ComponentProps<typeof Link>) {
   const router = useRouter()
+  useEffect(() => {
+    if (window.navigation) return
+    if (
+      isNewPushedEntry(lastState, history.state, lastPopHref, location.href)
+    ) {
+      // Keep Next.js's own keys in the entry's state.
+      history.replaceState({ ...history.state, [PUSHED_ENTRY]: true }, "")
+    }
+    lastState = history.state
+    lastPopHref = undefined
+  }, [])
   return (
     <Link
       {...props}
@@ -26,7 +53,8 @@ export function BackLink(props: React.ComponentProps<typeof Link>) {
           backStaysInApp(
             window.navigation?.currentEntry?.index,
             performance.getEntriesByType("navigation")[0]?.name,
-            location.href
+            location.href,
+            history.state?.[PUSHED_ENTRY] === true
           )
         ) {
           event.preventDefault()
