@@ -2666,7 +2666,10 @@ function ProblemFocus({
   const tokenCh = Math.max(...attempts.map((a) => tokenLabel(a).length))
   const solverMoves = Math.ceil(line.length / 2)
   const locked = isLineLocked(lineState, line)
-  const solution = showSolution(lineState, line)
+  const solution = React.useMemo(
+    () => showSolution(lineState, line),
+    [lineState, line]
+  )
   const sideName = puzzle.side === "w" ? "White" : "Black"
 
   React.useEffect(() => {
@@ -2731,7 +2734,7 @@ function ProblemFocus({
         : feedback.result === "correct"
           ? `Correct, ${feedback.san}. The opponent is replying.`
           : feedback.result === "reply"
-            ? `Correct, ${feedback.played}. The opponent played ${feedback.san}. Your move.`
+            ? `${feedback.played && `Correct, ${feedback.played}. `}The opponent played ${feedback.san}. Your move.`
             : feedback.result === "invalid"
               ? "This puzzle's next opponent move is invalid. Reset to try again."
               : shown
@@ -2834,7 +2837,7 @@ function ProblemFocus({
                       <>Find the best move for {sideName}</>
                     ) : feedback.result === "miss" ? (
                       <>
-                        <strong>Wrong</strong> - {feedback.san} is not the
+                        <strong>Wrong</strong> - {feedback.san} isn&apos;t the
                         puzzle move
                       </>
                     ) : feedback.result === "shown" ? (

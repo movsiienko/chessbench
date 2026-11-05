@@ -202,8 +202,8 @@
   padding: 0.25rem 0.625rem;
   color: var(--muted-foreground);
   font-family: var(--font-sans);
-  /* Snapped onto the DESIGN.md ramp: this sits with the mono FEN string in
-     the same row, and 0.75rem is the nearest documented step. */
+  /* Snapped onto the DESIGN.md ramp: 0.75rem keeps the longest status beside
+     the two board buttons on one line at 390px. */
   font-size: var(--text-xs);
 }
 
@@ -253,10 +253,7 @@
   /* The first-move column keeps "Wrong move on turn 1" on one line; the last
      fits "20,742 thinking tok" and grows for longer counts instead of
      spilling into the column gap. */
-  grid-template-columns: 24px minmax(0, 1.45fr) minmax(8.5rem, 0.8fr) minmax(
-      8.5rem,
-      max-content
-    );
+  grid-template-columns: 24px minmax(0, 1.45fr) minmax(8.5rem, 0.8fr) minmax(8.5rem, max-content);
   min-height: 3.75rem;
   align-items: center;
   column-gap: 0.75rem;

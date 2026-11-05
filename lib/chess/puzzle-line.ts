@@ -123,11 +123,20 @@ export function showSolution(
   }
 
   const played = playSolverMove(base, line, move)
+
+  // A line entry that resolves but is not canonical UCI reads as a miss.
+  if (played.ply === base.ply) {
+    return state
+  }
+
   return {
     ...played,
     shown: true,
-    // Ending the line by asking is not a solve.
-    feedback: { result: "shown", san: move.san },
+    // The last move keeps "solved", which `shown` marks as not a clean solve.
+    feedback:
+      played.feedback?.result === "solved"
+        ? played.feedback
+        : { result: "shown", san: move.san },
   }
 }
 
@@ -165,6 +174,12 @@ export function playOpponentReply(
     feedback:
       ply >= line.length
         ? { result: "solved", san: move.san }
-        : { result: "reply", san: move.san, played: state.feedback?.san ?? "" },
+        : {
+            result: "reply",
+            san: move.san,
+            // Empty after Show solution: the user did not find that move.
+            played:
+              state.feedback?.result === "correct" ? state.feedback.san : "",
+          },
   }
 }

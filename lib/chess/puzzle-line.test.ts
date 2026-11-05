@@ -133,13 +133,18 @@ describe("puzzle line", () => {
     assert.deepEqual(shown.feedback, { result: "shown", san: "e4" })
     // The scripted reply follows as usual, and the flag survives it.
     const replied = playOpponentReply(shown, LINE)
-    assert.equal(replied?.feedback?.result, "reply")
+    assert.deepEqual(replied?.feedback, {
+      result: "reply",
+      san: "e5",
+      played: "",
+    })
     assert.equal(replied?.shown, true)
     // Nothing to show while the reply is due or after the line ends.
     assert.equal(showSolution(shown, LINE), shown)
     assert.ok(replied)
     const done = showSolution(replied, LINE)
     assert.equal(done.ply, LINE.length)
+    assert.deepEqual(done.feedback, { result: "solved", san: "Nf3" })
     assert.equal(showSolution(done, LINE), done)
   })
 
