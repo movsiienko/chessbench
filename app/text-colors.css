@@ -13,9 +13,14 @@
  * grey so surface-level text reads uniformly, instead of each surface carrying
  * its own near-identical shade. Only --foreground, --primary-foreground and
  * --muted-foreground hold independent values.
+ *
+ * WCAG AA (4.5:1). Light: foreground 9.2:1 and muted 6.0:1 on --background,
+ * muted 5.5:1 on --muted. Dark: foreground 9.9:1 and muted 6.4:1 on
+ * --background, muted 4.9:1 on --muted (its lowest surface). The gap between
+ * the two keeps muted text reading as secondary.
  */
 :root {
-  --foreground: oklch(0.45 0 0);
+  --foreground: oklch(0.4 0 0);
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
   --primary-foreground: oklch(0.82 0 0);
@@ -27,7 +32,7 @@
 }
 
 .dark {
-  --foreground: oklch(0.72 0 0);
+  --foreground: oklch(0.78 0 0);
   --card-foreground: var(--foreground);
   --popover-foreground: var(--foreground);
   --primary-foreground: oklch(0.42 0 0);
@@ -35,5 +40,5 @@
   --accent-foreground: var(--foreground);
   --sidebar-foreground: var(--foreground);
   --sidebar-accent-foreground: var(--foreground);
-  --muted-foreground: oklch(0.62 0 0);
+  --muted-foreground: oklch(0.66 0 0);
 }

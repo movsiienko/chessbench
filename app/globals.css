@@ -177,6 +177,21 @@
   height: 100%;
 }
 
+/* Board coordinates. Chessground's brown theme alternates dark and white
+   labels at 0.8 alpha inside a 0.8-opacity container, which measures 1.2:1
+   (white on light squares) and 2.4:1 (grey on dark squares) on this board.
+   Both square colours are pale, so one opaque dark ink serves every label:
+   7.6:1 on light squares, 4.8:1 on dark squares. Same specificity as the
+   theme's selectors, so this wins by coming later. */
+.cg-wrap coords {
+  opacity: 1;
+}
+
+.cg-wrap .ranks :nth-child(n),
+.cg-wrap .files :nth-child(n) {
+  color: rgb(64 64 64);
+}
+
 .cb-move-line {
   display: flex;
   min-height: 2rem;

@@ -7,6 +7,7 @@ import "./globals.css"
 // later import wins on source order alone. Reordering these two lines silently
 // reverts every override in it - the theme changes and nothing fails to build.
 import "./text-colors.css"
+import { RouteFocus } from "@/components/route-focus"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
+          <RouteFocus />
         </ThemeProvider>
         {process.env.NODE_ENV === "development" && (
           <>

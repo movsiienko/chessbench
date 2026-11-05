@@ -56,7 +56,10 @@ export default async function TagPage({ params }: Props) {
     .sort((a, b) => b.solved / b.n - a.solved / a.n || b.n - a.n)
 
   return (
-    <main className="mx-auto max-w-[1360px] space-y-8 px-4 py-6 sm:px-6 lg:px-8">
+    <main
+      tabIndex={-1}
+      className="mx-auto max-w-[1360px] space-y-8 px-4 py-6 outline-none sm:px-6 lg:px-8"
+    >
       <BackLink
         href="/puzzles"
         className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
