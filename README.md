@@ -136,9 +136,8 @@ Generate a migration after editing the schema with `bun x drizzle-kit generate`.
 ## Dashboard Data
 
 The dashboard (`app/(dashboard)/layout.tsx`, via `loadDashboardData` in
-`lib/benchmarks/dashboard-load.ts`) and each `/tags/[tag]` page are prerendered
-at build from Postgres: every current-protocol
-model and reasoning level with finished attempts becomes a scoreboard entry
+`lib/benchmarks/dashboard-load.ts`) is prerendered at build from Postgres:
+every current-protocol model and reasoning level with finished attempts becomes a scoreboard entry
 (`entriesFrom` in `lib/benchmarks/dashboard-build.ts`). The pages carry attempt
 summaries only; a transcript fetches its full record from
 `/api/attempts/<id>`, which the CDN caches permanently. After new results land,

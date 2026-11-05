@@ -6,6 +6,16 @@ const appRoot = dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Tag pages were folded into the Problems theme filter; keep old links alive.
+  async redirects() {
+    return [
+      {
+        source: "/tags/:tag",
+        destination: "/puzzles?theme=:tag",
+        permanent: true,
+      },
+    ]
+  },
   turbopack: {
     root: appRoot,
   },

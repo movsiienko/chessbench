@@ -2794,7 +2794,7 @@ function ProblemFocus({
               {puzzle.themes.map((theme) => (
                 <Link
                   key={theme}
-                  href={`/tags/${encodeURIComponent(theme)}`}
+                  href={`/puzzles?theme=${encodeURIComponent(theme)}`}
                   className="border-b-2 border-[var(--chess-amber)]/60 outline-none hover:border-[var(--chess-amber)] focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
                   {categoryById(theme)?.label ?? theme}
