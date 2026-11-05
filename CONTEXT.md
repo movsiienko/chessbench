@@ -22,6 +22,8 @@ _Avoid_: Configuration, settings
 **Reasoning level**: The provider-neutral level a model is asked to reason at: `provider-default`, `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`. Each provider turns it into its own control, an effort setting or a thinking-token budget.
 _Avoid_: Effort, thinking budget (provider-specific controls a level maps to)
 
+**Reasoning summary**: The readable text a closed model's lab (GPT, Claude, Gemini) returns in place of the model's own reasoning, which it keeps encrypted or signed. Traces label it as a summary; open models' reasoning text is their own.
+
 **Move time limit**: The protocol's longest time a model may take to answer one turn. Exceeding it fails the turn like a wrong move.
 
 **Pending attempt**: An attempt that ended in a provider error. It is not a result: scores exclude it and later benchmark runs retry it.

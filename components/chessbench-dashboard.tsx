@@ -3129,7 +3129,7 @@ function AttemptTrace({
     )
   }
 
-  const { turns } = loaded.record
+  const { turns, model } = loaded.record
   return (
     <>
       <ol className="space-y-5">
@@ -3153,7 +3153,10 @@ function AttemptTrace({
                 </p>
               </TraceField>
             )}
-            <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
+            <TurnReasoning
+              reasoning={turnReasoning(turn, model)}
+              vendor={vendor}
+            />
           </li>
         ))}
       </ol>
@@ -3192,17 +3195,26 @@ function TurnReasoning({
   if (reasoning === null) {
     return null
   }
+  const summary = reasoning !== "hidden" && reasoning.summary
 
   return (
-    <TraceField label="Reasoning">
+    <TraceField label={summary ? "Reasoning summary" : "Reasoning"}>
       {reasoning === "hidden" ? (
         <p className="text-xs text-muted-foreground">
           {vendor} didn&apos;t return readable reasoning for this turn.
         </p>
       ) : (
-        <div className="max-h-72 max-w-[75ch] overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 wrap-anywhere whitespace-pre-wrap">
-          {reasoning.text.trim()}
-        </div>
+        <>
+          {summary && (
+            <p className="text-xs text-muted-foreground">
+              Written by {vendor}. The model&apos;s full reasoning isn&apos;t
+              returned.
+            </p>
+          )}
+          <div className="max-h-72 max-w-[75ch] overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-xs leading-5 wrap-anywhere whitespace-pre-wrap">
+            {reasoning.text.trim()}
+          </div>
+        </>
       )}
     </TraceField>
   )

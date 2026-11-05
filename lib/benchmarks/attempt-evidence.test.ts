@@ -141,10 +141,29 @@ describe("published attempt evidence", () => {
       result: "correct" as const,
       errorMessage: "",
     }
-    // Gemini: readable text.
+    // Gemini and GPT: readable text is the provider's summary.
     assert.deepEqual(
-      turnReasoning({ ...turn, reasoningText: "Develop.", reasoning: [] }),
-      { text: "Develop." }
+      turnReasoning(
+        { ...turn, reasoningText: "Develop.", reasoning: [] },
+        "google/gemini-3.5-flash"
+      ),
+      { text: "Develop.", summary: true }
+    )
+    assert.ok(
+      attemptTranscript({
+        ...gpt5[0]!,
+        turns: [{ ...turn, reasoningText: "Develop." }],
+      }).includes(
+        "Reasoning summary (written by the provider; the model's full reasoning isn't returned):\nDevelop."
+      )
+    )
+    // Open models return their own reasoning, not a summary.
+    assert.deepEqual(
+      turnReasoning(
+        { ...turn, reasoningText: "Develop.", reasoning: [] },
+        "alibaba/qwen3-max-thinking"
+      ),
+      { text: "Develop.", summary: false }
     )
     // Claude's signature and GPT's encrypted content: no readable text.
     for (const metadata of [
@@ -155,7 +174,10 @@ describe("published attempt evidence", () => {
         { type: "reasoning", text: "", providerMetadata: metadata },
       ]
       assert.equal(
-        turnReasoning({ ...turn, reasoningText: "", reasoning }),
+        turnReasoning(
+          { ...turn, reasoningText: "", reasoning },
+          "openai/gpt-5.5"
+        ),
         "hidden"
       )
       assert.ok(
@@ -167,12 +189,18 @@ describe("published attempt evidence", () => {
     }
     // Grok: reasoning tokens billed, no reasoning returned.
     assert.equal(
-      turnReasoning({ ...turn, reasoning: [], usage: { reasoningTokens: 9 } }),
+      turnReasoning(
+        { ...turn, reasoning: [], usage: { reasoningTokens: 9 } },
+        "xai/grok-4.1-fast-reasoning"
+      ),
       "hidden"
     )
     // DeepSeek and Qwen stored runs: the model did not reason.
     assert.equal(
-      turnReasoning({ ...turn, reasoning: [], usage: { reasoningTokens: 0 } }),
+      turnReasoning(
+        { ...turn, reasoning: [], usage: { reasoningTokens: 0 } },
+        "deepseek/deepseek-v3.2-thinking"
+      ),
       null
     )
   })

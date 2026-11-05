@@ -7,10 +7,15 @@
  * `--card` surfaces (3.5:1 minimum, WCAG 1.4.11), not raw brand hexes: xAI
  * ships a near-black and Google/DeepSeek two blues 3 degrees apart. Pick a new
  * model's pair by hand with a contrast checker.
+ *
+ * `reasoningSummary` marks a closed model whose readable reasoning is a
+ * summary its lab writes, while its own reasoning stays encrypted or signed.
+ * Open models (DeepSeek, Qwen) return their own; Grok returns none.
  */
 export const MODELS = [
   {
     id: "openai/gpt-5.5",
+    reasoningSummary: true,
     name: "GPT 5.5",
     vendor: "OpenAI",
     color: "#009b78",
@@ -18,6 +23,7 @@ export const MODELS = [
   },
   {
     id: "anthropic/claude-opus-4.8",
+    reasoningSummary: true,
     name: "Claude Opus 4.8",
     vendor: "Anthropic",
     color: "#cf6e4e",
@@ -25,6 +31,7 @@ export const MODELS = [
   },
   {
     id: "google/gemini-3.5-flash",
+    reasoningSummary: true,
     name: "Gemini 3.5 Flash",
     vendor: "Google",
     color: "#4285f4",
@@ -32,6 +39,7 @@ export const MODELS = [
   },
   {
     id: "deepseek/deepseek-v3.2-thinking",
+    reasoningSummary: false,
     name: "DeepSeek V3.2 Thinking",
     vendor: "DeepSeek",
     color: "#007d98",
@@ -39,6 +47,7 @@ export const MODELS = [
   },
   {
     id: "xai/grok-4.1-fast-reasoning",
+    reasoningSummary: false,
     name: "Grok 4.1 Fast Reasoning",
     vendor: "xAI",
     color: "#111827",
@@ -46,6 +55,7 @@ export const MODELS = [
   },
   {
     id: "alibaba/qwen3-max-thinking",
+    reasoningSummary: false,
     name: "Qwen3 Max Thinking",
     vendor: "Alibaba",
     color: "#9a56ed",

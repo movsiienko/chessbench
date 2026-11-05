@@ -1,4 +1,5 @@
 import { moveToken, readableMove } from "../chess/moves"
+import { MODELS } from "./models"
 import type {
   LichessPuzzleAttemptRow,
   LichessPuzzleAttemptStatus,
@@ -79,15 +80,21 @@ export function buildAttemptEvidence<Model extends string>(
 
 /**
  * A turn's reasoning as readable text (the AI SDK's join of the readable
- * reasoning parts), or `hidden` when the model reasoned but this response
- * carried only signed, encrypted, or no text (always for Claude, GPT, and
- * Grok; on some Gemini turns), or nothing when it did not reason at all.
+ * reasoning parts), marked `summary` for models whose lab writes one; or
+ * `hidden` when the model reasoned but this response carried only signed, encrypted, or no text
+ * (Grok always; Claude and GPT before summaries were requested; some Gemini
+ * turns); or nothing when it did not reason at all.
  */
 export function turnReasoning(
-  turn: LichessPuzzleAttemptTurn
-): { text: string } | "hidden" | null {
+  turn: LichessPuzzleAttemptTurn,
+  model: string
+): { text: string; summary: boolean } | "hidden" | null {
   const text = turn.reasoningText ?? ""
-  if (text.trim()) return { text }
+  if (text.trim())
+    return {
+      text,
+      summary: MODELS.some((m) => m.id === model && m.reasoningSummary),
+    }
   const signedOrEncrypted =
     Array.isArray(turn.reasoning) && turn.reasoning.length > 0
   return signedOrEncrypted || (turn.usage?.reasoningTokens ?? 0) > 0
@@ -128,7 +135,7 @@ export function attemptTranscript(row: LichessPuzzleAttemptRow): string {
     `Parsed move: ${turn.parsedMove || "(none)"}`,
     `Expected move: ${turn.expectedMove}`,
     `Result: ${turn.result}`,
-    ...reasoningLines(turnReasoning(turn)),
+    ...reasoningLines(turnReasoning(turn, row.model)),
     ...(turn.errorMessage ? [`Error: ${turn.errorMessage}`] : []),
   ])
 
@@ -138,5 +145,11 @@ export function attemptTranscript(row: LichessPuzzleAttemptRow): string {
 function reasoningLines(reasoning: ReturnType<typeof turnReasoning>) {
   if (reasoning === "hidden")
     return ["Reasoning: not returned as readable text"]
-  return reasoning ? ["Reasoning:", reasoning.text] : []
+  if (!reasoning) return []
+  return [
+    reasoning.summary
+      ? "Reasoning summary (written by the provider; the model's full reasoning isn't returned):"
+      : "Reasoning:",
+    reasoning.text,
+  ]
 }
