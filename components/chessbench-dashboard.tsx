@@ -2827,7 +2827,7 @@ function ProblemFocus({
                   </>
                 ) : feedback.result === "invalid" ? (
                   <>
-                    <strong>Puzzle error</strong> - reset to try again
+                    Correct, but <strong>puzzle error</strong> - reset
                   </>
                 ) : (
                   <>
