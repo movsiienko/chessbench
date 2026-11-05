@@ -926,7 +926,37 @@ function SampleNote({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** Column or metric label that opens the derivation behind the number. */
+/**
+ * Base UI tooltips open on hover and keyboard focus only, so a tap on a touch
+ * screen showed nothing. For hints whose text is the point, a press opens the
+ * tooltip too, and a second tap closes it; outside press and Escape close it
+ * as before. A mouse click keeps it open, since hover already opened it.
+ *
+ * Browsers follow a tap with emulated mouse events, including a `mouseleave`
+ * that Base UI reads as hover ending, so hover closes are ignored after a tap.
+ */
+function useTapToOpen() {
+  const [open, setOpen] = React.useState(false)
+  const tapped = React.useRef(false)
+  return {
+    root: {
+      open,
+      onOpenChange: (next: boolean, { reason }: { reason: string }) => {
+        if (!next && reason === "trigger-hover" && tapped.current) return
+        if (!next) tapped.current = false
+        setOpen(next)
+      },
+    },
+    trigger: {
+      closeOnClick: false,
+      onPointerDown: ({ pointerType }: React.PointerEvent) => {
+        tapped.current = pointerType === "touch"
+      },
+      onClick: () => setOpen((wasOpen) => !(wasOpen && tapped.current)),
+    },
+  }
+}
+
 /**
  * Column header for a figure that was derived rather than measured, with the
  * derivation in a tooltip.
@@ -937,13 +967,15 @@ function SampleNote({ children }: { children: React.ReactNode }) {
  * label, and it is exactly what a keyboard or screen-reader user needs most.
  */
 function DerivedLabel({ label, hint }: { label: string; hint: string }) {
+  const tap = useTapToOpen()
   return (
-    <Tooltip>
+    <Tooltip {...tap.root}>
       <TooltipTrigger
+        {...tap.trigger}
         render={
           <button
             type="button"
-            className="cursor-help border-b border-dashed border-muted-foreground/60 font-medium focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="relative cursor-help border-b border-dashed border-muted-foreground/60 font-medium after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           >
             {label}
             <span className="sr-only">. {hint}</span>
@@ -1934,7 +1966,7 @@ function ResultsTable({ sorted }: { sorted: Score[] }) {
           </TableHead>
           <TableHead className="text-right">
             <DerivedLabel
-              label="Legal move"
+              label="Legal moves"
               hint="Share of attempts that did not end on an illegal move or invalid format. Illegal: reads as a move, but not a legal one here. Invalid format: no move could be read from the answer."
             />
           </TableHead>
@@ -2222,7 +2254,7 @@ function ProblemsView({ search }: { search: Search }) {
       <section className="grid gap-6 border-b pb-7 lg:grid-cols-[1.35fr_0.85fr] lg:items-end">
         <div className="space-y-4">
           <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-            Problem set - {filtered.length} of{" "}
+            Problem set - {filtered.length.toLocaleString("en-US")} of{" "}
             {PUZZLES.length.toLocaleString("en-US")}
           </div>
           <div className="max-w-3xl space-y-3">
@@ -2737,7 +2769,7 @@ function ProblemFocus({
           <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
             Puzzle {puzzle.id}
           </div>
-          <h1 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight">
+          <h1 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight text-balance">
             {puzzle.caption}
           </h1>
         </div>
@@ -2827,7 +2859,7 @@ function ProblemFocus({
                   </>
                 ) : feedback.result === "invalid" ? (
                   <>
-                    <strong>Puzzle error</strong> - reset to try again
+                    Correct, but <strong>puzzle error</strong> - reset
                   </>
                 ) : (
                   <>
@@ -2885,12 +2917,15 @@ function ProblemFocus({
                         >
                           <OutcomeIcon attempt={attempt} className="size-3.5" />
                         </span>
-                        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="flex min-w-0 items-center gap-x-2">
                           <ModelDot model={attempt.model} />
-                          <span className="truncate font-semibold">
+                          <span
+                            className="truncate font-semibold"
+                            title={model.name}
+                          >
                             {model.name}
                           </span>
-                          <span className="cb-provider-pill truncate">
+                          <span className="cb-provider-pill shrink-0">
                             {model.vendor}
                           </span>
                         </span>
@@ -2917,15 +2952,12 @@ function ProblemFocus({
                             )}
                           </span>
                         </span>
-                        {/* Two chunks so a narrow column wraps between tokens and time, not mid-label. */}
-                        <span className="flex flex-wrap justify-end gap-x-2 justify-self-end text-right font-mono text-xs text-muted-foreground tabular-nums">
-                          <span>
-                            {attempt.thinkingTokens === null
-                              ? "Tokens not recorded"
-                              : // Reasoning tokens when the provider reports them, else total tokens; say which.
-                                `${attempt.thinkingTokens.toLocaleString("en-US")} ${attempt.record.reasoningTokens === null ? "total" : "thinking"}\u00a0tok`}
-                          </span>{" "}
-                          <span>{(attempt.thinkingMs / 1000).toFixed(1)}s</span>
+                        <span className="justify-self-end font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+                          {attempt.thinkingTokens === null
+                            ? "Tokens not recorded"
+                            : // Reasoning tokens when the provider reports them, else total tokens; say which.
+                              `${attempt.thinkingTokens.toLocaleString("en-US")} ${attempt.record.reasoningTokens === null ? "total" : "thinking"} tok`}{" "}
+                          - {(attempt.thinkingMs / 1000).toFixed(1)}s
                         </span>
                       </div>
                     </AccordionTrigger>
@@ -2968,13 +3000,15 @@ function AttemptDot({ attempt }: { attempt: SolutionAttempt }) {
   const { modelById } = useDashboard()
   const model = modelById(attempt.model)
   const state = attempt.outcome
+  const tap = useTapToOpen()
 
   return (
-    <Tooltip>
+    <Tooltip {...tap.root}>
       <TooltipTrigger
+        {...tap.trigger}
         aria-label={`${model.name}: ${state}${attempt.outcomeHint ? `. ${attempt.outcomeHint}` : ""}`}
         className={cn(
-          "relative grid size-6 place-items-center rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+          "relative grid size-6 place-items-center rounded-full outline-none after:absolute after:-inset-1.25 after:content-[''] focus-visible:ring-3 focus-visible:ring-ring/50",
           attempt.solved
             ? "border border-move-correct/50"
             : isUnreadable(attempt)
@@ -3252,7 +3286,7 @@ const METRICS: {
     body: "Share of puzzles where every player move of the solution line was correct. The headline number.",
   },
   {
-    name: "Legal move",
+    name: "Legal moves",
     kind: "Measured",
     body: "Share of attempts that did not end on an illegal move (reads as a move, but not a legal one here) or an invalid format (no move could be read). Wrong moves and timeouts still count as legal.",
   },
