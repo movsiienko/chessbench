@@ -136,6 +136,20 @@ function normalizeMoveAnswer(answer: string): string {
   return /\s/.test(normalized) ? "" : normalized
 }
 
+/** A stored UCI move as SAN from the position it was played in; the UCI itself if it does not resolve. */
+export function sanMove(fen: string, uci: string) {
+  return resolveMove(fen, uci)?.san ?? uci
+}
+
+/** The FEN after playing a UCI line from `fen`, stopping at the first illegal move. */
+export function fenAfter(fen: string, line: string[]) {
+  const chess = new Chess(fen)
+  for (const uci of line) {
+    if (!applyUciMove(chess, uci)) break
+  }
+  return chess.fen()
+}
+
 export function readableMove(uci: string) {
   if (!uci) {
     return ""

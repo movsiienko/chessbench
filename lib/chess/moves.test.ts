@@ -2,9 +2,11 @@ import assert from "node:assert/strict"
 import { describe, test } from "node:test"
 import {
   applyUciMove,
+  fenAfter,
   moveToken,
   parseAcceptedMoveAnswer,
   readableMove,
+  sanMove,
 } from "./moves"
 import { Chess } from "chess.js"
 
@@ -128,5 +130,19 @@ describe("UCI helpers", () => {
     assert.equal(readableMove("e7e8q"), "e7 to e8, promote to Q")
     assert.equal(readableMove("junk"), "junk")
     assert.equal(readableMove(""), "")
+  })
+})
+
+describe("stored UCI shown as SAN", () => {
+  test("converts from the position each move is played in", () => {
+    const after = fenAfter(START, ["e2e4", "e7e5", "g1f3"])
+    assert.equal(sanMove(START, "e2e4"), "e4")
+    assert.equal(sanMove(after, "b8c6"), "Nc6")
+    // An illegal move stops the replay and shows as the UCI it was stored as.
+    assert.equal(
+      fenAfter(START, ["e2e4", "e2e4", "g1f3"]),
+      fenAfter(START, ["e2e4"])
+    )
+    assert.equal(sanMove(START, "e2e5"), "e2e5")
   })
 })

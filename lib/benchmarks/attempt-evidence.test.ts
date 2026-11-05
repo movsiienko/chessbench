@@ -60,6 +60,7 @@ const data = buildDashboardData({
     filters: { minPopularity: 0, minPlays: 0, maxRatingDeviation: 0 },
   },
 })
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 const gpt5 = records.filter((record) => record.model === "openai/gpt-5.5")
 
 function evidenceFor(record: LichessPuzzleAttemptRow) {
@@ -97,6 +98,7 @@ describe("published attempt evidence", () => {
       )!
       assert.equal(attempt.solved, false)
       assert.equal(attempt.firstMove.uci, "e6d7")
+      assert.equal(attempt.firstMove.label, "exd7")
       assert.equal(attempt.firstMove.correct, true)
       assert.equal(attempt.outcome, "Wrong move on turn 2")
     }
@@ -211,7 +213,13 @@ describe("published attempt evidence", () => {
           },
         ],
       }
-      const evidence = buildAttemptEvidence("test", "attempt", record, "Qh5")
+      const evidence = buildAttemptEvidence(
+        "test",
+        "attempt",
+        record,
+        START_FEN,
+        "Qh5"
+      )
       const illegal = status === "illegal_move"
       assert.equal(
         evidence.firstMove.correct,
@@ -219,7 +227,7 @@ describe("published attempt evidence", () => {
       )
       assert.equal(
         evidence.firstMove.label,
-        hasMove ? "a2 to a3" : illegal ? "Qh5" : "No valid move"
+        hasMove ? "a3" : illegal ? "Qh5" : "No valid move"
       )
       assert.notEqual(evidence.outcomeHint, "")
       assert.equal(evidence.thinkingTokens, null)
@@ -242,16 +250,21 @@ describe("published attempt evidence", () => {
 
   test("labels completed attempts without inferring failure from missing moves", () => {
     const record = gpt5.find((row) => row.solved)!
-    const evidence = buildAttemptEvidence("gpt5", "attempt", record)
+    const evidence = buildAttemptEvidence("gpt5", "attempt", record, START_FEN)
     assert.equal(evidence.solved, true)
     assert.equal(evidence.firstMove.correct, true)
     assert.equal(evidence.outcome, "Solved")
-    const incomplete = buildAttemptEvidence("gpt5", "attempt", {
-      ...record,
-      solved: false,
-      status: "ok",
-      invalidTurnIndex: null,
-    })
+    const incomplete = buildAttemptEvidence(
+      "gpt5",
+      "attempt",
+      {
+        ...record,
+        solved: false,
+        status: "ok",
+        invalidTurnIndex: null,
+      },
+      START_FEN
+    )
     assert.equal(incomplete.outcome, "Unsolved")
   })
 })

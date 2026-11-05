@@ -136,11 +136,15 @@ import { escapeCsv } from "@/lib/benchmarks/csv"
 import {
   boardOnlyFen,
   boardSummary,
+  fenAfter,
   isCheck,
   legalDests,
   moveArrow,
+  moveToken,
   piecesSummary,
   playMove,
+  readableMove,
+  sanMove,
   turnColor,
   type PlayedMove,
 } from "@/lib/chess/moves"
@@ -2948,6 +2952,11 @@ function ProblemFocus({
                             First move
                           </span>
                           <span
+                            title={
+                              attempt.firstMove.uci
+                                ? readableMove(attempt.firstMove.uci)
+                                : undefined
+                            }
                             className={cn(
                               "font-mono text-sm",
                               attempt.firstMove.correct === false &&
@@ -3133,29 +3142,47 @@ function AttemptTrace({
   return (
     <>
       <ol className="space-y-5">
-        {turns.map((turn) => (
-          <li key={turn.turnIndex} className="space-y-2">
-            {turns.length > 1 && (
-              <h4 className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Turn {turn.turnIndex + 1}
-              </h4>
-            )}
-            {turn.errorMessage ? (
-              <TraceField label="Error">
-                <p className="text-xs wrap-anywhere text-destructive">
-                  {turn.errorMessage}
-                </p>
-              </TraceField>
-            ) : (
-              <TraceField label="Answer">
-                <p className="font-mono text-sm wrap-anywhere whitespace-pre-wrap">
-                  {turn.rawAnswer || "No answer returned."}
-                </p>
-              </TraceField>
-            )}
-            <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
-          </li>
-        ))}
+        {turns.map((turn) => {
+          // Every earlier turn was correct, so the solution line gives this turn's position.
+          const san =
+            turn.parsedMove &&
+            sanMove(
+              fenAfter(
+                puzzle.fen,
+                puzzle.solution.slice(0, turn.turnIndex * 2)
+              ),
+              turn.parsedMove
+            )
+          return (
+            <li key={turn.turnIndex} className="space-y-2">
+              {turns.length > 1 && (
+                <h4 className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  Turn {turn.turnIndex + 1}
+                </h4>
+              )}
+              {turn.errorMessage ? (
+                <TraceField label="Error">
+                  <p className="text-xs wrap-anywhere text-destructive">
+                    {turn.errorMessage}
+                  </p>
+                </TraceField>
+              ) : (
+                <TraceField label="Answer">
+                  <p className="font-mono text-sm wrap-anywhere whitespace-pre-wrap">
+                    {turn.rawAnswer || "No answer returned."}
+                  </p>
+                  {san && !sameMoveText(san, turn.rawAnswer) && (
+                    <p className="text-xs text-muted-foreground">
+                      Scored as{" "}
+                      <span className="font-mono text-foreground">{san}</span>
+                    </p>
+                  )}
+                </TraceField>
+              )}
+              <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
+            </li>
+          )
+        })}
       </ol>
       <TranscriptActions
         puzzle={puzzle}
@@ -3164,6 +3191,12 @@ function AttemptTrace({
       />
     </>
   )
+}
+
+/** Whether the answer already reads as this SAN, so "Scored as" would only repeat it; a missing check mark is no correction. */
+function sameMoveText(san: string, answer: string) {
+  const bare = (text: string) => text.replace(/[+#]$/, "")
+  return bare(moveToken(answer)) === bare(san)
 }
 
 function TraceField({
