@@ -25,6 +25,24 @@ export function startPuzzleLine(fen: string): PuzzleLineState {
   return { fen, lastMove: null, ply: 0, feedback: null }
 }
 
+// ponytail: in memory, so progress is lost on reload; move to sessionStorage
+// if it should survive one.
+const savedLines = new Map<string, PuzzleLineState>()
+
+/** The line as the solver left it on this puzzle, else a fresh one. */
+export function restorePuzzleLine(id: string, fen: string): PuzzleLineState {
+  return savedLines.get(id) ?? startPuzzleLine(fen)
+}
+
+/** Remember a line in progress so leaving the puzzle does not lose it. */
+export function savePuzzleLine(id: string, state: PuzzleLineState) {
+  if (state.lastMove) {
+    savedLines.set(id, state)
+  } else {
+    savedLines.delete(id)
+  }
+}
+
 /** The board takes no input after a miss, once solved, or while the reply is due. */
 export function isLineLocked(state: PuzzleLineState, line: string[]) {
   return (

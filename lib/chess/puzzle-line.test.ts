@@ -5,6 +5,8 @@ import {
   isLineLocked,
   playOpponentReply,
   playSolverMove,
+  restorePuzzleLine,
+  savePuzzleLine,
   startPuzzleLine,
   type PuzzleLineState,
 } from "./puzzle-line"
@@ -140,5 +142,16 @@ describe("puzzle line", () => {
       san: "e8=Q+",
       expectedSan: "e8=N",
     })
+  })
+
+  test("a line in progress is restored on return until it is reset", () => {
+    const played = drag(startPuzzleLine(START), LINE, "e2e4")
+
+    savePuzzleLine("p1", played)
+    assert.deepEqual(restorePuzzleLine("p1", START), played)
+    assert.deepEqual(restorePuzzleLine("p2", START), startPuzzleLine(START))
+
+    savePuzzleLine("p1", startPuzzleLine(START))
+    assert.deepEqual(restorePuzzleLine("p1", START), startPuzzleLine(START))
   })
 })
