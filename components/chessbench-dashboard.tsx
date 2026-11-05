@@ -2903,6 +2903,7 @@ function ProblemFocus({
             >
               {attempts.map((attempt) => {
                 const model = modelById(attempt.model)
+                const [baseName, level] = nameParts(model.name)
                 return (
                   <AccordionItem key={attempt.model} value={attempt.model}>
                     <AccordionTrigger className="hover:no-underline">
@@ -2921,11 +2922,16 @@ function ProblemFocus({
                         </span>
                         <span className="flex min-w-0 items-center gap-x-2">
                           <ModelDot model={attempt.model} />
+                          {/* The level tells entries of one model apart, so the base name truncates first. */}
                           <span
-                            className="truncate font-semibold"
+                            className="flex min-w-0 font-semibold whitespace-nowrap"
                             title={model.name}
                           >
-                            {model.name}
+                            <span className="truncate">{baseName}</span>
+                            {/* pre keeps the leading space, which a flex item would drop. */}
+                            <span className="shrink-0 whitespace-pre">
+                              {level}
+                            </span>
                           </span>
                           <span className="cb-provider-pill shrink-0">
                             {model.vendor}
@@ -2989,6 +2995,19 @@ function ProblemFocus({
       </section>
     </div>
   )
+}
+
+/**
+ * "Claude Opus 4.8 · high" -> ["Claude Opus 4.8", " · high"]. "provider-default"
+ * shows as "default" in the attempt row, where space is scarce.
+ */
+function nameParts(name: string) {
+  const at = name.lastIndexOf(" · ")
+  if (at === -1) return [name, ""]
+  return [
+    name.slice(0, at),
+    name.slice(at).replace(/provider-default$/, "default"),
+  ]
 }
 
 function tokenLabel(attempt: SolutionAttempt) {
