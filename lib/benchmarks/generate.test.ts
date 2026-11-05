@@ -87,6 +87,44 @@ test("asks the model for the requested reasoning level, provider-neutrally", asy
   assert.equal(model.doGenerateCalls[0]?.providerOptions?.anthropic, undefined)
 })
 
+// A summary request is output only: it sets no reasoning effort.
+test("asks only GPT for a reasoning summary, at every level that reasons", async () => {
+  for (const [id, reasoning, expected] of [
+    ["openai/test", "provider-default", { reasoningSummary: "detailed" }],
+    ["openai/test", "none", undefined],
+    ["anthropic/test", "low", undefined],
+  ] as const) {
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => ({
+        content: [{ type: "text", text: "e2e4" }],
+        finishReason: { unified: "stop", raw: "stop" },
+        warnings: [],
+        usage: {
+          inputTokens: { total: 1, noCache: 1, cacheRead: 0, cacheWrite: 0 },
+          outputTokens: { total: 1, text: 1, reasoning: 0 },
+        },
+      }),
+    })
+    globalThis.AI_SDK_DEFAULT_PROVIDER = customProvider({
+      languageModels: { [id]: model },
+    })
+
+    await createGenerate({
+      reasoning,
+      maxOutputTokens: null,
+      gatewayTags: null,
+    })({
+      model: id,
+      messages: [{ role: "user", content: "Move?" }],
+    })
+
+    assert.deepEqual(
+      model.doGenerateCalls[0]?.providerOptions?.openai,
+      expected
+    )
+  }
+})
+
 // Open models such as Qwen return readable reasoning through the Gateway as
 // reasoning content; it must come back as text, which the runner stores.
 test("captures readable reasoning text for the trace", async () => {

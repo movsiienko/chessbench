@@ -32,9 +32,18 @@ export function createGenerate({
       maxRetries: 0,
       reasoning,
       maxOutputTokens: maxOutputTokens ?? undefined,
-      providerOptions: gatewayTags
-        ? { gateway: { byok: {}, tags: gatewayTags } }
-        : undefined,
+      providerOptions: {
+        ...(gatewayTags && { gateway: { byok: {}, tags: gatewayTags } }),
+        // GPT's reasoning is encrypted; ask for its readable summary, also at
+        // provider-default. A summary is output only, not a reasoning control
+        // (ADR 0004); "detailed" is what the SDK already sends at the other
+        // levels but none. Claude and Gemini get theirs from the SDK's level
+        // mapping.
+        ...(model.startsWith("openai/") &&
+          reasoning !== "none" && {
+            openai: { reasoningSummary: "detailed" },
+          }),
+      },
     })
     const gateway = gatewayMetadataSchema.parse(
       result.providerMetadata?.gateway
