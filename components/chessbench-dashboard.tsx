@@ -2658,6 +2658,8 @@ function ProblemFocus({
 
   const attempts = puzzle.attempts
   const solved = attempts.filter((attempt) => attempt.solved).length
+  // Token labels are mono, so the longest is the widest (in ch).
+  const tokenCh = Math.max(...attempts.map((a) => tokenLabel(a).length))
   const missed = feedback?.result === "miss"
   const solverMoves = Math.ceil(line.length / 2)
   const locked = isLineLocked(lineState, line)
@@ -2952,14 +2954,13 @@ function ProblemFocus({
                             )}
                           </span>
                         </span>
-                        {/* Tokens over time on desktop, one line on mobile (globals.css); each value stays whole. */}
-                        <span className="flex flex-col items-end justify-self-end font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-                          <span>
-                            {attempt.thinkingTokens === null
-                              ? "Tokens not recorded"
-                              : // Reasoning tokens when the provider reports them, else total tokens; say which.
-                                `${attempt.thinkingTokens.toLocaleString("en-US")} ${attempt.record.reasoningTokens === null ? "total" : "thinking"} tok`}
-                          </span>{" "}
+                        {/* Tokens over time on desktop, one line on mobile (globals.css); each value stays whole.
+                            The min-width (mono, so ch is exact) sizes every row's token track to the widest label, keeping columns aligned across rows. */}
+                        <span
+                          style={{ minWidth: `${tokenCh}ch` }}
+                          className="flex flex-col items-end justify-self-end font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums"
+                        >
+                          <span>{tokenLabel(attempt)}</span>{" "}
                           <span>{(attempt.thinkingMs / 1000).toFixed(1)}s</span>
                         </span>
                       </div>
@@ -2988,6 +2989,12 @@ function ProblemFocus({
       </section>
     </div>
   )
+}
+
+function tokenLabel(attempt: SolutionAttempt) {
+  if (attempt.thinkingTokens === null) return "Tokens not recorded"
+  // Reasoning tokens when the provider reports them, else total tokens; say which.
+  return `${attempt.thinkingTokens.toLocaleString("en-US")} ${attempt.record.reasoningTokens === null ? "total" : "thinking"} tok`
 }
 
 /**
