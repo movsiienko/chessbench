@@ -148,6 +148,8 @@ import {
   isLineLocked,
   playOpponentReply,
   playSolverMove,
+  restorePuzzleLine,
+  savePuzzleLine,
   startPuzzleLine,
 } from "@/lib/chess/puzzle-line"
 import { PUZZLE_STEP_SHORTCUTS, puzzleStepForKey } from "@/lib/puzzle-step-keys"
@@ -2652,7 +2654,11 @@ function ProblemFocus({
   const { modelById, categoryById } = useDashboard()
   const line = puzzle.solution
   const [lineState, setLineState] = React.useState(() =>
-    startPuzzleLine(puzzle.fen)
+    restorePuzzleLine(puzzle.id, puzzle.fen)
+  )
+  React.useEffect(
+    () => savePuzzleLine(puzzle.id, lineState),
+    [puzzle.id, lineState]
   )
   const { fen: boardFen, lastMove, ply, feedback } = lineState
 
