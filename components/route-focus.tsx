@@ -11,6 +11,11 @@ import * as React from "react"
  *
  * If the control that navigated is on the new page too, as the puzzle's
  * Previous/Next are, focus returns to it so repeated presses keep working.
+ *
+ * Why <main> and not the <h1>: the puzzle and tag pages put Back and
+ * Previous/Next above the heading, so focusing the <h1> would make the next
+ * Tab skip them. From <main>, the next Tab reaches the first control. The
+ * extra "main" landmark announcement is the cost (JUS-59).
  */
 export function RouteFocus() {
   const pathname = usePathname()
