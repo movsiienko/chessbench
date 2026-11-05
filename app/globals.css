@@ -239,8 +239,9 @@
 .cb-model-attempts .cb-attempt-row {
   display: grid;
   /* The first-move column keeps "Wrong move on turn 1" on one line; the last
-     fits "20,742 thinking tok" (6-digit counts spill into the column gap). */
-  grid-template-columns: 24px minmax(0, 1.45fr) minmax(8.5rem, 0.8fr) 8.5rem;
+     fits "20,742 thinking tok" and grows for longer counts instead of
+     spilling into the column gap. */
+  grid-template-columns: 24px minmax(0, 1.45fr) minmax(8.5rem, 0.8fr) minmax(8.5rem, max-content);
   min-height: 3.75rem;
   align-items: center;
   column-gap: 0.75rem;
