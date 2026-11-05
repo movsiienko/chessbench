@@ -153,7 +153,7 @@
       "refersTo": "button-primary",
       "description": "Compact shadcn primary action for product controls.",
       "html": "<button class=\"ds-btn-primary\">Run benchmark</button>",
-      "css": ".ds-btn-primary{height:2rem;border:1px solid transparent;border-radius:.625rem;background:var(--primary);color:var(--primary-foreground);padding:0 .625rem;font-family:var(--font-sans);font-size:.875rem;font-weight:500;transition:background-color 150ms cubic-bezier(.22,1,.36,1),transform 150ms cubic-bezier(.22,1,.36,1)}.ds-btn-primary:hover{background:color-mix(in oklch,var(--primary) 82%,transparent)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+      "css": ".ds-btn-primary{height:2rem;border:1px solid transparent;border-radius:.625rem;background:var(--primary);color:var(--primary-foreground);padding:0 .625rem;font-family:var(--font-sans);font-size:1rem;font-weight:500;transition:background-color 150ms cubic-bezier(.22,1,.36,1),transform 150ms cubic-bezier(.22,1,.36,1)}.ds-btn-primary:hover{background:color-mix(in oklch,var(--primary) 82%,transparent)}.ds-btn-primary:active{transform:translateY(1px)}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
       "name": "Ghost Button",
@@ -161,7 +161,7 @@
       "refersTo": "button-ghost",
       "description": "Quiet utility action for reset, export, theme, and navigation tools.",
       "html": "<button class=\"ds-btn-ghost\">Reset</button>",
-      "css": ".ds-btn-ghost{height:2rem;border:1px solid transparent;border-radius:.625rem;background:transparent;color:var(--foreground);padding:0 .625rem;font-family:var(--font-sans);font-size:.875rem;font-weight:500;transition:background-color 150ms cubic-bezier(.22,1,.36,1),color 150ms cubic-bezier(.22,1,.36,1)}.ds-btn-ghost:hover{background:var(--muted);color:var(--foreground)}.ds-btn-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
+      "css": ".ds-btn-ghost{height:2rem;border:1px solid transparent;border-radius:.625rem;background:transparent;color:var(--foreground);padding:0 .625rem;font-family:var(--font-sans);font-size:1rem;font-weight:500;transition:background-color 150ms cubic-bezier(.22,1,.36,1),color 150ms cubic-bezier(.22,1,.36,1)}.ds-btn-ghost:hover{background:var(--muted);color:var(--foreground)}.ds-btn-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in oklch,var(--ring) 50%,transparent)}"
     },
     {
       "name": "Line Navigation",
@@ -177,7 +177,7 @@
       "refersTo": "card-default",
       "description": "Default panel for charts, tables, board tools, and summaries.",
       "html": "<section class=\"ds-card\"><p class=\"ds-card-description\">Headline metric</p><h2 class=\"ds-card-title\">Overall accuracy</h2><div class=\"ds-card-body\">Chart or table content</div></section>",
-      "css": ".ds-card{display:flex;flex-direction:column;gap:1rem;overflow:hidden;border-radius:.875rem;background:var(--card);color:var(--card-foreground);padding:1rem 0;box-shadow:0 0 0 1px color-mix(in oklch,var(--foreground) 10%,transparent);font-family:var(--font-sans)}.ds-card-description{margin:0;padding:0 1rem;color:var(--muted-foreground);font-size:.875rem}.ds-card-title{margin:0;padding:0 1rem;font-size:1rem;line-height:1.375;font-weight:500}.ds-card-body{padding:0 1rem;color:var(--foreground);font-size:.875rem}"
+      "css": ".ds-card{display:flex;flex-direction:column;gap:1rem;overflow:hidden;border-radius:.875rem;background:var(--card);color:var(--card-foreground);padding:1rem 0;box-shadow:0 0 0 1px color-mix(in oklch,var(--foreground) 10%,transparent);font-family:var(--font-sans)}.ds-card-description{margin:0;padding:0 1rem;color:var(--muted-foreground);font-size:1rem}.ds-card-title{margin:0;padding:0 1rem;font-size:1rem;line-height:1.375;font-weight:500}.ds-card-body{padding:0 1rem;color:var(--foreground);font-size:1rem}"
     },
     {
       "name": "Move Status Line",
@@ -185,7 +185,7 @@
       "refersTo": "status-line",
       "description": "Reserved feedback line for accepted or corrected board moves.",
       "html": "<div class=\"ds-status-line\"><span>Move accepted: <strong>Bxc6</strong></span></div>",
-      "css": ".ds-status-line{display:flex;min-height:2rem;align-items:center;gap:.5rem;border-radius:.5rem;padding:.25rem .625rem;color:var(--muted-foreground);font-family:var(--font-sans);font-size:.8125rem}.ds-status-line::before{content:\"\";width:.61rem;height:.61rem;flex:0 0 auto;border-radius:999px;background:var(--move-correct);box-shadow:0 0 0 .16rem color-mix(in oklch,var(--move-correct) 14%,transparent)}.ds-status-line strong{color:var(--foreground);font-weight:600}"
+      "css": ".ds-status-line{display:flex;min-height:2rem;align-items:center;gap:.5rem;border-radius:.5rem;padding:.25rem .625rem;color:var(--muted-foreground);font-family:var(--font-sans);font-size:.75rem}.ds-status-line::before{content:\"\";width:.61rem;height:.61rem;flex:0 0 auto;border-radius:999px;background:var(--move-correct);box-shadow:0 0 0 .16rem color-mix(in oklch,var(--move-correct) 14%,transparent)}.ds-status-line strong{color:var(--foreground);font-weight:600}"
     },
     {
       "name": "Model Attempt Row",
@@ -193,7 +193,7 @@
       "refersTo": "model-attempt-row",
       "description": "Accordion row combining model identity, played move, and thinking metadata.",
       "html": "<div class=\"ds-model-row\"><span class=\"ds-check\">✓</span><span class=\"ds-model\"><span class=\"ds-icon\"></span><strong>GPT-5</strong><span class=\"ds-provider\">OpenAI</span></span><span class=\"ds-played\"><small>Played</small><b>b5 → c6</b></span><span class=\"ds-time\">400 tok - 3.7s</span></div>",
-      "css": ".ds-model-row{display:grid;grid-template-columns:24px minmax(0,1.45fr) minmax(80px,.8fr) minmax(96px,.75fr);min-height:3.75rem;align-items:center;column-gap:.75rem;padding-right:.75rem;border-bottom:1px solid var(--border);font-family:var(--font-sans)}.ds-check{display:grid;width:1.5rem;height:1.5rem;place-items:center;border-radius:999px;background:var(--move-correct);color:var(--move-correct-foreground);font-size:.75rem}.ds-model{display:flex;min-width:0;flex-wrap:wrap;align-items:center;gap:.25rem .5rem}.ds-icon{width:1rem;height:1rem;border-radius:999px;background:var(--foreground)}.ds-model strong{font-size:.875rem;font-weight:600}.ds-provider{color:var(--muted-foreground);font-family:var(--font-mono);font-size:.66rem;line-height:1}.ds-played small{display:block;color:var(--muted-foreground);font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}.ds-played b{font-family:var(--font-mono);font-size:.875rem}.ds-time{justify-self:end;color:var(--muted-foreground);font-family:var(--font-mono);font-size:.75rem}"
+      "css": ".ds-model-row{display:grid;grid-template-columns:24px minmax(0,1.45fr) minmax(80px,.8fr) minmax(96px,.75fr);min-height:3.75rem;align-items:center;column-gap:.75rem;padding-right:.75rem;border-bottom:1px solid var(--border);font-family:var(--font-sans)}.ds-check{display:grid;width:1.5rem;height:1.5rem;place-items:center;border-radius:999px;background:var(--move-correct);color:var(--move-correct-foreground);font-size:.75rem}.ds-model{display:flex;min-width:0;flex-wrap:wrap;align-items:center;gap:.25rem .5rem}.ds-icon{width:1rem;height:1rem;border-radius:999px;background:var(--foreground)}.ds-model strong{font-size:1rem;font-weight:600}.ds-provider{color:var(--muted-foreground);font-family:var(--font-mono);font-size:.75rem;line-height:1}.ds-played small{display:block;color:var(--muted-foreground);font-size:.75rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase}.ds-played b{font-family:var(--font-mono);font-size:.75rem}.ds-time{justify-self:end;color:var(--muted-foreground);font-family:var(--font-mono);font-size:.75rem}"
     }
   ],
   "narrative": {

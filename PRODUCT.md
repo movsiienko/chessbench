@@ -2,10 +2,6 @@
 
 <!-- impeccable:product-schema 1 -->
 
-## Register
-
-product
-
 ## Platform
 
 web
