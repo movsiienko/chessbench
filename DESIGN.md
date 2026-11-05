@@ -3,14 +3,14 @@ name: ChessBench
 description: A restrained benchmark console for evaluating model chess puzzle solving.
 colors:
   background: "oklch(1 0 0)"
-  foreground: "oklch(0.145 0 0)"
+  foreground: "oklch(0.4 0 0)"
   card: "oklch(1 0 0)"
-  card-foreground: "oklch(0.145 0 0)"
+  card-foreground: "oklch(0.4 0 0)"
   muted: "oklch(0.97 0 0)"
-  muted-foreground: "oklch(0.556 0 0)"
+  muted-foreground: "oklch(0.5 0 0)"
   border: "oklch(0.922 0 0)"
   primary: "oklch(0.205 0 0)"
-  primary-foreground: "oklch(0.985 0 0)"
+  primary-foreground: "oklch(0.82 0 0)"
   destructive: "oklch(0.577 0.245 27.325)"
   chess-amber: "oklch(0.72 0.14 70)"
   chess-amber-soft: "oklch(0.94 0.05 80)"
@@ -146,6 +146,8 @@ The palette is a neutral benchmark shell with one chess-material accent and prov
 ### Named Rules
 
 **The One Accent Rule.** Amber is the only product accent. It appears on chess-specific emphasis and selected analytical moments, not as decoration.
+
+**The Text Contrast Rule.** Text tokens come from `app/text-colors.css`, which overrides the shadcn greys in `app/globals.css`. The token values above are the light theme. In dark mode, foreground is `oklch(0.78 0 0)`, muted text `oklch(0.66 0 0)` and primary foreground `oklch(0.42 0 0)`. Body and muted text must clear WCAG AA (4.5:1). Light: foreground 9.2:1 and muted 6.0:1 on the background, muted 5.5:1 on Muted Surface. Dark: foreground 9.9:1 and muted 6.4:1 on the background, muted 4.9:1 on Muted Surface.
 
 **The Provider Color Rule.** Model colors and SVGL icons belong to model identity only. Never use OpenAI green, Gemini blue, Anthropic orange, Meta purple, or xAI black as page-level accents.
 
