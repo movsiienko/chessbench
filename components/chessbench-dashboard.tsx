@@ -2816,7 +2816,8 @@ function ProblemFocus({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(360px,560px)_1fr]">
-        <div className="space-y-3">
+        {/* min-w-0: the nowrap status line must not widen the column on phones. */}
+        <div className="min-w-0 space-y-3">
           <Card className="rounded-lg">
             <CardContent className="space-y-3">
               {/*
