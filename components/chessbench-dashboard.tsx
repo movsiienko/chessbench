@@ -2952,12 +2952,15 @@ function ProblemFocus({
                             )}
                           </span>
                         </span>
-                        <span className="justify-self-end font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
-                          {attempt.thinkingTokens === null
-                            ? "Tokens not recorded"
-                            : // Reasoning tokens when the provider reports them, else total tokens; say which.
-                              `${attempt.thinkingTokens.toLocaleString("en-US")} ${attempt.record.reasoningTokens === null ? "total" : "thinking"} tok`}{" "}
-                          - {(attempt.thinkingMs / 1000).toFixed(1)}s
+                        {/* Tokens over time on desktop, one line on mobile (globals.css); each value stays whole. */}
+                        <span className="flex flex-col items-end justify-self-end font-mono text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+                          <span>
+                            {attempt.thinkingTokens === null
+                              ? "Tokens not recorded"
+                              : // Reasoning tokens when the provider reports them, else total tokens; say which.
+                                `${attempt.thinkingTokens.toLocaleString("en-US")} ${attempt.record.reasoningTokens === null ? "total" : "thinking"} tok`}
+                          </span>{" "}
+                          <span>{(attempt.thinkingMs / 1000).toFixed(1)}s</span>
                         </span>
                       </div>
                     </AccordionTrigger>
