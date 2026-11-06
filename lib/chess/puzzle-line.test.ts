@@ -9,6 +9,7 @@ import {
   savePuzzleLine,
   showSolution,
   startPuzzleLine,
+  takeBackMiss,
   type PuzzleLineState,
 } from "./puzzle-line"
 
@@ -122,6 +123,38 @@ describe("puzzle line", () => {
       playOpponentReply(state, ["e2e4", "", "g1f3"])?.feedback?.result,
       "invalid"
     )
+  })
+
+  test("a wrong move is taken back and the solver can try again", () => {
+    const missed = drag(startPuzzleLine(START), LINE, "d2d4")
+    const retry = takeBackMiss(missed)
+    assert.equal(retry.fen, START)
+    assert.equal(retry.lastMove, null)
+    assert.deepEqual(retry.feedback, { result: "retry", san: "d4" })
+    assert.equal(isLineLocked(retry, LINE), false)
+    assert.equal(takeBackMiss(retry), retry)
+    assert.equal(drag(retry, LINE, "e2e4").feedback?.result, "correct")
+    // A second miss later in the line returns to that later position.
+    let state = playOpponentReply(drag(retry, LINE, "e2e4"), LINE)
+    assert.ok(state)
+    const midline = state
+    state = takeBackMiss(drag(state, LINE, "b1c3"))
+    assert.equal(state.fen, midline.fen)
+    assert.deepEqual(state.lastMove, midline.lastMove)
+    assert.equal(state.ply, 2)
+  })
+
+  test("leaving during the take-back hold restores the position before the miss", () => {
+    const played = playOpponentReply(
+      drag(startPuzzleLine(START), LINE, "e2e4"),
+      LINE
+    )
+    assert.ok(played)
+    savePuzzleLine("p3", drag(played, LINE, "b1c3"))
+    const restored = restorePuzzleLine("p3", START)
+    assert.equal(restored.fen, played.fen)
+    assert.equal(restored.feedback?.result, "retry")
+    savePuzzleLine("p3", startPuzzleLine(START))
   })
 
   test("show solution takes back a miss and plays the puzzle move", () => {

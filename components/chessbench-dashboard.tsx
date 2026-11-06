@@ -155,6 +155,7 @@ import {
   savePuzzleLine,
   showSolution,
   startPuzzleLine,
+  takeBackMiss,
 } from "@/lib/chess/puzzle-line"
 import { PUZZLE_STEP_SHORTCUTS, puzzleStepForKey } from "@/lib/puzzle-step-keys"
 import { cn } from "@/lib/utils"
@@ -520,6 +521,11 @@ function compactTokens(value: number) {
   }
 
   return Math.round(value).toString()
+}
+
+function squareClasses(squares: Map<string, string> | undefined) {
+  // SAFETY: callers key squares by algebraic name (a1-h8), as Chessground does.
+  return (squares ?? new Map()) as cg.SquareClasses
 }
 
 function boardAnimation(reducedMotion: boolean, small: boolean) {
@@ -2631,8 +2637,11 @@ function PuzzleStepLink({
   )
 }
 
-/** Long enough to see the solver's move land before the reply answers it. */
-const OPPONENT_REPLY_DELAY_MS = 600
+/**
+ * Long enough to see a move land before the board answers it: the scripted
+ * reply to a correct move, or the take-back of a wrong one.
+ */
+const AUTO_MOVE_DELAY_MS = 600
 
 function ProblemFocus({
   puzzle,
@@ -2675,9 +2684,35 @@ function ProblemFocus({
     [lineState, line]
   )
   const sideName = puzzle.side === "w" ? "White" : "Black"
+  // The result is marked on the move's own squares: red for a wrong move (taken
+  // back after the hold), green for the solving move, amber for a move Show
+  // solution played, so help never reads as a solve.
+  const squareMark =
+    feedback?.result === "miss"
+      ? "cb-square-wrong"
+      : feedback?.result === "shown" || (feedback?.result === "solved" && shown)
+        ? "cb-square-shown"
+        : feedback?.result === "solved"
+          ? "cb-square-solved"
+          : null
+  const squareMarks = React.useMemo(
+    () =>
+      lastMove && squareMark
+        ? new Map([
+            [lastMove.from, squareMark],
+            [lastMove.to, squareMark],
+          ])
+        : undefined,
+    [lastMove, squareMark]
+  )
 
+  // Cleared on every state change and on unmount, so Reset, Show solution and
+  // leaving the puzzle all cancel a pending take-back or reply.
   React.useEffect(() => {
-    const next = playOpponentReply(lineState, line)
+    const next =
+      lineState.feedback?.result === "miss"
+        ? takeBackMiss(lineState)
+        : playOpponentReply(lineState, line)
 
     if (!next) {
       return
@@ -2685,7 +2720,7 @@ function ProblemFocus({
 
     const timer = window.setTimeout(
       () => setLineState(next),
-      OPPONENT_REPLY_DELAY_MS
+      AUTO_MOVE_DELAY_MS
     )
 
     return () => window.clearTimeout(timer)
@@ -2723,27 +2758,39 @@ function ProblemFocus({
 
   const reset = () => setLineState(startPuzzleLine(puzzle.fen))
 
-  // A line finished with help is not a solve, so it reads as neutral.
-  const result =
-    feedback?.result === "solved" && shown
-      ? "shown"
-      : (feedback?.result ?? "pending")
+  const caption = !feedback
+    ? `Find the best move for ${sideName}`
+    : feedback.result === "miss" || feedback.result === "retry"
+      ? "Not the move - try again"
+      : feedback.result === "correct"
+        ? "Correct"
+        : feedback.result === "reply"
+          ? "Your move"
+          : feedback.result === "invalid"
+            ? "Puzzle error - reset"
+            : feedback.result === "shown" || shown
+              ? "Solution shown"
+              : "Solved"
 
+  // The take-back clears the text, so a repeat of the same wrong move is
+  // announced again.
   const announcement = !feedback
     ? ""
     : feedback.result === "miss"
-      ? `Wrong. ${feedback.san} is not the puzzle move. Reset to try again, or show the solution.`
-      : feedback.result === "shown"
-        ? `Solution shown: ${feedback.san}.`
-        : feedback.result === "correct"
-          ? `Correct, ${feedback.san}. The opponent is replying.`
-          : feedback.result === "reply"
-            ? `${feedback.played && `Correct, ${feedback.played}. `}The opponent played ${feedback.san}. Your move.`
-            : feedback.result === "invalid"
-              ? "This puzzle's next opponent move is invalid. Reset to try again."
-              : shown
-                ? `Line complete with ${feedback.san}, with the solution shown.`
-                : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
+      ? `Wrong, ${feedback.san}. Taken back, try again.`
+      : feedback.result === "retry"
+        ? ""
+        : feedback.result === "shown"
+          ? `Solution shown: ${feedback.san}.`
+          : feedback.result === "correct"
+            ? `Correct, ${feedback.san}. The opponent is replying.`
+            : feedback.result === "reply"
+              ? `${feedback.played && `Correct, ${feedback.played}. `}The opponent played ${feedback.san}. Your move.`
+              : feedback.result === "invalid"
+                ? "This puzzle's next opponent move is invalid. Reset to try again."
+                : shown
+                  ? `Line complete with ${feedback.san}, with the solution shown.`
+                  : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
 
   return (
     <div className="space-y-6">
@@ -2832,48 +2879,12 @@ function ProblemFocus({
               */}
               <output className="sr-only">{announcement}</output>
               <div className="flex items-center gap-1">
-                <div
+                <p
                   aria-hidden="true"
-                  data-result={result}
-                  className="cb-move-line min-w-0 flex-1"
+                  className="cb-move-line min-w-0 flex-1 truncate"
                 >
-                  <span className="min-w-0 truncate">
-                    {!feedback ? (
-                      <>Find the best move for {sideName}</>
-                    ) : feedback.result === "miss" ? (
-                      <>
-                        <strong>Wrong</strong> - {feedback.san} isn&apos;t the
-                        puzzle move
-                      </>
-                    ) : feedback.result === "shown" ? (
-                      <>
-                        Solution: <strong>{feedback.san}</strong>
-                      </>
-                    ) : feedback.result === "correct" ? (
-                      <>
-                        Correct: <strong>{feedback.san}</strong> - opponent
-                        replying
-                      </>
-                    ) : feedback.result === "reply" ? (
-                      <>
-                        Opponent played <strong>{feedback.san}</strong> - your
-                        move
-                      </>
-                    ) : feedback.result === "invalid" ? (
-                      <>
-                        Correct, but <strong>puzzle error</strong> - reset
-                      </>
-                    ) : shown ? (
-                      <>
-                        <strong>Line complete</strong> - solution shown
-                      </>
-                    ) : (
-                      <>
-                        <strong>Solved</strong> - all {solverMoves} moves found
-                      </>
-                    )}
-                  </span>
-                </div>
+                  {caption}
+                </p>
                 {/* Labels collapse to icons on phones; the sr-only text keeps the accessible name. */}
                 <Button
                   size="sm"
@@ -2902,6 +2913,7 @@ function ProblemFocus({
                 fen={boardFen}
                 orientation={puzzle.side === "w" ? "white" : "black"}
                 lastMove={lastMove}
+                squares={squareMarks}
                 locked={locked}
                 onMove={handleMove}
               />
@@ -3660,6 +3672,7 @@ function ChessBoard({
   locked = false,
   onMove,
   lastMove,
+  squares,
   small = false,
   decorative = false,
 }: {
@@ -3670,6 +3683,8 @@ function ChessBoard({
   locked?: boolean
   onMove?: (move: PlayedMove) => void
   lastMove?: { from: string; to: string } | null
+  /** Extra CSS classes per square, e.g. a move's result. */
+  squares?: Map<string, string>
   small?: boolean
   /** The position is already described by an ancestor's accessible name. */
   decorative?: boolean
@@ -3682,6 +3697,7 @@ function ChessBoard({
     fen,
     orientation,
     lastMove,
+    squares,
     locked,
     onMove,
     reducedMotion,
@@ -3695,6 +3711,7 @@ function ChessBoard({
       fen,
       orientation,
       lastMove,
+      squares,
       locked,
       onMove,
       reducedMotion,
@@ -3732,6 +3749,7 @@ function ChessBoard({
       highlight: {
         lastMove: true,
         check: true,
+        custom: squareClasses(initial.squares),
       },
       movable: {
         free: false,
@@ -3815,8 +3833,19 @@ function ChessBoard({
         color: interactive && !locked ? color : undefined,
         dests: interactive && !locked ? legalDests(fen) : undefined,
       },
+      // Always set, so a mark clears when its move is gone.
+      highlight: { custom: squareClasses(squares) },
     })
-  }, [fen, interactive, lastMove, locked, orientation, reducedMotion, small])
+  }, [
+    fen,
+    interactive,
+    lastMove,
+    locked,
+    orientation,
+    reducedMotion,
+    small,
+    squares,
+  ])
 
   const summary = React.useMemo(() => boardSummary(fen), [fen])
 

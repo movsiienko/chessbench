@@ -5,14 +5,16 @@ type PuzzleFeedback =
   // `played` is the solver move the reply answered, announced with it so the
   // "correct" message is not cut off by the reply that follows.
   | { result: "reply"; san: string; played: string }
-  // `before` is the position the wrong move was played from, so Show solution
-  // can take it back. The expected move is deliberately not stored here: a
-  // miss must not give the answer away.
+  // `before` is the position the wrong move was played from, so it can be taken
+  // back. The expected move is deliberately not stored here: a miss must not
+  // give the answer away.
   | {
       result: "miss"
       san: string
       before: Pick<PuzzleLineState, "fen" | "lastMove">
     }
+  // A wrong move was taken back; the solver tries again from the same ply.
+  | { result: "retry"; san: string }
   // The solver asked for the move instead of finding it.
   | { result: "shown"; san: string }
   // Bad puzzle data: the scripted reply is not legal, so the line stops here.
@@ -47,6 +49,9 @@ export function restorePuzzleLine(id: string, fen: string): PuzzleLineState {
 
 /** Remember a line in progress so leaving the puzzle does not lose it. */
 export function savePuzzleLine(id: string, state: PuzzleLineState) {
+  // Leaving during the take-back hold must not bring the wrong move back.
+  state = takeBackMiss(state)
+
   if (state.lastMove) {
     savedLines.set(id, state)
   } else {
@@ -102,6 +107,16 @@ export function playSolverMove(
   }
 }
 
+/** Undoes a wrong move, leaving the board open for another try. Else a no-op. */
+export function takeBackMiss(state: PuzzleLineState): PuzzleLineState {
+  if (state.feedback?.result !== "miss") {
+    return state
+  }
+
+  const { before, san } = state.feedback
+  return { ...state, ...before, feedback: { result: "retry", san } }
+}
+
 /**
  * Plays the expected solver move for the user, taking back a wrong move first.
  * Returns the same state when no solver move is due (reply pending, line over,
@@ -111,10 +126,7 @@ export function showSolution(
   state: PuzzleLineState,
   line: string[]
 ): PuzzleLineState {
-  const base =
-    state.feedback?.result === "miss"
-      ? { ...state, ...state.feedback.before, feedback: null }
-      : state
+  const base = takeBackMiss(state)
   const expected = line[base.ply]
   const move = expected && resolveMove(base.fen, expected)
 

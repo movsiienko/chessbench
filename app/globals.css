@@ -193,59 +193,26 @@
 }
 
 .cb-move-line {
-  display: flex;
-  min-height: 2rem;
-  width: 100%;
-  align-items: center;
-  gap: 0.5rem;
-  border-radius: 0.5rem;
-  padding: 0.25rem 0.625rem;
+  padding: 0.25rem 0;
   color: var(--muted-foreground);
-  font-family: var(--font-sans);
-  /* Snapped onto the DESIGN.md ramp: 0.75rem keeps the longest status beside
-     the two board buttons on one line at 390px. */
+  /* Snapped onto the DESIGN.md ramp: 0.75rem keeps the caption beside the two
+     board buttons on one line at 390px. */
   font-size: var(--text-xs);
 }
 
-.cb-move-line::before {
-  content: "";
-  display: block;
-  width: 0.61rem;
-  height: 0.61rem;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--move-correct);
-  box-shadow: 0 0 0 0.16rem
-    color-mix(in oklch, var(--move-correct) 14%, transparent);
+/* Move results on the board's own squares, lichess-style. Translucent so both
+   square colours show through; the selector outranks Chessground's
+   last-move tint. */
+.cg-wrap cg-board square.cb-square-wrong {
+  background-color: color-mix(in oklch, var(--move-incorrect) 55%, transparent);
 }
 
-.cb-move-line[data-result="miss"]::before {
-  background: var(--move-incorrect);
-  box-shadow: 0 0 0 0.16rem
-    color-mix(in oklch, var(--move-incorrect) 14%, transparent);
+.cg-wrap cg-board square.cb-square-solved {
+  background-color: color-mix(in oklch, var(--move-correct) 50%, transparent);
 }
 
-/* The two outcomes of an attempt carry a tint, so the result reads at a glance. */
-.cb-move-line[data-result="miss"] {
-  background: color-mix(in oklch, var(--move-incorrect) 10%, transparent);
-}
-
-.cb-move-line[data-result="solved"] {
-  background: color-mix(in oklch, var(--move-correct) 12%, transparent);
-}
-
-/* Neutral: waiting for a move, a shown solution (not a solve), or bad puzzle
-   data (not the user's mistake). */
-.cb-move-line[data-result="pending"]::before,
-.cb-move-line[data-result="shown"]::before,
-.cb-move-line[data-result="invalid"]::before {
-  background: var(--muted-foreground);
-  box-shadow: none;
-}
-
-.cb-move-line strong {
-  color: var(--foreground);
-  font-weight: 600;
+.cg-wrap cg-board square.cb-square-shown {
+  background-color: color-mix(in oklch, var(--chess-amber) 55%, transparent);
 }
 
 .cb-model-attempts .cb-attempt-row {
