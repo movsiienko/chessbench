@@ -136,10 +136,14 @@ import { escapeCsv } from "@/lib/benchmarks/csv"
 import {
   boardOnlyFen,
   boardSummary,
+  fenAfter,
   isCheck,
   legalDests,
+  moveToken,
   piecesSummary,
   playMove,
+  readableMove,
+  sanMove,
   turnColor,
   type PlayedMove,
 } from "@/lib/chess/moves"
@@ -2973,6 +2977,11 @@ function ProblemFocus({
                             First move
                           </span>
                           <span
+                            title={
+                              attempt.firstMove.uci
+                                ? readableMove(attempt.firstMove.uci)
+                                : undefined
+                            }
                             className={cn(
                               "font-mono text-sm",
                               attempt.firstMove.correct === false &&
@@ -3158,29 +3167,47 @@ function AttemptTrace({
   return (
     <>
       <ol className="space-y-5">
-        {turns.map((turn) => (
-          <li key={turn.turnIndex} className="space-y-2">
-            {turns.length > 1 && (
-              <h4 className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
-                Turn {turn.turnIndex + 1}
-              </h4>
-            )}
-            {turn.errorMessage ? (
-              <TraceField label="Error">
-                <p className="text-xs wrap-anywhere text-destructive">
-                  {turn.errorMessage}
-                </p>
-              </TraceField>
-            ) : (
-              <TraceField label="Answer">
-                <p className="font-mono text-sm wrap-anywhere whitespace-pre-wrap">
-                  {turn.rawAnswer || "No answer returned."}
-                </p>
-              </TraceField>
-            )}
-            <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
-          </li>
-        ))}
+        {turns.map((turn) => {
+          // Every earlier turn was correct, so the solution line gives this turn's position.
+          const san =
+            turn.parsedMove &&
+            sanMove(
+              fenAfter(
+                puzzle.fen,
+                puzzle.solution.slice(0, turn.turnIndex * 2)
+              ),
+              turn.parsedMove
+            )
+          return (
+            <li key={turn.turnIndex} className="space-y-2">
+              {turns.length > 1 && (
+                <h4 className="text-2xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+                  Turn {turn.turnIndex + 1}
+                </h4>
+              )}
+              {turn.errorMessage ? (
+                <TraceField label="Error">
+                  <p className="text-xs wrap-anywhere text-destructive">
+                    {turn.errorMessage}
+                  </p>
+                </TraceField>
+              ) : (
+                <TraceField label="Answer">
+                  <p className="font-mono text-sm wrap-anywhere whitespace-pre-wrap">
+                    {turn.rawAnswer || "No answer returned."}
+                  </p>
+                  {san && !sameMoveText(san, turn.rawAnswer) && (
+                    <p className="text-xs text-muted-foreground">
+                      Scored as{" "}
+                      <span className="font-mono text-foreground">{san}</span>
+                    </p>
+                  )}
+                </TraceField>
+              )}
+              <TurnReasoning reasoning={turnReasoning(turn)} vendor={vendor} />
+            </li>
+          )
+        })}
       </ol>
       <TranscriptActions
         puzzle={puzzle}
@@ -3189,6 +3216,12 @@ function AttemptTrace({
       />
     </>
   )
+}
+
+/** Whether the answer already reads as this SAN, so "Scored as" would only repeat it; a missing check mark is no correction. */
+function sameMoveText(san: string, answer: string) {
+  const bare = (text: string) => text.replace(/[+#]$/, "")
+  return bare(moveToken(answer)) === bare(san)
 }
 
 function TraceField({
@@ -3325,11 +3358,11 @@ const TURN_STEPS = [
   },
   {
     title: "One move",
-    body: "It answers with exactly one legal move in UCI or SAN, and nothing else.",
+    body: "It answers with exactly one legal move in SAN, such as Nf3, and nothing else. The prompt asks only for SAN, but a UCI answer such as g1f3 is accepted too.",
   },
   {
     title: "Reply",
-    body: "If it is correct, the expected opponent reply is sent as a UCI move and the next move is asked for in the same conversation.",
+    body: "If it is correct, the expected opponent reply is sent in SAN and the next move is asked for in the same conversation.",
   },
 ]
 
@@ -3414,11 +3447,13 @@ export function DocsView() {
   ]
 
   const limits = [
-    `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
+    // A new protocol starts with no results, and "up to 0 percentage points" would read as no uncertainty.
+    `${MIN_SAMPLE > 0 ? `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. ` : ""}Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
     "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry gets one attempt per puzzle.",
     "Elo and cost are derived from that small sample and rounded to the precision it supports.",
+    "Every result here ran under the same protocol: prompt, answer parser, scorer and time limit. Changing any of them starts a new protocol and hides earlier results, which are not comparable. The previous protocol accepted UCI or SAN and sent opponent replies in UCI; this one asks for SAN and sends replies in SAN.",
   ]
 
   return (

@@ -1,4 +1,4 @@
-import { moveToken, readableMove } from "../chess/moves"
+import { moveToken, sanMove } from "../chess/moves"
 import type {
   LichessPuzzleAttemptRow,
   LichessPuzzleAttemptStatus,
@@ -45,6 +45,8 @@ export function buildAttemptEvidence<Model extends string>(
   model: Model,
   attemptId: string,
   row: AttemptSummary,
+  /** The puzzle position, which the first move is played from. */
+  fen: string,
   /** The final turn's raw answer; shown when the first move was illegal. */
   finalAnswer = ""
 ): AttemptEvidence<Model> {
@@ -59,10 +61,10 @@ export function buildAttemptEvidence<Model extends string>(
     firstMove: {
       uci: playedMove,
       label: playedMove
-        ? readableMove(playedMove)
+        ? sanMove(fen, playedMove)
         : illegalToken
-          ? // Struck through like a wrong move; the outcome line says it was illegal.
-            readableMove(illegalToken)
+          ? // Verbatim, struck through like a wrong move; the outcome line says it was illegal.
+            illegalToken
           : "No valid move",
       correct: playedMove ? row.firstMoveCorrect : illegalFirst ? false : null,
     },

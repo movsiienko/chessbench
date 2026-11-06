@@ -328,7 +328,7 @@ async function checkAttemptEvidence(page: Page) {
     const trigger = page.getByRole("button", {
       name: new RegExp(`${name}.*First move`),
     })
-    const move = trigger.getByText("e6 to d7", { exact: true })
+    const move = trigger.getByText("exd7", { exact: true })
     const crossedOut = await move.evaluate((element) =>
       getComputedStyle(element).textDecorationLine.includes("line-through")
     )

@@ -38,7 +38,7 @@ describe("attempt row codec", () => {
       runId: "20260606T080351Z-097b1682",
       createdAt: "2026-06-06T08:51:26.315Z",
       benchmark: "lichess-puzzles-v1",
-      promptTemplateId: "uci-or-san-single-move-v3",
+      promptTemplateId: "san-single-move-v4",
       model: "openai/gpt-5-nano",
       itemId: "lichess:rYFDJ",
       lichessPuzzleId: "rYFDJ",
