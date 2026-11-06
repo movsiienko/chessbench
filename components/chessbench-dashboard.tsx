@@ -156,6 +156,7 @@ import {
   showSolution,
   startPuzzleLine,
   takeBackMiss,
+  type PuzzleLineState,
 } from "@/lib/chess/puzzle-line"
 import { PUZZLE_STEP_SHORTCUTS, puzzleStepForKey } from "@/lib/puzzle-step-keys"
 import { cn } from "@/lib/utils"
@@ -521,11 +522,6 @@ function compactTokens(value: number) {
   }
 
   return Math.round(value).toString()
-}
-
-function squareClasses(squares: Map<string, string> | undefined) {
-  // SAFETY: callers key squares by algebraic name (a1-h8), as Chessground does.
-  return (squares ?? new Map()) as cg.SquareClasses
 }
 
 function boardAnimation(reducedMotion: boolean, small: boolean) {
@@ -2637,6 +2633,37 @@ function PuzzleStepLink({
   )
 }
 
+type LineOutcome =
+  | NonNullable<PuzzleLineState["feedback"]>["result"]
+  | "pending"
+  // Solved, but Show solution played at least one earlier move.
+  | "helped"
+
+/**
+ * Move results are marked on the move's own squares: red for a wrong move
+ * (taken back after the hold), green for a solving move the user found, amber
+ * for a move Show solution played.
+ */
+const SQUARE_MARKS: Partial<Record<LineOutcome, string>> = {
+  miss: "cb-square-wrong",
+  solved: "cb-square-solved",
+  helped: "cb-square-solved",
+  shown: "cb-square-shown",
+}
+
+const LINE_CAPTIONS: Record<Exclude<LineOutcome, "pending">, string> = {
+  miss: "Not the move - try again",
+  retry: "Not the move - try again",
+  correct: "Correct",
+  reply: "Your move",
+  shown: "Solution shown",
+  invalid: "Puzzle error - reset",
+  solved: "Solved",
+  helped: "Solved with help",
+}
+
+const NO_SQUARES: cg.SquareClasses = new Map()
+
 /**
  * Long enough to see a move land before the board answers it: the scripted
  * reply to a correct move, or the take-back of a wrong one.
@@ -2684,25 +2711,20 @@ function ProblemFocus({
     [lineState, line]
   )
   const sideName = puzzle.side === "w" ? "White" : "Black"
-  // The result is marked on the move's own squares: red for a wrong move (taken
-  // back after the hold), green for the solving move, amber for a move Show
-  // solution played, so help never reads as a solve.
-  const squareMark =
-    feedback?.result === "miss"
-      ? "cb-square-wrong"
-      : feedback?.result === "shown" || (feedback?.result === "solved" && shown)
-        ? "cb-square-shown"
-        : feedback?.result === "solved"
-          ? "cb-square-solved"
-          : null
-  const squareMarks = React.useMemo(
+  const outcome: LineOutcome = !feedback
+    ? "pending"
+    : feedback.result === "solved" && shown
+      ? "helped"
+      : feedback.result
+  const squareMark = SQUARE_MARKS[outcome]
+  const squareMarks = React.useMemo<cg.SquareClasses>(
     () =>
       lastMove && squareMark
-        ? new Map([
-            [lastMove.from, squareMark],
-            [lastMove.to, squareMark],
-          ])
-        : undefined,
+        ? // SAFETY: line state only records algebraic squares a1-h8.
+          new Map(
+            [lastMove.from, lastMove.to].map((sq) => [sq as cg.Key, squareMark])
+          )
+        : NO_SQUARES,
     [lastMove, squareMark]
   )
 
@@ -2758,30 +2780,21 @@ function ProblemFocus({
 
   const reset = () => setLineState(startPuzzleLine(puzzle.fen))
 
-  const caption = !feedback
-    ? `Find the best move for ${sideName}`
-    : feedback.result === "miss" || feedback.result === "retry"
-      ? "Not the move - try again"
-      : feedback.result === "correct"
-        ? "Correct"
-        : feedback.result === "reply"
-          ? "Your move"
-          : feedback.result === "invalid"
-            ? "Puzzle error - reset"
-            : feedback.result === "shown" || shown
-              ? "Solution shown"
-              : "Solved"
+  const caption =
+    outcome === "pending"
+      ? `Find the best move for ${sideName}`
+      : LINE_CAPTIONS[outcome]
 
   // The take-back clears the text, so a repeat of the same wrong move is
   // announced again.
   const announcement = !feedback
     ? ""
     : feedback.result === "miss"
-      ? `Wrong, ${feedback.san}. Taken back, try again.`
+      ? `Wrong, ${feedback.san}. Try again.`
       : feedback.result === "retry"
         ? ""
         : feedback.result === "shown"
-          ? `Solution shown: ${feedback.san}.`
+          ? `Solution shown: ${feedback.san}.${lineState.ply >= line.length ? " Line complete." : ""}`
           : feedback.result === "correct"
             ? `Correct, ${feedback.san}. The opponent is replying.`
             : feedback.result === "reply"
@@ -2789,7 +2802,7 @@ function ProblemFocus({
               : feedback.result === "invalid"
                 ? "This puzzle's next opponent move is invalid. Reset to try again."
                 : shown
-                  ? `Line complete with ${feedback.san}, with the solution shown.`
+                  ? `Puzzle solved with ${feedback.san}, with help.`
                   : `Puzzle solved with ${feedback.san}. All ${solverMoves} moves found.`
 
   return (
@@ -3672,7 +3685,7 @@ function ChessBoard({
   locked = false,
   onMove,
   lastMove,
-  squares,
+  squares = NO_SQUARES,
   small = false,
   decorative = false,
 }: {
@@ -3684,7 +3697,7 @@ function ChessBoard({
   onMove?: (move: PlayedMove) => void
   lastMove?: { from: string; to: string } | null
   /** Extra CSS classes per square, e.g. a move's result. */
-  squares?: Map<string, string>
+  squares?: cg.SquareClasses
   small?: boolean
   /** The position is already described by an ancestor's accessible name. */
   decorative?: boolean
@@ -3749,7 +3762,7 @@ function ChessBoard({
       highlight: {
         lastMove: true,
         check: true,
-        custom: squareClasses(initial.squares),
+        custom: initial.squares,
       },
       movable: {
         free: false,
@@ -3834,7 +3847,7 @@ function ChessBoard({
         dests: interactive && !locked ? legalDests(fen) : undefined,
       },
       // Always set, so a mark clears when its move is gone.
-      highlight: { custom: squareClasses(squares) },
+      highlight: { custom: squares },
     })
   }, [
     fen,

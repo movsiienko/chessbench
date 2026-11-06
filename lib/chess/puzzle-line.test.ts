@@ -153,7 +153,7 @@ describe("puzzle line", () => {
     savePuzzleLine("p3", drag(played, LINE, "b1c3"))
     const restored = restorePuzzleLine("p3", START)
     assert.equal(restored.fen, played.fen)
-    assert.equal(restored.feedback?.result, "retry")
+    assert.equal(restored.feedback, null)
     savePuzzleLine("p3", startPuzzleLine(START))
   })
 
@@ -177,7 +177,7 @@ describe("puzzle line", () => {
     assert.ok(replied)
     const done = showSolution(replied, LINE)
     assert.equal(done.ply, LINE.length)
-    assert.deepEqual(done.feedback, { result: "solved", san: "Nf3" })
+    assert.deepEqual(done.feedback, { result: "shown", san: "Nf3" })
     assert.equal(showSolution(done, LINE), done)
   })
 

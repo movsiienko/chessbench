@@ -193,7 +193,10 @@
 }
 
 .cb-move-line {
+  /* Reserves the row's height, so a caption change never moves the board. */
+  min-height: 2rem;
   padding: 0.25rem 0;
+  line-height: 1.5rem;
   color: var(--muted-foreground);
   /* Snapped onto the DESIGN.md ramp: 0.75rem keeps the caption beside the two
      board buttons on one line at 390px. */

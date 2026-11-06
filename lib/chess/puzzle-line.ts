@@ -49,8 +49,12 @@ export function restorePuzzleLine(id: string, fen: string): PuzzleLineState {
 
 /** Remember a line in progress so leaving the puzzle does not lose it. */
 export function savePuzzleLine(id: string, state: PuzzleLineState) {
-  // Leaving during the take-back hold must not bring the wrong move back.
+  // Leaving during or after a take-back must bring back neither the wrong move
+  // nor its "try again" prompt.
   state = takeBackMiss(state)
+  if (state.feedback?.result === "retry") {
+    state = { ...state, feedback: null }
+  }
 
   if (state.lastMove) {
     savedLines.set(id, state)
@@ -59,7 +63,10 @@ export function savePuzzleLine(id: string, state: PuzzleLineState) {
   }
 }
 
-/** The board takes no input after a miss, once solved, or while the reply is due. */
+/**
+ * The board takes no input during the hold before a wrong move is taken back,
+ * once the line is over, or while the reply is due.
+ */
 export function isLineLocked(state: PuzzleLineState, line: string[]) {
   return (
     state.feedback?.result === "miss" ||
@@ -68,7 +75,10 @@ export function isLineLocked(state: PuzzleLineState, line: string[]) {
   )
 }
 
-/** The solver's move. A wrong one is shown on the board and locks it. */
+/**
+ * The solver's move. A wrong one is shown on the board and locks it until
+ * `takeBackMiss` undoes it.
+ */
 export function playSolverMove(
   state: PuzzleLineState,
   line: string[],
@@ -144,11 +154,7 @@ export function showSolution(
   return {
     ...played,
     shown: true,
-    // The last move keeps "solved", which `shown` marks as not a clean solve.
-    feedback:
-      played.feedback?.result === "solved"
-        ? played.feedback
-        : { result: "shown", san: move.san },
+    feedback: { result: "shown", san: move.san },
   }
 }
 
