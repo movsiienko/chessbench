@@ -374,7 +374,13 @@ function buildPuzzle(
           return null
         }
         const { attemptId, finalAnswer, ...summary } = row
-        return buildAttemptEvidence(model.id, attemptId, summary, finalAnswer)
+        return buildAttemptEvidence(
+          model.id,
+          attemptId,
+          summary,
+          item.position.fen,
+          finalAnswer
+        )
       })
       .filter((attempt): attempt is NonNullable<typeof attempt> =>
         Boolean(attempt)
