@@ -98,11 +98,11 @@ retried. A turn still failing goes pending for the next run. Claims
 left by a run that died are released after two hours. A finished run
 regenerates the dashboard on the production domain.
 
-The model is asked for exactly one legal move token at a time in UCI or
-standard algebraic (SAN) notation, with no explanation or extra text. Accepted
-answers are normalized to UCI for scoring. On a correct move, only the expected
-opponent move is revealed and the next move is asked for in the same
-conversation.
+The model is asked for exactly one legal move token at a time in standard
+algebraic notation (SAN), with no explanation or extra text; a UCI answer is
+still accepted. Accepted answers are normalized to UCI for scoring and storage.
+On a correct move, only the expected opponent move is revealed, in SAN, and the
+next move is asked for in the same conversation.
 
 ### Tests
 

@@ -50,7 +50,7 @@ function row(
     runId: "run",
     createdAt: "2026-06-06T08:00:00.000Z",
     benchmark: "lichess-puzzles-v1",
-    promptTemplateId: "uci-or-san-single-move-v3",
+    promptTemplateId: "san-single-move-v4",
     model,
     itemId,
     lichessPuzzleId: itemId,

@@ -13,7 +13,7 @@ import {
 const outputInstructions = [
   "Output contract:",
   "Return exactly one legal chess move for the side to move.",
-  "Accepted notation: UCI such as e2e4 or e7e8q, or SAN such as Nf3, Rxa6, O-O, or exd8=Q+.",
+  "Notation: standard algebraic notation (SAN), such as Nf3, Rxa6, O-O, or exd8=Q+.",
   "Your entire response must be only that move token. No explanation, labels, move numbers, code block, or extra text.",
 ]
 
@@ -87,7 +87,8 @@ export type LichessPuzzleAttemptRow = {
   runId: string
   createdAt: string
   benchmark: "lichess-puzzles-v1"
-  promptTemplateId: typeof LICHESS_PUZZLE_PROMPT_TEMPLATE_ID
+  // Stored rows keep the template they ran under, so earlier ids appear too.
+  promptTemplateId: string
   model: string
   itemId: string
   lichessPuzzleId: string
@@ -453,7 +454,8 @@ function turnPrompt(item: LichessPuzzleBenchmarkItem, state: AttemptState) {
           "Find the best move for the side to move.",
         ]
       : [
-          `Opponent played: ${item.expected.uciLine[turnIndex * 2 - 1]}.`,
+          // The reply is the last move on the board this turn is played on.
+          `Opponent played: ${positionBefore(item, state).undo()?.san}`,
           "Find the next move.",
         ]),
     ...outputInstructions,

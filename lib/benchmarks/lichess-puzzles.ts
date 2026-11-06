@@ -78,14 +78,15 @@ export const RATING_BAND_IDS = [
   "2400-plus",
 ] as const satisfies readonly RatingBandId[]
 
-export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "uci-or-san-single-move-v3"
+/** Asks for SAN and states opponent replies in SAN; UCI answers are still accepted. */
+export const LICHESS_PUZZLE_PROMPT_TEMPLATE_ID = "san-single-move-v4"
 
 /**
  * The current protocol: this prompt template, the answer parser and scoring in
  * local-runner.ts, provider-default max output tokens, and a 270-second move
  * time limit. Bump it whenever any of those change; see docs/adr/0003.
  */
-export const PROTOCOL_ID = "v1"
+export const PROTOCOL_ID = "v2"
 
 /** The protocol's move time limit; see docs/adr/0001. */
 export const MOVE_TIME_LIMIT_MS = 270_000
