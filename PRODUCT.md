@@ -46,7 +46,7 @@ Supporting mechanisms, already true in the repository and available to state fac
 - Name and wordmark: ChessBench.
 - Personality: restrained, precise, analytical. The product should feel like a quiet benchmark lab — confident, evidence-led, and focused on the board, the model attempt, and the measured result.
 - Model brand color and lab marks belong to model identity only. Provider colors are never page-level accents.
-- Chess spatial truth is binding: board position, move feedback, and correction arrows stay connected to the board rather than being abstracted into disconnected UI copy.
+- Chess spatial truth is binding: board position, move feedback, and a shown solution stay connected to the board rather than being abstracted into disconnected UI copy.
 - Familiar controls are preferred over novelty: standard tabs, filters, tables, and charts.
 - Anti-references: generic AI dashboard chrome, decorative gradients, glassmorphism, oversized marketing composition, gamified leaderboard noise, and chess-themed ornament that competes with the actual board.
 
