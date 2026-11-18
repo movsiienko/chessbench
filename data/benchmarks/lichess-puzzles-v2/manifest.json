@@ -83,7 +83,7 @@
       "discoveredCheck",
       "named mates such as operaMate, pillsburysMate, killBoxMate, morphysMate, epauletteMate, swallowstailMate, triangleMate"
     ],
-    "validation": "500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256(\"cook-validation-v1:\" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `scripts/cook-lichess-puzzles.py validate`."
+    "validation": "500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256(\"cook-validation-v1:\" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `python3 -I scripts/cook-lichess-puzzles.py --tagger=<lichess-puzzler checkout> validate <April 2026 dump .csv.zst>`."
   },
   "mateInOne": "Kept, unlike v1. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",
   "contamination": {

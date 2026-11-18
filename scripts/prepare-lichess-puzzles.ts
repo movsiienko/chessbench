@@ -7,6 +7,7 @@ import {
   QUALITY_FILTERS,
   V2_QUALITY_FILTERS,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
+import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import { sampleLichessPuzzles } from "@/lib/benchmarks/lichess-puzzle-sampler"
 import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
 import {
@@ -50,28 +51,57 @@ const filters = v2 ? V2_QUALITY_FILTERS : QUALITY_FILTERS
 const gate = gateDir
   ? JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
   : undefined
+// v2 is defined by this cutoff; a gate run with another one is not v2.
+const v2Threshold = "2026-06-01T00:00:00.000Z"
+
+if (gate && gate.thresholdUtc !== v2Threshold) {
+  throw new Error(
+    `The gate used ${gate.thresholdUtc}; v2 needs ${v2Threshold}.`
+  )
+}
 
 if (!existsSync(sourcePath)) {
   throw new Error(
-    `Missing ${sourcePath}. Run "bun run datasets:lichess:download" first.`
+    gateDir
+      ? `Missing ${sourcePath}. Tag qualifying.csv with scripts/cook-lichess-puzzles.py first.`
+      : `Missing ${sourcePath}. Run "bun run datasets:lichess:download" first.`
   )
 }
 
 if (gateDir) {
-  // The tagged file must hold exactly the puzzles the gate qualified.
-  const ids = (file: string) =>
+  // Tagging may rewrite Themes and nothing else in the gate's qualifying rows.
+  const themes = columns.indexOf("Themes")
+  const rows = (file: string) =>
     readFileSync(join(gateDir, file), "utf8")
       .trimEnd()
       .split("\n")
-      .map((line) => line.slice(0, line.indexOf(",")))
-      .join()
-  if (ids("qualifying.csv") !== ids("qualifying-cooked.csv")) {
+      .map((line) =>
+        JSON.stringify(
+          (parseCsvRecords(line)[0] ?? []).filter(
+            (_, index) => index !== themes
+          )
+        )
+      )
+      .join("\n")
+  if (rows("qualifying.csv") !== rows("qualifying-cooked.csv")) {
     throw new Error("qualifying-cooked.csv is not a tagging of qualifying.csv.")
   }
 }
 
 // The dump's download record; v2's gate checked it against the dump it read.
 const provenance = gate?.source ?? (await verifiedProvenance(sourcePath))
+const committedManifest = join(outDir, "manifest.json")
+
+// Committed sets are immutable: a newer dump goes to another --out.
+if (
+  existsSync(committedManifest) &&
+  JSON.parse(readFileSync(committedManifest, "utf8")).source?.sha256 !==
+    provenance.sha256
+) {
+  throw new Error(
+    `${outDir} was built from a different dump. Pass --out=<new dir> to build from this one.`
+  )
+}
 
 if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
   throw new Error(
@@ -88,7 +118,7 @@ if (gateDir) {
   const createdAt = readGameDates(join(gateDir, "game-dates.ndjson"))
   for (const item of items) {
     const ms = createdAt.get(gameIdOf(item.metadata.lichessGameUrl))
-    if (ms === undefined || ms === null || ms < Date.parse(gate.thresholdUtc)) {
+    if (ms === undefined || ms === null || ms < Date.parse(v2Threshold)) {
       throw new Error(`${item.id} has no game date on or after the threshold.`)
     }
     item.metadata.gameCreatedAt = new Date(ms).toISOString()
@@ -147,7 +177,7 @@ const v2Methodology = gate && {
       "named mates such as operaMate, pillsburysMate, killBoxMate, morphysMate, epauletteMate, swallowstailMate, triangleMate",
     ],
     validation:
-      '500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256("cook-validation-v1:" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `scripts/cook-lichess-puzzles.py validate`.',
+      '500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256("cook-validation-v1:" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `python3 -I scripts/cook-lichess-puzzles.py --tagger=<lichess-puzzler checkout> validate <April 2026 dump .csv.zst>`.',
   },
   mateInOne:
     "Kept, unlike v1. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",

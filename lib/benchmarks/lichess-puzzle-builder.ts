@@ -28,9 +28,9 @@ export const LICHESS_PUZZLE_COLUMNS = [
 ] as const
 
 /** Accepted source headers; dumps since 2026-11 append an unused DailyDate. */
-export const LICHESS_PUZZLE_HEADERS = [
-  LICHESS_PUZZLE_COLUMNS.join(","),
-  [...LICHESS_PUZZLE_COLUMNS, "DailyDate"].join(","),
+export const LICHESS_PUZZLE_HEADERS: string[][] = [
+  [...LICHESS_PUZZLE_COLUMNS],
+  [...LICHESS_PUZZLE_COLUMNS, "DailyDate"],
 ]
 
 export type LichessPuzzleCsvRow = Record<

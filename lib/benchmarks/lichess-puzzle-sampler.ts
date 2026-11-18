@@ -142,7 +142,12 @@ export async function sampleLichessPuzzles(
 export function readHeader(line: string): number {
   const columns = parseCsvRecords(line)[0] ?? []
 
-  if (!LICHESS_PUZZLE_HEADERS.includes(columns.join(","))) {
+  // Field by field, so a quoted "GameUrl,OpeningTags" cannot pass as two.
+  if (
+    !LICHESS_PUZZLE_HEADERS.some(
+      (layout) => JSON.stringify(layout) === JSON.stringify(columns)
+    )
+  ) {
     throw new Error(`Unexpected CSV header: ${line}`)
   }
 

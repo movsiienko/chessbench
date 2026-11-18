@@ -26,14 +26,18 @@ Each item also carries granular benchmark strata:
 ## Dataset Commands
 
 ```bash
-bun run datasets:lichess:download -- --out=<dump.csv.zst>
-bun run datasets:lichess:prepare -- --benchmark=lichess-puzzles-v1 --source=<dump.csv.zst>
+bun run datasets:lichess:download
+bun run datasets:lichess:prepare -- --benchmark=lichess-puzzles-v1 --out=data/benchmarks/rebuild
 ```
 
-The download writes `<dump>.provenance.json` next to the file (URL, retrieval
-times, `Last-Modified`, `ETag`, bytes, SHA-256), and the preparation step copies
-it into the manifest. v2 adds a date gate and re-tagging step; its README has
-the full sequence.
+The download fetches whatever dump Lichess serves today to
+`data/raw/lichess/lichess_db_puzzle.csv.zst` and writes a `.provenance.json`
+next to it (URL, retrieval times, `Last-Modified`, `ETag`, bytes, SHA-256),
+which the preparation step copies into the manifest. Lichess replaces the dump
+monthly, so an exact rebuild of a committed set needs a retained copy of the
+dump whose SHA-256 its manifest records; preparation refuses to overwrite a
+committed set from any other dump. v2 adds a date gate and re-tagging step;
+its README has the full sequence.
 
 The preparation step validates trigger and solution moves with `chess.js`,
 filters unstable or low-signal rows, excludes `mateIn1` puzzles in v1 to avoid

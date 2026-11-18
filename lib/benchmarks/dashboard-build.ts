@@ -220,7 +220,8 @@ export function buildDashboardData({
         )
       ),
       datasetSize,
-      lastUpdated: latestDate(allRows).slice(0, 10),
+      // No evaluations yet: no date, rather than the Unix epoch.
+      lastUpdated: allRows.length > 0 ? latestDate(allRows).slice(0, 10) : null,
       benchmarkId: BENCHMARK_ID,
       rowsByModel: Object.fromEntries(
         models.map((model) => [model.id, rowsFor(model).length])

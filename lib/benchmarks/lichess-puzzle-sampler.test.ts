@@ -230,6 +230,14 @@ describe("sampleLichessPuzzles", () => {
       sampleLichessPuzzles(["wrong,header"], { seed, perBand: 1 }),
       /Unexpected CSV header/
     )
+    // One quoted field must not pass for the last two columns.
+    await assert.rejects(
+      sampleLichessPuzzles(
+        [header.replace("GameUrl,OpeningTags", '"GameUrl,OpeningTags"')],
+        { seed, perBand: 1 }
+      ),
+      /Unexpected CSV header/
+    )
     async function* interruptedLines() {
       yield header
       yield csvRow("valid", 1000)
@@ -252,6 +260,7 @@ describe("sampleLichessPuzzles", () => {
       const provenance = {
         sourceUrl: "https://database.lichess.org/lichess_db_puzzle.csv.zst",
         lastModified: "Sun, 01 Nov 2026 07:57:40 GMT",
+        retrievalFinishedAt: "2026-11-06T12:16:50.581Z",
         etag: '"test-etag"',
         bytes: Buffer.byteLength(csv),
         sha256: createHash("sha256").update(csv).digest("hex"),
@@ -300,6 +309,7 @@ describe("sampleLichessPuzzles", () => {
         provenance.lastModified
       )
       assert.equal(manifest.source.downloadEtag, provenance.etag)
+      assert.equal(manifest.createdAt, provenance.retrievalFinishedAt)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

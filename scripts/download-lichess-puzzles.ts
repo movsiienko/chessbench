@@ -12,7 +12,16 @@ const destination =
     ?.slice("--out=".length) ?? "data/raw/lichess/lichess_db_puzzle.csv.zst"
 const force = process.argv.includes("--force")
 
+const sidecar = `${destination}.provenance.json`
+
+// The sidecar is written before the dump is moved into place, so a dump
+// without one predates this script or was not downloaded by it.
 if (existsSync(destination) && !force) {
+  if (!existsSync(sidecar)) {
+    throw new Error(
+      `${destination} has no provenance sidecar. Pass --force to download it again.`
+    )
+  }
   console.log(`${destination} already exists. Pass --force to replace it.`)
   process.exit(0)
 }
@@ -50,8 +59,6 @@ if (contentLength !== null && Number(contentLength) !== bytes) {
   throw new Error(`Expected ${contentLength} bytes, received ${bytes}.`)
 }
 
-renameSync(partial, destination)
-
 // Read by prepare-lichess-puzzles.ts so each manifest records the provenance
 // of the file it was built from, not of an earlier download.
 const provenance = {
@@ -66,9 +73,7 @@ const provenance = {
   sha256: hash.digest("hex"),
 }
 
-await writeFile(
-  `${destination}.provenance.json`,
-  `${JSON.stringify(provenance, null, 2)}\n`
-)
+await writeFile(sidecar, `${JSON.stringify(provenance, null, 2)}\n`)
+renameSync(partial, destination)
 
 console.log(JSON.stringify(provenance, null, 2))

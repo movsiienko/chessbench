@@ -26,6 +26,7 @@ import csv
 import hashlib
 import heapq
 import logging
+import os
 import subprocess
 import sys
 
@@ -70,7 +71,8 @@ def cooked_tags(row):
 
 if args.mode == "tag":
     source, target = args.paths
-    with open(source, newline="") as inp, open(target, "w", newline="") as out:
+    # Written aside and moved into place, so target may even be the source.
+    with open(source, newline="") as inp, open(f"{target}.part", "w", newline="") as out:
         reader = csv.DictReader(inp)
         writer = csv.DictWriter(out, reader.fieldnames, lineterminator="\n")
         writer.writeheader()
@@ -78,6 +80,7 @@ if args.mode == "tag":
             lila = {tag for tag in row["Themes"].split() if tag in LILA_TAGS}
             row["Themes"] = " ".join(sorted(cooked_tags(row) | lila))
             writer.writerow(row)
+    os.replace(f"{target}.part", target)
     sys.exit(0)
 
 zstd = subprocess.Popen(["zstdcat", args.paths[0]], stdout=subprocess.PIPE, text=True)
@@ -94,6 +97,9 @@ sample = heapq.nsmallest(
     tagged,
     key=lambda row: hashlib.sha256(f"cook-validation-v1:{row['PuzzleId']}".encode()).digest(),
 )
+
+if zstd.wait() != 0:
+    sys.exit(f"zstdcat failed on {args.paths[0]}")
 
 tp, fp, fn = collections.Counter(), collections.Counter(), collections.Counter()
 exact = 0

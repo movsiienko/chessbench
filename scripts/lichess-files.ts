@@ -3,10 +3,19 @@ import { spawn } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createReadStream, existsSync, readFileSync } from "node:fs"
 import { createInterface } from "node:readline"
+import { Transform } from "node:stream"
+import { pipeline } from "node:stream/promises"
 import { z } from "zod"
 
-/** Lines of a CSV, decompressing .zst through zstdcat. */
-export async function* readLines(path: string): AsyncGenerator<string> {
+/**
+ * Lines of a CSV, decompressing .zst through zstdcat. With `sha256`, throws
+ * after the last line unless the bytes decompressed hash to it, so a file
+ * replaced after verification cannot be read in its place.
+ */
+export async function* readLines(
+  path: string,
+  sha256?: string
+): AsyncGenerator<string> {
   if (!path.endsWith(".zst")) {
     yield* createInterface({
       input: createReadStream(path),
@@ -15,21 +24,39 @@ export async function* readLines(path: string): AsyncGenerator<string> {
     return
   }
 
-  const child = spawn("zstdcat", [path], {
-    stdio: ["ignore", "pipe", "inherit"],
-  })
+  const child = spawn("zstdcat", [], { stdio: ["pipe", "pipe", "inherit"] })
   const closed = new Promise<number | null>((resolve) =>
     child.once("close", resolve)
   )
+  const hash = createHash("sha256")
+  const fed = pipeline(
+    createReadStream(path),
+    new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        hash.update(chunk)
+        callback(null, chunk)
+      },
+    }),
+    child.stdin
+  )
   yield* createInterface({ input: child.stdout, crlfDelay: Infinity })
+  await fed
   const exitCode = await closed
   if (exitCode !== 0) {
     throw new Error(`zstdcat exited with code ${exitCode} on ${path}`)
   }
+  if (sha256 && hash.digest("hex") !== sha256) {
+    throw new Error(`${path} changed after it was verified.`)
+  }
 }
 
 const provenance = z
-  .object({ bytes: z.number().int(), sha256: z.string() })
+  .object({
+    bytes: z.number().int(),
+    sha256: z.string(),
+    lastModified: z.string().nullable(),
+    retrievalFinishedAt: z.string(),
+  })
   .passthrough()
 
 /** The file's download sidecar, after checking its bytes and SHA-256. */

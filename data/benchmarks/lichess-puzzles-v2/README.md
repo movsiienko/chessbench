@@ -78,6 +78,11 @@ the dump.
 
 Needs `zstd`, Bun, and a Python 3 venv with `chess==1.3.0`.
 
+An exact rebuild needs the two dumps whose SHA-256 the manifest records
+(`source` and `baseline`). Lichess serves only its latest dump, so keep a copy;
+the download below fetches today's. The final step refuses to overwrite this
+set from a different dump, so build experiments with `--out=<another dir>`.
+
 ```bash
 # The current dump and the baseline, each with a .provenance.json sidecar.
 # The baseline's sidecar records its Internet Archive download by hand.

@@ -62,6 +62,22 @@ const datesPath = join(cacheDir, "game-dates.ndjson")
 const source = await verifiedProvenance(sourcePath)
 const baseline = await verifiedProvenance(baselinePath)
 
+// Skipping baseline ids is only sound when every baseline puzzle predates the
+// threshold, i.e. the baseline dump was published before it.
+if (!(Date.parse(baseline.lastModified ?? "") < threshold)) {
+  throw new Error(
+    `The baseline (Last-Modified ${baseline.lastModified}) must predate --threshold.`
+  )
+}
+
+// An interrupted append can leave a partial last line; drop only that.
+if (existsSync(datesPath)) {
+  const cached = readFileSync(datesPath, "utf8")
+  if (cached !== "" && !cached.endsWith("\n")) {
+    writeFileSync(datesPath, cached.slice(0, cached.lastIndexOf("\n") + 1))
+  }
+}
+
 // Candidates depend on both dumps and the filters; never reuse them for others.
 const inputs = {
   sourceSha256: source.sha256,
@@ -154,7 +170,7 @@ async function writeCandidates() {
   // switch to a sorted-file merge if dumps outgrow the VM.
   const baselineIds = new Set<string>()
   let baselineHeader = true
-  for await (const line of readLines(baselinePath)) {
+  for await (const line of readLines(baselinePath, baseline.sha256)) {
     if (baselineHeader) {
       readHeader(line)
       baselineHeader = false
@@ -183,7 +199,7 @@ async function writeCandidates() {
   const out = createWriteStream(partial)
   let count = 0
 
-  for await (const line of readLines(sourcePath)) {
+  for await (const line of readLines(sourcePath, source.sha256)) {
     if (count === 0) {
       count = readHeader(line)
       out.write(`${line}\n`)
@@ -212,11 +228,12 @@ async function writeCandidates() {
     out.once("error", reject)
     out.end(() => resolve())
   })
-  renameSync(partial, candidatesPath)
+  // Stats first: candidates.csv only appears once its stats exist.
   writeFileSync(
     candidateStatsPath,
     `${JSON.stringify({ inputs, ...stats }, null, 2)}\n`
   )
+  renameSync(partial, candidatesPath)
 }
 
 /** One request at a time; a batch is cached only once its stream completes. */
@@ -226,6 +243,8 @@ async function fetchDates(batch: string[]) {
       method: "POST",
       headers: { Accept: "application/x-ndjson", "Content-Type": "text/plain" },
       body: batch.join(","),
+      // Covers the body too, so a stalled stream falls through to a retry.
+      signal: AbortSignal.timeout(5 * 60_000),
     }).catch(() => undefined)
     const text = response?.ok ? await response.text().catch(() => null) : null
 

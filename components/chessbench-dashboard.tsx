@@ -709,7 +709,8 @@ export function LeaderboardView() {
     <div className="space-y-8">
       <section className="grid gap-2.5 border-b pb-4">
         <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-          {META.benchmarkId} · {META.lastUpdated}
+          {META.benchmarkId}
+          {META.lastUpdated ? ` · ${META.lastUpdated}` : null}
         </div>
         <h1 className="max-w-sm text-4xl leading-none font-semibold tracking-normal sm:text-5xl">
           Model chess benchmark.
@@ -852,7 +853,7 @@ export function LeaderboardView() {
               variant="outline"
               onClick={() =>
                 downloadFile(
-                  `chessbench-${META.benchmarkId}-leaderboard-${META.lastUpdated}.csv`,
+                  `chessbench-${META.benchmarkId}-leaderboard${META.lastUpdated ? `-${META.lastUpdated}` : ""}.csv`,
                   leaderboardCsv(),
                   "text/csv;charset=utf-8"
                 )
@@ -3465,7 +3466,7 @@ export function DocsView() {
   const filters = META.qualityFilters
   const bandPlays = Object.entries(filters.minPlaysByBand ?? {}).map(
     ([id, plays]) =>
-      `≥ ${plays} for ${META.ratingBands.find((band) => band.id === id)?.label ?? id}`
+      `≥ ${plays} plays for ${META.ratingBands.find((band) => band.id === id)?.label ?? id}`
   )
   const excludesMateInOne = filters.excludedThemes.includes("mateIn1")
   const gameDate =
@@ -3476,7 +3477,9 @@ export function DocsView() {
     })
   const puzzleFilters = [
     `Popularity ≥ ${filters.minPopularity}`,
-    `≥ ${filters.minPlays} plays${bandPlays.length > 0 ? ` (${bandPlays.join(", ")})` : ""}`,
+    ...(bandPlays.length > 0
+      ? [...bandPlays, `≥ ${filters.minPlays} plays for other bands`]
+      : [`≥ ${filters.minPlays} plays`]),
     `Rating deviation ≤ ${filters.maxRatingDeviation}`,
     ...(excludesMateInOne ? ["No mate-in-one"] : []),
     ...(gameDate ? [`Game played on or after ${gameDate} (UTC)`] : []),
@@ -3528,7 +3531,7 @@ export function DocsView() {
           <span className="font-mono">{timeLimit}</span>
         </MetaCell>
         <MetaCell label="Updated">
-          <span className="font-mono">{META.lastUpdated}</span>
+          <span className="font-mono">{META.lastUpdated ?? "—"}</span>
         </MetaCell>
       </div>
 
@@ -3607,9 +3610,9 @@ export function DocsView() {
           >
             Lichess puzzle database
           </a>{" "}
-          (CC0) with a fixed seed, so a rebuild from the same source file
-          returns the same {META.datasetSize.toLocaleString("en-US")}. A puzzle
-          has to pass every filter:
+          (CC0) with a fixed seed, so a rebuild from the same inputs returns the
+          same {META.datasetSize.toLocaleString("en-US")}. A puzzle has to pass
+          every filter:
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {puzzleFilters.map((filter) => (

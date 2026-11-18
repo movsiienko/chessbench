@@ -209,5 +209,10 @@ describe("buildPuzzleItem", () => {
       )
     }
     assert.deepEqual([...perBand.values()], [100, 100, 100, 100, 100])
+    assert.equal(
+      new Set(lines.map((line) => JSON.parse(line).id)).size,
+      500,
+      "duplicate item ids"
+    )
   })
 })
