@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process"
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { existsSync, linkSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
@@ -154,16 +154,24 @@ const refuseDifferentSet = () => {
 if (existsSync(itemsPath)) {
   refuseDifferentSet()
 } else {
-  // Staged per run, so an interrupted write never leaves a partial file, and
-  // published with link, which unlike rename fails if another run got there
-  // first; that run's items must then match.
+  // Staged in a file this run alone creates ("wx"), so an interrupted write
+  // never leaves a partial items.jsonl, and published with link, which unlike
+  // rename fails if another run got there first; that run's items must then
+  // match.
   mkdirSync(outDir, { recursive: true })
-  const staged = `${itemsPath}.${process.pid}.part`
-  await writeFile(staged, itemsJsonl)
+  const staged = `${itemsPath}.${randomUUID()}.part`
   try {
-    linkSync(staged, itemsPath)
-  } catch {
-    refuseDifferentSet()
+    await writeFile(staged, itemsJsonl, { flag: "wx" })
+    try {
+      linkSync(staged, itemsPath)
+    } catch (error) {
+      if (
+        !(error instanceof Error && "code" in error && error.code === "EEXIST")
+      ) {
+        throw error
+      }
+      refuseDifferentSet()
+    }
   } finally {
     rmSync(staged, { force: true })
   }
