@@ -4,42 +4,47 @@ Chessbench is a benchmark workspace for evaluating model chess puzzle solving.
 
 ## Datasets
 
-The first benchmark dataset is `lichess-puzzles-v1`, built from the public
-Lichess puzzle database.
+Two immutable puzzle sets live in `data/benchmarks/`, each an `items.jsonl`
+plus a `manifest.json`:
 
-- Tracked benchmark items:
-  `data/benchmarks/lichess-puzzles-v1/items.jsonl`
-- Benchmark manifest:
-  `data/benchmarks/lichess-puzzles-v1/manifest.json`
-- Raw source download, ignored by git:
-  `data/raw/lichess/lichess_db_puzzle.csv.zst`
+- `lichess-puzzles-v2`, the active set: puzzles from games played on or after
+  2026-06-01 (UTC). See `data/benchmarks/lichess-puzzles-v2/README.md`.
+- `lichess-puzzles-v1`: the original set, built from the May 2026 dump.
 
-The benchmark contains 500 puzzles, sampled deterministically as 100 puzzles
-from each rating band: `<1200`, `1200-1599`, `1600-1999`, `2000-2399`, and
-`2400+`.
+`BENCHMARK_ID` in `lib/benchmarks/lichess-puzzles.ts` picks the set that runs
+and the dashboard use.
+
+Each set has 500 puzzles, sampled deterministically as 100 puzzles from each
+rating band: `<1200`, `1200-1599`, `1600-1999`, `2000-2399`, and `2400+`.
 
 Each item also carries granular benchmark strata:
 
 - exact Lichess rating plus a 100-point `ratingBucket`
 - solution move counts in plies, player moves, and opponent replies
-- full Lichess `themes`, a derived `primaryTheme`, and broad `themeGroups`
+- `themes`, a derived `primaryTheme`, and broad `themeGroups`
 
 ## Dataset Commands
 
 ```bash
-bun run datasets:lichess:download
-bun run datasets:lichess:prepare
+bun run datasets:lichess:download -- --out=<dump.csv.zst>
+bun run datasets:lichess:prepare -- --benchmark=lichess-puzzles-v1 --source=<dump.csv.zst>
 ```
 
+The download writes `<dump>.provenance.json` next to the file (URL, retrieval
+times, `Last-Modified`, `ETag`, bytes, SHA-256), and the preparation step copies
+it into the manifest. v2 adds a date gate and re-tagging step; its README has
+the full sequence.
+
 The preparation step validates trigger and solution moves with `chess.js`,
-filters unstable or low-signal rows, excludes `mateIn1` puzzles to avoid
-alternate checkmate ambiguity, and writes the benchmark JSONL plus manifest.
+filters unstable or low-signal rows, excludes `mateIn1` puzzles in v1 to avoid
+alternate checkmate ambiguity (v2 keeps them), and writes the benchmark JSONL
+plus manifest.
 
 `sampleLichessPuzzles` in `lib/benchmarks/lichess-puzzle-sampler.ts` owns
 filtering, seeded membership, legality validation, and output order over a
 stream of CSV lines. The CLI handles source decompression and file output.
 Tests cover selection across input orders, illegal candidate replacement,
-all 500 tracked items, and the preparation command's output and manifest.
+all 500 tracked v1 items, and the v2 set's filters and dates.
 
 ## Scoring
 

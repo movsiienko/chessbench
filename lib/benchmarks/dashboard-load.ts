@@ -10,16 +10,14 @@ import {
   entriesFrom,
   type DatasetSelection,
 } from "./dashboard-build"
-import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
-
-const benchmarkId = "lichess-puzzles-v1"
+import { BENCHMARK_ID, loadItems, PROTOCOL_ID } from "./lichess-puzzles"
 
 /**
  * Server-only: every current-protocol entry, summarized for the dashboard.
  * Cached per render, so a page and its layout share one query.
  */
 export const loadDashboardData = cache(async () => {
-  const dataset = join(process.cwd(), "data/benchmarks", benchmarkId)
+  const dataset = join(process.cwd(), "data/benchmarks", BENCHMARK_ID)
   const items = await loadItems(join(dataset, "items.jsonl"))
   const manifest: { selection: DatasetSelection } = JSON.parse(
     await readFile(join(dataset, "manifest.json"), "utf8")
@@ -41,7 +39,7 @@ export const loadDashboardData = cache(async () => {
     .from(attempts)
     .where(
       and(
-        eq(attempts.benchmark, benchmarkId),
+        eq(attempts.benchmark, BENCHMARK_ID),
         eq(attempts.protocol, PROTOCOL_ID),
         // Finished results plus pending errors; claims in progress are skipped.
         inArray(attempts.status, [...FINISHED_STATUSES, "error"])

@@ -1,5 +1,14 @@
 import { readFile } from "node:fs/promises"
 
+export type BenchmarkId = "lichess-puzzles-v1" | "lichess-puzzles-v2"
+
+/**
+ * The puzzle set that runs, run plans and the dashboard use. Switch it back to
+ * "lichess-puzzles-v1" to serve v1; the dashboard only shows attempts on the
+ * active set.
+ */
+export const BENCHMARK_ID: BenchmarkId = "lichess-puzzles-v2"
+
 export type RatingBandId =
   | "under-1200"
   | "1200-1599"
@@ -7,7 +16,7 @@ export type RatingBandId =
   | "2000-2399"
   | "2400-plus"
 
-export type PuzzleLength = "short" | "long" | "veryLong" | "unknown"
+export type PuzzleLength = "oneMove" | "short" | "long" | "veryLong" | "unknown"
 
 export type ThemeGroupId =
   | "attack"
@@ -28,7 +37,7 @@ export type PuzzleMoveCounts = {
 
 export type LichessPuzzleBenchmarkItem = {
   id: string
-  benchmark: "lichess-puzzles-v1"
+  benchmark: BenchmarkId
   position: {
     triggerFen: string
     triggerMove: string
@@ -55,6 +64,8 @@ export type LichessPuzzleBenchmarkItem = {
     themeGroups: ThemeGroupId[]
     themes: string[]
     openingTags: string[]
+    /** v2 only: when the source game was created on Lichess (ISO, UTC). */
+    gameCreatedAt?: string
   }
 }
 

@@ -6,6 +6,7 @@ import { db } from "../db/client"
 import { attempts, runs } from "../db/schema"
 import { createGenerate } from "./generate"
 import {
+  BENCHMARK_ID,
   loadItems,
   MOVE_TIME_LIMIT_MS,
   PROTOCOL_ID,
@@ -20,8 +21,6 @@ import {
   type AttemptState,
 } from "./local-runner"
 import type { ReasoningLevel } from "./models"
-
-const benchmarkId = "lichess-puzzles-v1"
 
 export type BenchmarkRunRequest = {
   models: string[]
@@ -128,7 +127,7 @@ async function playTurn(key: AttemptKey, previous: AttemptState | null) {
   const generate = createGenerate({
     reasoning: key.reasoning,
     maxOutputTokens: null,
-    gatewayTags: [`benchmark:${benchmarkId}`, `run:${key.runId}`],
+    gatewayTags: [`benchmark:${BENCHMARK_ID}`, `run:${key.runId}`],
   })
   const abortSignal = AbortSignal.timeout(MOVE_TIME_LIMIT_MS)
   let next: AttemptState
@@ -245,7 +244,7 @@ async function itemById(itemId: string) {
   itemsById ??= new Map(
     (
       await loadItems(
-        join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
+        join(process.cwd(), "data/benchmarks", BENCHMARK_ID, "items.jsonl")
       )
     ).map((item) => [item.id, item])
   )
@@ -294,7 +293,7 @@ async function claim(key: AttemptKey) {
     .insert(attempts)
     .values({
       runId: key.runId,
-      benchmark: benchmarkId,
+      benchmark: BENCHMARK_ID,
       protocol: PROTOCOL_ID,
       model: key.model,
       reasoningLevel: key.reasoning,
@@ -324,7 +323,7 @@ async function claim(key: AttemptKey) {
     .where(
       and(
         eq(attempts.runId, key.runId),
-        eq(attempts.benchmark, benchmarkId),
+        eq(attempts.benchmark, BENCHMARK_ID),
         eq(attempts.protocol, PROTOCOL_ID),
         eq(attempts.model, key.model),
         eq(attempts.reasoningLevel, key.reasoning),

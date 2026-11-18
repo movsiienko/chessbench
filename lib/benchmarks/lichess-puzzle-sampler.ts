@@ -2,11 +2,14 @@ import { createHash } from "node:crypto"
 import { parseCsvRecords } from "./csv"
 import {
   buildPuzzleItem,
-  LICHESS_PUZZLE_COLUMNS,
+  LICHESS_PUZZLE_HEADERS,
   parsePuzzleRow,
+  QUALITY_FILTERS,
   RATING_BANDS,
+  type QualityFilters,
 } from "./lichess-puzzle-builder"
 import type {
+  BenchmarkId,
   LichessPuzzleBenchmarkItem,
   RatingBandId,
 } from "./lichess-puzzles"
@@ -19,12 +22,19 @@ type Candidate = {
 type SamplingOptions = {
   seed: string
   perBand: number
+  filters?: QualityFilters
+  benchmark?: BenchmarkId
 }
 
 /** Select the lowest seeded hashes per band, retaining only legally built items. */
 export async function sampleLichessPuzzles(
   lines: Iterable<string> | AsyncIterable<string>,
-  { seed, perBand }: SamplingOptions
+  {
+    seed,
+    perBand,
+    filters = QUALITY_FILTERS,
+    benchmark = "lichess-puzzles-v1",
+  }: SamplingOptions
 ) {
   if (!Number.isInteger(perBand) || perBand < 1) {
     throw new Error("perBand must be a positive integer.")
@@ -52,21 +62,16 @@ export async function sampleLichessPuzzles(
     mateIn1: "rowsRejectedAsMateInOne",
   } as const
 
-  let headerVerified = false
+  let columnCount = 0
 
   for await (const line of lines) {
-    if (!headerVerified) {
-      if (
-        parseCsvRecords(line)[0]?.join(",") !== LICHESS_PUZZLE_COLUMNS.join(",")
-      ) {
-        throw new Error(`Unexpected CSV header: ${line}`)
-      }
-      headerVerified = true
+    if (columnCount === 0) {
+      columnCount = readHeader(line)
       continue
     }
 
     sourceStats.rowsSeen += 1
-    const parsed = parsePuzzleRow(line)
+    const parsed = parsePuzzleRow(line, columnCount, filters)
 
     if ("rejected" in parsed) {
       if (parsed.rejected !== "invalidColumns") {
@@ -96,7 +101,7 @@ export async function sampleLichessPuzzles(
 
     // Validate only competitive candidates, and never evict a legal item
     // until the replacement's complete line has passed chess.js validation.
-    const item = buildPuzzleItem(parsed)
+    const item = buildPuzzleItem(parsed, benchmark)
 
     if (item === null) {
       sourceStats.rowsRejectedAsIllegal += 1
@@ -107,7 +112,7 @@ export async function sampleLichessPuzzles(
     candidates[slot] = { hashKey, item }
   }
 
-  if (!headerVerified) {
+  if (columnCount === 0) {
     throw new Error("Missing Lichess puzzle CSV header.")
   }
 
@@ -131,6 +136,17 @@ export async function sampleLichessPuzzles(
       selected: selectedByBand.get(band.id)?.length ?? 0,
     })),
   }
+}
+
+/** Column count of an accepted Lichess puzzle CSV header. */
+export function readHeader(line: string): number {
+  const columns = parseCsvRecords(line)[0] ?? []
+
+  if (!LICHESS_PUZZLE_HEADERS.includes(columns.join(","))) {
+    throw new Error(`Unexpected CSV header: ${line}`)
+  }
+
+  return columns.length
 }
 
 function candidateSlot(

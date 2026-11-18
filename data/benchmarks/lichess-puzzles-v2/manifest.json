@@ -1,0 +1,397 @@
+{
+  "id": "lichess-puzzles-v2",
+  "title": "Lichess Puzzles v2",
+  "description": "A deterministic, quality-filtered chess puzzle benchmark of Lichess puzzles from games played on or after June 1, 2026 (UTC).",
+  "createdAt": "2026-11-18T10:03:35.777Z",
+  "source": {
+    "name": "Lichess puzzle database",
+    "pageUrl": "https://database.lichess.org/#puzzles",
+    "downloadUrl": "https://database.lichess.org/lichess_db_puzzle.csv.zst",
+    "finalUrl": "https://database.lichess.org/lichess_db_puzzle.csv.zst",
+    "license": "Creative Commons CC0",
+    "retrievalStartedAt": "2026-11-06T12:10:54.194Z",
+    "retrievalFinishedAt": "2026-11-06T12:16:50.581Z",
+    "downloadLastModified": "Sun, 01 Nov 2026 07:57:40 GMT",
+    "downloadEtag": "\"6ae6f0f4-12766d85\"",
+    "downloadContentLength": 309751173,
+    "bytes": 309751173,
+    "sha256": "7b0d235fa40cfd7fdb7df1fec56a96b3b6ee1496b32ed2eb05be90d0ebf94253"
+  },
+  "baseline": {
+    "sourceUrl": "https://database.lichess.org/lichess_db_puzzle.csv.zst",
+    "finalUrl": "https://web.archive.org/web/20260407174335id_/https://database.lichess.org/lichess_db_puzzle.csv.zst",
+    "archive": "Internet Archive Wayback Machine capture 2026-04-07T17:43:35Z (Memento-Datetime); verified against the CDX record digest sha1:5UPBEYE3A2RAGLZ4LK2OW3LV3TYBBSEX; lastModified and etag are the original server's headers as archived (x-archive-orig-*)",
+    "retrievalStartedAt": "2026-11-06T12:16:59Z",
+    "retrievalFinishedAt": "2026-11-06T12:51:22Z",
+    "retrievalNote": "Fetched in two HTTP requests: the first was stopped at 77,115,392 bytes and the rest resumed with a byte-range request (206, content-range bytes 77115392-293504724/293504725). The start time is approximate (directory creation time).",
+    "lastModified": "Wed, 01 Apr 2026 07:50:48 GMT",
+    "etag": "\"69ccce58-117e86d5\"",
+    "contentLength": 293504725,
+    "bytes": 293504725,
+    "sha256": "28f491a401184d88244cb2693917253c485f2936998f2df50e4d03872cd611f6",
+    "role": "Puzzle ids already in this April 2026 dump are excluded, since their games predate the date threshold. It is not the dump v1 was built from."
+  },
+  "gameDateGate": {
+    "thresholdUtc": "2026-06-01T00:00:00.000Z",
+    "endpoint": "POST https://lichess.org/api/games/export/_ids",
+    "field": "createdAt (epoch milliseconds, UTC)",
+    "requests": "at most 300 ids each, one at a time, 2 s apart, at least 60 s backoff on 429",
+    "missingDates": "excluded",
+    "completedAt": "2026-11-18T10:03:35.777Z",
+    "funnel": {
+      "baselineIds": 5882680,
+      "sourceRows": 6193530,
+      "rejectedInvalidColumns": 0,
+      "rejectedQuality": 2829652,
+      "rejectedMateIn1": 0,
+      "passingFilters": 3363878,
+      "inBaseline": 3259349,
+      "rejectedIllegal": 0,
+      "candidates": 104529,
+      "excludedGameNotReturned": 0,
+      "excludedBeforeThreshold": 93062,
+      "qualifying": 11467,
+      "qualifyingByBand": {
+        "under-1200": 626,
+        "1200-1599": 6026,
+        "1600-1999": 3394,
+        "2000-2399": 1087,
+        "2400-plus": 334
+      }
+    }
+  },
+  "tagging": {
+    "tool": "cook.py from Lichess's puzzle tagger",
+    "repository": "https://github.com/ornicar/lichess-puzzler",
+    "commit": "8e24b6d5e2b9618e41581a327926e4ac67c610a2",
+    "pythonChess": "1.3.0",
+    "script": "scripts/cook-lichess-puzzles.py",
+    "why": "Lichess adds puzzles with empty themes and tags them later, so most recent puzzles in the dump carry only phase/source tags. Every v2 puzzle is re-tagged with the same tagger.",
+    "keptFromDump": [
+      "opening",
+      "middlegame",
+      "endgame",
+      "master",
+      "masterVsMaster",
+      "superGM"
+    ],
+    "omitted": {
+      "crushing, advantage, equality": "cook derives them from the puzzle generator's engine eval, which the dump does not publish",
+      "zugzwang": "needs a separate Stockfish pass"
+    },
+    "neverProducedByCook": [
+      "discoveredCheck",
+      "named mates such as operaMate, pillsburysMate, killBoxMate, morphysMate, epauletteMate, swallowstailMate, triangleMate"
+    ],
+    "validation": "500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256(\"cook-validation-v1:\" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `scripts/cook-lichess-puzzles.py validate`."
+  },
+  "mateInOne": "Kept, unlike v1. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",
+  "contamination": {
+    "note": "Temporally held out by underlying game date: every puzzle comes from a game created on or after the threshold. That is not proof the puzzles are absent from any model's training data. June 1, 2026 precedes Mistral Large 4's latest training-data collection (September 2026), most providers publish no exact cutoff, models may receive later post-training, and the same positions can occur in earlier games.",
+    "sources": [
+      "https://legal.mistral.ai/documents/Mistral%20Large%204%20-%20Public%20Summary%20of%20Training%20Content.pdf",
+      "https://platform.claude.com/docs/en/about-claude/models/overview"
+    ]
+  },
+  "format": {
+    "sourceColumns": [
+      "PuzzleId",
+      "FEN",
+      "Moves",
+      "Rating",
+      "RatingDeviation",
+      "Popularity",
+      "NbPlays",
+      "Themes",
+      "GameUrl",
+      "OpeningTags"
+    ],
+    "itemFile": "items.jsonl",
+    "promptContract": "Runners build prompts at execution time from position.fen. The local runner asks for exactly one legal move token in standard algebraic notation (SAN) with no explanation or extra text, still accepts UCI, normalizes accepted answers to UCI, reveals expected opponent replies in SAN after correct moves, and stops on the first wrong or invalid move.",
+    "expectedAnswer": "expected.uciLine contains the full forcing line after the Lichess setup move; expected.playerUciMoves contains only the side-to-move moves."
+  },
+  "selection": {
+    "seed": "lichess-puzzles-v2",
+    "targetPerRatingBand": 100,
+    "totalItems": 500,
+    "filters": {
+      "minPopularity": 80,
+      "minPlays": 300,
+      "minPlaysByBand": {
+        "2400-plus": 200
+      },
+      "maxRatingDeviation": 110,
+      "excludedThemes": [],
+      "minGameCreatedAt": "2026-06-01T00:00:00.000Z",
+      "legalLineValidation": "Every trigger and solution move is applied with chess.js."
+    },
+    "ratingBands": [
+      {
+        "id": "under-1200",
+        "label": "<1200",
+        "min": 0,
+        "max": 1199,
+        "eligible": 626,
+        "selected": 100
+      },
+      {
+        "id": "1200-1599",
+        "label": "1200-1599",
+        "min": 1200,
+        "max": 1599,
+        "eligible": 6026,
+        "selected": 100
+      },
+      {
+        "id": "1600-1999",
+        "label": "1600-1999",
+        "min": 1600,
+        "max": 1999,
+        "eligible": 3394,
+        "selected": 100
+      },
+      {
+        "id": "2000-2399",
+        "label": "2000-2399",
+        "min": 2000,
+        "max": 2399,
+        "eligible": 1087,
+        "selected": 100
+      },
+      {
+        "id": "2400-plus",
+        "label": "2400+",
+        "min": 2400,
+        "max": null,
+        "eligible": 334,
+        "selected": 100
+      }
+    ]
+  },
+  "scoring": {
+    "primaryMetric": "solved_rate",
+    "solvedDefinition": "An answer is solved when its extracted UCI move sequence exactly matches either the full expected line or the player-only expected line.",
+    "metrics": [
+      {
+        "id": "solved",
+        "range": [
+          0,
+          1
+        ],
+        "description": "1 when the submitted line exactly matches expected.uciLine or expected.playerUciMoves."
+      },
+      {
+        "id": "firstMoveCorrect",
+        "range": [
+          0,
+          1
+        ],
+        "description": "1 when the first submitted UCI move matches the first player move."
+      },
+      {
+        "id": "fullLinePrefixScore",
+        "range": [
+          0,
+          1
+        ],
+        "description": "Correct leading plies divided by expected.uciLine length."
+      },
+      {
+        "id": "playerMovePrefixScore",
+        "range": [
+          0,
+          1
+        ],
+        "description": "Correct leading player moves divided by expected.playerUciMoves length."
+      }
+    ],
+    "parser": "Answers are parsed by extracting UCI tokens matching /[a-h][1-8][a-h][1-8][qrbn]?/i."
+  },
+  "sourceStats": {
+    "rowsSeen": 11467,
+    "rowsParsed": 11467,
+    "rowsPassingFilters": 11467,
+    "rowsBuilt": 1784,
+    "rowsWithInvalidColumns": 0,
+    "rowsRejectedByQuality": 0,
+    "rowsRejectedAsMateInOne": 0,
+    "rowsRejectedAsIllegal": 0
+  },
+  "selectedStats": {
+    "ratings": {
+      "min": 870,
+      "max": 2968,
+      "average": 1792.19,
+      "buckets": {
+        "0800-0899": 1,
+        "0900-0999": 9,
+        "1000-1099": 33,
+        "1100-1199": 57,
+        "1200-1299": 9,
+        "1300-1399": 35,
+        "1400-1499": 23,
+        "1500-1599": 33,
+        "1600-1699": 38,
+        "1700-1799": 30,
+        "1800-1899": 13,
+        "1900-1999": 19,
+        "2000-2099": 45,
+        "2100-2199": 26,
+        "2200-2299": 22,
+        "2300-2399": 7,
+        "2400-2499": 54,
+        "2500-2599": 27,
+        "2600-2699": 10,
+        "2700-2799": 4,
+        "2800-2899": 3,
+        "2900-2999": 2
+      }
+    },
+    "moveCounts": {
+      "solutionPlies": {
+        "1": 35,
+        "3": 214,
+        "5": 182,
+        "7": 49,
+        "9": 14,
+        "11": 5,
+        "15": 1
+      },
+      "playerMoves": {
+        "1": 35,
+        "2": 214,
+        "3": 182,
+        "4": 49,
+        "5": 14,
+        "6": 5,
+        "8": 1
+      },
+      "opponentReplies": {
+        "0": 35,
+        "1": 214,
+        "2": 182,
+        "3": 49,
+        "4": 14,
+        "5": 5,
+        "7": 1
+      }
+    },
+    "themes": {
+      "endgame": 241,
+      "middlegame": 228,
+      "short": 214,
+      "long": 182,
+      "mate": 124,
+      "sacrifice": 69,
+      "veryLong": 69,
+      "fork": 59,
+      "master": 57,
+      "mateIn2": 54,
+      "kingsideAttack": 47,
+      "pin": 45,
+      "advancedPawn": 44,
+      "defensiveMove": 43,
+      "discoveredAttack": 36,
+      "mateIn1": 35,
+      "oneMove": 35,
+      "deflection": 34,
+      "opening": 31,
+      "quietMove": 27,
+      "mateIn3": 26,
+      "attraction": 24,
+      "rookEndgame": 21,
+      "hangingPiece": 21,
+      "exposedKing": 19,
+      "pawnEndgame": 19,
+      "intermezzo": 12,
+      "promotion": 11,
+      "queenEndgame": 10,
+      "clearance": 10,
+      "backRankMate": 7,
+      "capturingDefender": 7,
+      "bishopEndgame": 7,
+      "skewer": 6,
+      "knightEndgame": 6,
+      "mateIn4": 6,
+      "trappedPiece": 6,
+      "queensideAttack": 5,
+      "attackingF2F7": 3,
+      "enPassant": 3,
+      "mateIn5": 3,
+      "superGM": 2,
+      "masterVsMaster": 2,
+      "xRayAttack": 2,
+      "collinearMove": 2,
+      "anastasiaMate": 2,
+      "queenRookEndgame": 2,
+      "doubleCheck": 2,
+      "smotheredMate": 1,
+      "castling": 1,
+      "arabianMate": 1,
+      "interference": 1
+    },
+    "primaryThemes": {
+      "mate": 69,
+      "endgame": 44,
+      "advancedPawn": 44,
+      "fork": 43,
+      "defensiveMove": 32,
+      "kingsideAttack": 29,
+      "deflection": 26,
+      "discoveredAttack": 24,
+      "long": 23,
+      "middlegame": 22,
+      "pin": 20,
+      "attraction": 20,
+      "hangingPiece": 13,
+      "pawnEndgame": 11,
+      "clearance": 8,
+      "backRankMate": 7,
+      "quietMove": 7,
+      "capturingDefender": 6,
+      "rookEndgame": 6,
+      "master": 6,
+      "sacrifice": 5,
+      "skewer": 4,
+      "queenEndgame": 4,
+      "trappedPiece": 4,
+      "attackingF2F7": 3,
+      "bishopEndgame": 3,
+      "intermezzo": 3,
+      "knightEndgame": 3,
+      "exposedKing": 2,
+      "xRayAttack": 2,
+      "opening": 2,
+      "anastasiaMate": 2,
+      "doubleCheck": 1,
+      "castling": 1,
+      "arabianMate": 1
+    },
+    "themeGroups": {
+      "endgame": 241,
+      "tactic": 181,
+      "checkmate": 124,
+      "material": 103,
+      "attack": 73,
+      "other": 56,
+      "special": 46,
+      "defense": 43,
+      "positional": 27
+    },
+    "lengths": {
+      "long": 182,
+      "oneMove": 35,
+      "short": 214,
+      "veryLong": 69
+    },
+    "mateInOneByBand": {
+      "1200-1599": 9,
+      "1600-1999": 5,
+      "2000-2399": 1,
+      "under-1200": 20
+    },
+    "belowDefaultMinPlaysByBand": {
+      "2400-plus": 84
+    }
+  }
+}

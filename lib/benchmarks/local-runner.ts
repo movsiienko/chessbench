@@ -7,6 +7,7 @@ import {
 } from "../chess/moves"
 import {
   LICHESS_PUZZLE_PROMPT_TEMPLATE_ID,
+  type BenchmarkId,
   type LichessPuzzleBenchmarkItem,
 } from "./lichess-puzzles"
 
@@ -86,7 +87,7 @@ export type LichessPuzzleAttemptTurn = {
 export type LichessPuzzleAttemptRow = {
   runId: string
   createdAt: string
-  benchmark: "lichess-puzzles-v1"
+  benchmark: BenchmarkId
   // Stored rows keep the template they ran under, so earlier ids appear too.
   promptTemplateId: string
   model: string

@@ -5,6 +5,7 @@ import { escapeCsv } from "./csv"
 import {
   buildPuzzleItem,
   parsePuzzleRow,
+  V2_QUALITY_FILTERS,
   type ParsedPuzzleRow,
 } from "./lichess-puzzle-builder"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
@@ -21,6 +22,35 @@ function parseOk(line: string): ParsedPuzzleRow {
 
 function build(line: string) {
   return buildPuzzleItem(parseOk(line))
+}
+
+function readDataset(id: string, file: string) {
+  return readFileSync(
+    new URL(`../../data/benchmarks/${id}/${file}`, import.meta.url),
+    "utf8"
+  )
+}
+
+/** The source CSV row an item was built from. */
+function csvRowOf({
+  position,
+  expected,
+  metadata,
+}: LichessPuzzleBenchmarkItem) {
+  return [
+    metadata.lichessPuzzleId,
+    position.triggerFen,
+    [position.triggerMove, ...expected.uciLine].join(" "),
+    metadata.rating,
+    metadata.ratingDeviation,
+    metadata.popularity,
+    metadata.nbPlays,
+    metadata.themes.join(" "),
+    metadata.lichessGameUrl,
+    metadata.openingTags.join(" "),
+  ]
+    .map(escapeCsv)
+    .join(",")
 }
 
 describe("parsePuzzleRow", () => {
@@ -123,38 +153,61 @@ describe("buildPuzzleItem", () => {
   })
 
   test("reproduces every tracked item byte for byte", () => {
-    const lines = readFileSync(
-      new URL(
-        "../../data/benchmarks/lichess-puzzles-v1/items.jsonl",
-        import.meta.url
-      ),
-      "utf8"
-    )
+    const lines = readDataset("lichess-puzzles-v1", "items.jsonl")
       .trim()
       .split("\n")
     assert.equal(lines.length, 500)
 
     for (const line of lines) {
       // SAFETY: items.jsonl is written by the prep script as one LichessPuzzleBenchmarkItem per line.
-      const { position, metadata } = JSON.parse(
-        line
-      ) as LichessPuzzleBenchmarkItem
-      const csvRow = [
-        metadata.lichessPuzzleId,
-        position.triggerFen,
-        [position.triggerMove, ...JSON.parse(line).expected.uciLine].join(" "),
-        metadata.rating,
-        metadata.ratingDeviation,
-        metadata.popularity,
-        metadata.nbPlays,
-        metadata.themes.join(" "),
-        metadata.lichessGameUrl,
-        metadata.openingTags.join(" "),
-      ]
-        .map(escapeCsv)
-        .join(",")
-
-      assert.equal(JSON.stringify(build(csvRow)), line)
+      const item = JSON.parse(line) as LichessPuzzleBenchmarkItem
+      assert.equal(JSON.stringify(build(csvRowOf(item))), line)
     }
+  })
+
+  test("v2 keeps 2400+ puzzles from 200 plays and keeps mate-in-one", () => {
+    const strong = bishopEndgame
+      .replace(",962,", ",2450,")
+      .replace(",508,", ",250,")
+    const mateInOne = bishopEndgame.replace("endgame long", "endgame mateIn1")
+
+    assert.deepEqual(parsePuzzleRow(strong), { rejected: "quality" })
+    assert.ok(!("rejected" in parsePuzzleRow(strong, 10, V2_QUALITY_FILTERS)))
+    assert.ok(
+      !("rejected" in parsePuzzleRow(mateInOne, 10, V2_QUALITY_FILTERS))
+    )
+    assert.deepEqual(
+      parsePuzzleRow(strong.replace(",250,", ",199,"), 10, V2_QUALITY_FILTERS),
+      { rejected: "quality" }
+    )
+  })
+
+  test("rebuilds every v2 item, 100 per band, all on or after the date threshold", () => {
+    const manifest = JSON.parse(
+      readDataset("lichess-puzzles-v2", "manifest.json")
+    )
+    const threshold = Date.parse(manifest.selection.filters.minGameCreatedAt)
+    const lines = readDataset("lichess-puzzles-v2", "items.jsonl")
+      .trim()
+      .split("\n")
+    const perBand = new Map<string, number>()
+
+    for (const line of lines) {
+      // SAFETY: items.jsonl is written by the prep script as one LichessPuzzleBenchmarkItem per line.
+      const item = JSON.parse(line) as LichessPuzzleBenchmarkItem
+      const { gameCreatedAt, ...metadata } = item.metadata
+      assert.ok(Date.parse(gameCreatedAt ?? "") >= threshold, item.id)
+      const parsed = parsePuzzleRow(csvRowOf(item), 10, V2_QUALITY_FILTERS)
+      assert.ok(!("rejected" in parsed), item.id)
+      assert.deepEqual(buildPuzzleItem(parsed, "lichess-puzzles-v2"), {
+        ...item,
+        metadata,
+      })
+      perBand.set(
+        item.metadata.ratingBand,
+        (perBand.get(item.metadata.ratingBand) ?? 0) + 1
+      )
+    }
+    assert.deepEqual([...perBand.values()], [100, 100, 100, 100, 100])
   })
 })

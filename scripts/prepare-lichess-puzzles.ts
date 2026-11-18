@@ -5,35 +5,65 @@ import {
   createWriteStream,
   existsSync,
   mkdirSync,
-  statSync,
+  readFileSync,
 } from "node:fs"
 import { writeFile } from "node:fs/promises"
-import { basename, join } from "node:path"
+import { join } from "node:path"
 import { createInterface } from "node:readline"
 import {
   LICHESS_PUZZLE_COLUMNS as columns,
   QUALITY_FILTERS,
+  V2_QUALITY_FILTERS,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
 import { sampleLichessPuzzles } from "@/lib/benchmarks/lichess-puzzle-sampler"
 import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
+import { z } from "zod"
+
+const benchmarkId = readOption("--benchmark")
+
+if (
+  benchmarkId !== "lichess-puzzles-v1" &&
+  benchmarkId !== "lichess-puzzles-v2"
+) {
+  throw new Error(
+    "Pass --benchmark=lichess-puzzles-v1 or --benchmark=lichess-puzzles-v2."
+  )
+}
+
+const v2 = benchmarkId === "lichess-puzzles-v2"
+// v2 builds from the output of filter-lichess-puzzles-by-game-date.ts and
+// cook-lichess-puzzles.py in this directory; see the v2 README.
+const gateDir = readOption("--gate")
+
+if (v2 && !gateDir) {
+  throw new Error("lichess-puzzles-v2 needs --gate=<date gate cache dir>.")
+}
 
 const sourcePath =
-  readOption("--source") ?? "data/raw/lichess/lichess_db_puzzle.csv.zst"
-const outDir = readOption("--out") ?? "data/benchmarks/lichess-puzzles-v1"
+  readOption("--source") ??
+  (gateDir
+    ? join(gateDir, "qualifying-cooked.csv")
+    : "data/raw/lichess/lichess_db_puzzle.csv.zst")
+const outDir = readOption("--out") ?? join("data/benchmarks", benchmarkId)
 const perBand = Number(readOption("--per-band") ?? 100)
-const seed = readOption("--seed") ?? "lichess-puzzles-v1"
-const { minPopularity, minPlays, maxRatingDeviation } = QUALITY_FILTERS
-const benchmarkId = "lichess-puzzles-v1"
-const sourceUrl = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
-const sourcePageUrl = "https://database.lichess.org/#puzzles"
-const sourcePageLastUpdated = "2026-05-02"
-const sourceDownloadLastModified = "2026-05-01T09:33:23Z"
-const sourceDownloadContentLength = 296291296
+const seed = readOption("--seed") ?? benchmarkId
+const filters = v2 ? V2_QUALITY_FILTERS : QUALITY_FILTERS
+const gate = gateDir
+  ? JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
+  : undefined
+// The dump's download record; v2's gate checked it against the dump it read.
+const provenance =
+  gate?.source ??
+  JSON.parse(readFileSync(`${sourcePath}.provenance.json`, "utf8"))
 
 if (!existsSync(sourcePath)) {
   throw new Error(
     `Missing ${sourcePath}. Run "bun run datasets:lichess:download" first.`
   )
+}
+
+if (!gate && (await hashFile(sourcePath)) !== provenance.sha256) {
+  throw new Error(`${sourcePath} does not match its provenance sidecar.`)
 }
 
 if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
@@ -44,8 +74,33 @@ if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
 
 const { items, sourceStats, ratingBands } = await sampleLichessPuzzles(
   readLines(sourcePath),
-  { seed, perBand }
+  { seed, perBand, filters, benchmark: benchmarkId }
 )
+
+if (gateDir) {
+  // One game-dates.ndjson line, as filter-lichess-puzzles-by-game-date.ts writes it.
+  const gameDate = z.object({
+    id: z.string(),
+    createdAt: z.number().int().nullable(),
+  })
+  const createdAt = new Map<string, number | null>()
+  for (const line of readFileSync(join(gateDir, "game-dates.ndjson"), "utf8")
+    .trim()
+    .split("\n")) {
+    const game = gameDate.parse(JSON.parse(line))
+    createdAt.set(game.id, game.createdAt)
+  }
+  for (const item of items) {
+    const gameId = item.metadata.lichessGameUrl.match(
+      /lichess\.org\/(?:game\/)?(\w{8})/
+    )?.[1]
+    const ms = gameId ? createdAt.get(gameId) : undefined
+    if (ms === undefined || ms === null || ms < Date.parse(gate.thresholdUtc)) {
+      throw new Error(`${item.id} has no game date on or after the threshold.`)
+    }
+    item.metadata.gameCreatedAt = new Date(ms).toISOString()
+  }
+}
 
 mkdirSync(outDir, { recursive: true })
 
@@ -62,26 +117,78 @@ await new Promise<void>((resolve, reject) => {
   itemsWriter.end(() => resolve())
 })
 
+const v2Methodology = gate && {
+  baseline: {
+    ...gate.baseline,
+    role: "Puzzle ids already in this April 2026 dump are excluded, since their games predate the date threshold. It is not the dump v1 was built from.",
+  },
+  gameDateGate: {
+    thresholdUtc: gate.thresholdUtc,
+    ...gate.dateSource,
+    missingDates: "excluded",
+    completedAt: gate.completedAt,
+    funnel: gate.funnel,
+  },
+  tagging: {
+    tool: "cook.py from Lichess's puzzle tagger",
+    repository: "https://github.com/ornicar/lichess-puzzler",
+    commit: "8e24b6d5e2b9618e41581a327926e4ac67c610a2",
+    pythonChess: "1.3.0",
+    script: "scripts/cook-lichess-puzzles.py",
+    why: "Lichess adds puzzles with empty themes and tags them later, so most recent puzzles in the dump carry only phase/source tags. Every v2 puzzle is re-tagged with the same tagger.",
+    keptFromDump: [
+      "opening",
+      "middlegame",
+      "endgame",
+      "master",
+      "masterVsMaster",
+      "superGM",
+    ],
+    omitted: {
+      "crushing, advantage, equality":
+        "cook derives them from the puzzle generator's engine eval, which the dump does not publish",
+      zugzwang: "needs a separate Stockfish pass",
+    },
+    neverProducedByCook: [
+      "discoveredCheck",
+      "named mates such as operaMate, pillsburysMate, killBoxMate, morphysMate, epauletteMate, swallowstailMate, triangleMate",
+    ],
+    validation:
+      '500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256("cook-validation-v1:" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `scripts/cook-lichess-puzzles.py validate`.',
+  },
+  mateInOne:
+    "Kept, unlike v1. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",
+  contamination: {
+    note: "Temporally held out by underlying game date: every puzzle comes from a game created on or after the threshold. That is not proof the puzzles are absent from any model's training data. June 1, 2026 precedes Mistral Large 4's latest training-data collection (September 2026), most providers publish no exact cutoff, models may receive later post-training, and the same positions can occur in earlier games.",
+    sources: [
+      "https://legal.mistral.ai/documents/Mistral%20Large%204%20-%20Public%20Summary%20of%20Training%20Content.pdf",
+      "https://platform.claude.com/docs/en/about-claude/models/overview",
+    ],
+  },
+}
+
 const manifest = {
   id: benchmarkId,
-  title: "Lichess Puzzles v1",
-  description:
-    "A deterministic, quality-filtered chess puzzle benchmark sampled from the Lichess puzzle database.",
-  createdAt: `${sourcePageLastUpdated}T00:00:00.000Z`,
+  title: v2 ? "Lichess Puzzles v2" : "Lichess Puzzles v1",
+  description: v2
+    ? "A deterministic, quality-filtered chess puzzle benchmark of Lichess puzzles from games played on or after June 1, 2026 (UTC)."
+    : "A deterministic, quality-filtered chess puzzle benchmark sampled from the Lichess puzzle database.",
+  createdAt: gate?.completedAt ?? provenance.retrievalFinishedAt,
   source: {
     name: "Lichess puzzle database",
-    pageUrl: sourcePageUrl,
-    downloadUrl: sourceUrl,
-    localRawPath: sourcePath,
-    localRawFileName: basename(sourcePath),
-    localRawBytes: statSync(sourcePath).size,
-    localRawSha256: await hashFile(sourcePath),
+    pageUrl: "https://database.lichess.org/#puzzles",
+    downloadUrl: provenance.sourceUrl,
+    finalUrl: provenance.finalUrl,
     license: "Creative Commons CC0",
-    pageLastUpdated: sourcePageLastUpdated,
-    downloadLastModified: sourceDownloadLastModified,
-    downloadContentLength: sourceDownloadContentLength,
-    downloadEtag: '"69f47363-11a90be0"',
+    retrievalStartedAt: provenance.retrievalStartedAt,
+    retrievalFinishedAt: provenance.retrievalFinishedAt,
+    downloadLastModified: provenance.lastModified,
+    downloadEtag: provenance.etag,
+    downloadContentLength: provenance.contentLength,
+    bytes: provenance.bytes,
+    sha256: provenance.sha256,
   },
+  ...v2Methodology,
   format: {
     sourceColumns: columns,
     itemFile: "items.jsonl",
@@ -95,10 +202,12 @@ const manifest = {
     targetPerRatingBand: perBand,
     totalItems: items.length,
     filters: {
-      minPopularity,
-      minPlays,
-      maxRatingDeviation,
-      excludedThemes: ["mateIn1"],
+      minPopularity: filters.minPopularity,
+      minPlays: filters.minPlays,
+      ...(filters.minPlaysByBand && { minPlaysByBand: filters.minPlaysByBand }),
+      maxRatingDeviation: filters.maxRatingDeviation,
+      excludedThemes: filters.excludeMateIn1 ? ["mateIn1"] : [],
+      ...(gate && { minGameCreatedAt: gate.thresholdUtc }),
       legalLineValidation:
         "Every trigger and solution move is applied with chess.js.",
     },
@@ -177,6 +286,14 @@ const manifest = {
       byCountDesc
     ),
     lengths: countBy(items, (item) => [item.metadata.length]),
+    mateInOneByBand: countBy(
+      items.filter((item) => item.metadata.themes.includes("mateIn1")),
+      (item) => [item.metadata.ratingBand]
+    ),
+    belowDefaultMinPlaysByBand: countBy(
+      items.filter((item) => item.metadata.nbPlays < filters.minPlays),
+      (item) => [item.metadata.ratingBand]
+    ),
   },
 }
 

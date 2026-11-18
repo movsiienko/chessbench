@@ -81,8 +81,13 @@ function row(
 }
 
 const selection = {
-  ratingBands: [{ label: "<1200", selected: 2 }],
-  filters: { minPopularity: 80, minPlays: 300, maxRatingDeviation: 110 },
+  ratingBands: [{ id: "under-1200", label: "<1200", selected: 2 }],
+  filters: {
+    minPopularity: 80,
+    minPlays: 300,
+    maxRatingDeviation: 110,
+    excludedThemes: ["mateIn1"],
+  },
 }
 
 const models = [

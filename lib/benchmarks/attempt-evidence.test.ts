@@ -57,7 +57,12 @@ const data = buildDashboardData({
   datasetSize: items.length,
   selection: {
     ratingBands: [],
-    filters: { minPopularity: 0, minPlays: 0, maxRatingDeviation: 0 },
+    filters: {
+      minPopularity: 0,
+      minPlays: 0,
+      maxRatingDeviation: 0,
+      excludedThemes: [],
+    },
   },
 })
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"

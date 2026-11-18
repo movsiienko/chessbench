@@ -3413,18 +3413,37 @@ export function DocsView() {
   const { META, MIN_SAMPLE, SAMPLE_LABEL } = useDashboard()
   const timeLimit = `${META.moveTimeLimitSeconds} s`
   const filters = META.qualityFilters
+  const bandPlays = Object.entries(filters.minPlaysByBand ?? {}).map(
+    ([id, plays]) =>
+      `≥ ${plays} for ${META.ratingBands.find((band) => band.id === id)?.label ?? id}`
+  )
+  const excludesMateInOne = filters.excludedThemes.includes("mateIn1")
+  const gameDate =
+    filters.minGameCreatedAt &&
+    new Date(filters.minGameCreatedAt).toLocaleDateString("en-US", {
+      dateStyle: "long",
+      timeZone: "UTC",
+    })
   const puzzleFilters = [
     `Popularity ≥ ${filters.minPopularity}`,
-    `≥ ${filters.minPlays} plays`,
+    `≥ ${filters.minPlays} plays${bandPlays.length > 0 ? ` (${bandPlays.join(", ")})` : ""}`,
     `Rating deviation ≤ ${filters.maxRatingDeviation}`,
-    "No mate-in-one",
+    ...(excludesMateInOne ? ["No mate-in-one"] : []),
+    ...(gameDate ? [`Game played on or after ${gameDate} (UTC)`] : []),
     "Every move replayed in chess.js",
   ]
 
   const limits = [
     // A new protocol starts with no results, and "up to 0 percentage points" would read as no uncertainty.
     `${MIN_SAMPLE > 0 ? `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. ` : ""}Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
-    "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
+    excludesMateInOne
+      ? "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss."
+      : "Only the Lichess solution counts, so a second, equally valid mate scores as a miss. Mate-in-one puzzles are included, where that is most likely.",
+    ...(gameDate
+      ? [
+          `Every puzzle comes from a game played on or after ${gameDate} (UTC), so the set is held out by game date. That is not proof a model never saw it: Mistral Large 4's training data was collected through September 2026, most labs publish no exact cutoff, and the same position can occur in earlier games.`,
+        ]
+      : []),
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry gets one attempt per puzzle.",
     "Elo and cost are derived from that small sample and rounded to the precision it supports.",
@@ -3549,6 +3568,14 @@ export function DocsView() {
             </li>
           ))}
         </ul>
+        {gameDate ? (
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Game dates come from the Lichess API. Lichess had not yet tagged
+            most of these puzzles, so their themes come from Lichess&apos;s own
+            open-source tagger, run here. It can&apos;t assign outcome tags such
+            as crushing, or zugzwang.
+          </p>
+        ) : null}
       </DocsSection>
 
       <DocsSection title="Metrics">

@@ -249,10 +249,22 @@ describe("sampleLichessPuzzles", () => {
       const rows = sourceRows.map((row) => csvRow(row.id, row.rating))
       const csv = [header, ...rows].join("\n") + "\n"
       await writeFile(sourcePath, csv)
+      const provenance = {
+        sourceUrl: "https://database.lichess.org/lichess_db_puzzle.csv.zst",
+        lastModified: "Sun, 01 Nov 2026 07:57:40 GMT",
+        etag: '"test-etag"',
+        bytes: Buffer.byteLength(csv),
+        sha256: createHash("sha256").update(csv).digest("hex"),
+      }
+      await writeFile(
+        `${sourcePath}.provenance.json`,
+        JSON.stringify(provenance)
+      )
       const result = spawnSync(
         process.execPath,
         [
           "scripts/prepare-lichess-puzzles.ts",
+          "--benchmark=lichess-puzzles-v1",
           `--source=${sourcePath}`,
           `--out=${outDir}`,
           "--per-band=2",
@@ -281,11 +293,13 @@ describe("sampleLichessPuzzles", () => {
       assert.equal(manifest.selection.totalItems, 10)
       assert.deepEqual(manifest.selection.ratingBands, sample.ratingBands)
       assert.deepEqual(manifest.sourceStats, sample.sourceStats)
-      assert.equal(manifest.source.localRawBytes, Buffer.byteLength(csv))
+      assert.equal(manifest.source.bytes, provenance.bytes)
+      assert.equal(manifest.source.sha256, provenance.sha256)
       assert.equal(
-        manifest.source.localRawSha256,
-        createHash("sha256").update(csv).digest("hex")
+        manifest.source.downloadLastModified,
+        provenance.lastModified
       )
+      assert.equal(manifest.source.downloadEtag, provenance.etag)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
