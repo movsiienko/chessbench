@@ -34,7 +34,7 @@ Supporting mechanisms, already true in the repository and available to state fac
 
 - Web app on Next.js 16 / React 19 with Tailwind v4, shadcn/Base UI primitives, Recharts for charts, and Chessground for boards. Geist and Geist Mono are the typefaces in use.
 - Dashboard data is built from Postgres when the pages are prerendered or revalidated (`lib/benchmarks/dashboard-load.ts`, `lib/benchmarks/dashboard-build.ts`). The interface shows whatever models, reasoning levels, themes, and labs the current-protocol results contain.
-- The current dataset is `lichess-puzzles-v1`: 500 puzzles, quality-filtered, `mateIn1` excluded to avoid alternate-mate ambiguity. Dataset identity is versioned, so the interface should not hard-code a single dataset as permanent.
+- The current dataset is `lichess-puzzles-v2`: 500 puzzles from games played on or after 2026-06-01 (UTC), quality-filtered, mate-in-one kept, themes from Lichess's open-source tagger. `lichess-puzzles-v1` (mate-in-one excluded) stays in the repository. Dataset identity is versioned, so the interface should not hard-code a single dataset as permanent.
 - The primary metric is `solved_rate`: an attempt is solved when every player move matches the expected player-only move line and no turn fails. Opponent replies are revealed, not scored. Secondary metrics are first-move accuracy and player-move prefix score; the leaderboard also shows the share of legal answers, plus illegal-move and invalid-format counts.
 - Model lab identity is the provider prefix of the Gateway model id, with vendored SVGL logos; the lab mapping is type-checked so a new lab id fails the build rather than rendering blank.
 - Terminology to use consistently (see `CONTEXT.md`): puzzle, item, attempt, turn, entry, solved rate, pending attempt, reasoning level, protocol, rating band, theme, ply, FEN, UCI, SAN, lab, model.
@@ -52,7 +52,7 @@ Supporting mechanisms, already true in the repository and available to state fac
 
 ## Evidence on Hand
 
-- Benchmark dataset: `data/benchmarks/lichess-puzzles-v1/items.jsonl` and `manifest.json`.
+- Benchmark datasets: `data/benchmarks/lichess-puzzles-v2/` (active) and `data/benchmarks/lichess-puzzles-v1/`, each `items.jsonl` plus `manifest.json`.
 - Real model results: attempts in Neon Postgres (schema in `lib/db/schema.ts`), for the models in `MODELS` (`lib/benchmarks/models.ts`): OpenAI, Anthropic, Google, DeepSeek, xAI, and Alibaba. The first published results were imported by migration `drizzle/0001_import-published-results.sql`; the CSVs in `data/results/canonical/lichess-puzzles-v1/` are historical runs kept for reference and are not read by the dashboard.
 - Source: the Lichess puzzle database, CC0, with page URL, download URL, checksum, and retrieval dates recorded in the manifest. Attribution and license must stay accurate.
 - Scoring implementation and tests: `lib/benchmarks/lichess-puzzles.ts`, `lib/benchmarks/local-runner.ts`, and the run workflow `lib/benchmarks/benchmark-workflow.ts`, with accompanying test files.

@@ -1,15 +1,7 @@
-import { spawn, spawnSync } from "node:child_process"
-import { createHash } from "node:crypto"
-import {
-  createReadStream,
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-} from "node:fs"
+import { spawnSync } from "node:child_process"
+import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
-import { createInterface } from "node:readline"
 import {
   LICHESS_PUZZLE_COLUMNS as columns,
   QUALITY_FILTERS,
@@ -17,7 +9,12 @@ import {
 } from "@/lib/benchmarks/lichess-puzzle-builder"
 import { sampleLichessPuzzles } from "@/lib/benchmarks/lichess-puzzle-sampler"
 import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
-import { z } from "zod"
+import {
+  gameIdOf,
+  readGameDates,
+  readLines,
+  verifiedProvenance,
+} from "./lichess-files"
 
 const benchmarkId = readOption("--benchmark")
 
@@ -35,15 +32,17 @@ const v2 = benchmarkId === "lichess-puzzles-v2"
 // cook-lichess-puzzles.py in this directory; see the v2 README.
 const gateDir = readOption("--gate")
 
-if (v2 && !gateDir) {
-  throw new Error("lichess-puzzles-v2 needs --gate=<date gate cache dir>.")
+if (v2 !== Boolean(gateDir)) {
+  throw new Error("Pass --gate=<date gate cache dir> for v2, and only for v2.")
 }
 
-const sourcePath =
-  readOption("--source") ??
-  (gateDir
-    ? join(gateDir, "qualifying-cooked.csv")
-    : "data/raw/lichess/lichess_db_puzzle.csv.zst")
+if (gateDir && readOption("--source")) {
+  throw new Error("v2 reads its source from --gate; drop --source.")
+}
+
+const sourcePath = gateDir
+  ? join(gateDir, "qualifying-cooked.csv")
+  : (readOption("--source") ?? "data/raw/lichess/lichess_db_puzzle.csv.zst")
 const outDir = readOption("--out") ?? join("data/benchmarks", benchmarkId)
 const perBand = Number(readOption("--per-band") ?? 100)
 const seed = readOption("--seed") ?? benchmarkId
@@ -51,10 +50,6 @@ const filters = v2 ? V2_QUALITY_FILTERS : QUALITY_FILTERS
 const gate = gateDir
   ? JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
   : undefined
-// The dump's download record; v2's gate checked it against the dump it read.
-const provenance =
-  gate?.source ??
-  JSON.parse(readFileSync(`${sourcePath}.provenance.json`, "utf8"))
 
 if (!existsSync(sourcePath)) {
   throw new Error(
@@ -62,9 +57,21 @@ if (!existsSync(sourcePath)) {
   )
 }
 
-if (!gate && (await hashFile(sourcePath)) !== provenance.sha256) {
-  throw new Error(`${sourcePath} does not match its provenance sidecar.`)
+if (gateDir) {
+  // The tagged file must hold exactly the puzzles the gate qualified.
+  const ids = (file: string) =>
+    readFileSync(join(gateDir, file), "utf8")
+      .trimEnd()
+      .split("\n")
+      .map((line) => line.slice(0, line.indexOf(",")))
+      .join()
+  if (ids("qualifying.csv") !== ids("qualifying-cooked.csv")) {
+    throw new Error("qualifying-cooked.csv is not a tagging of qualifying.csv.")
+  }
 }
+
+// The dump's download record; v2's gate checked it against the dump it read.
+const provenance = gate?.source ?? (await verifiedProvenance(sourcePath))
 
 if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
   throw new Error(
@@ -78,23 +85,9 @@ const { items, sourceStats, ratingBands } = await sampleLichessPuzzles(
 )
 
 if (gateDir) {
-  // One game-dates.ndjson line, as filter-lichess-puzzles-by-game-date.ts writes it.
-  const gameDate = z.object({
-    id: z.string(),
-    createdAt: z.number().int().nullable(),
-  })
-  const createdAt = new Map<string, number | null>()
-  for (const line of readFileSync(join(gateDir, "game-dates.ndjson"), "utf8")
-    .trim()
-    .split("\n")) {
-    const game = gameDate.parse(JSON.parse(line))
-    createdAt.set(game.id, game.createdAt)
-  }
+  const createdAt = readGameDates(join(gateDir, "game-dates.ndjson"))
   for (const item of items) {
-    const gameId = item.metadata.lichessGameUrl.match(
-      /lichess\.org\/(?:game\/)?(\w{8})/
-    )?.[1]
-    const ms = gameId ? createdAt.get(gameId) : undefined
+    const ms = createdAt.get(gameIdOf(item.metadata.lichessGameUrl))
     if (ms === undefined || ms === null || ms < Date.parse(gate.thresholdUtc)) {
       throw new Error(`${item.id} has no game date on or after the threshold.`)
     }
@@ -306,57 +299,6 @@ function readOption(name: string): string | undefined {
   return process.argv
     .find((argument) => argument.startsWith(`${name}=`))
     ?.slice(name.length + 1)
-}
-
-async function* readLines(path: string): AsyncGenerator<string> {
-  if (path.endsWith(".zst")) {
-    const child = spawn("zstdcat", [path], {
-      stdio: ["ignore", "pipe", "inherit"],
-    })
-
-    if (!child.stdout) {
-      throw new Error("Failed to read zstdcat stdout.")
-    }
-
-    const lines = createInterface({
-      input: child.stdout,
-      crlfDelay: Infinity,
-    })
-
-    for await (const line of lines) {
-      yield line
-    }
-
-    const exitCode = await new Promise<number | null>((resolve) => {
-      child.once("close", resolve)
-    })
-
-    if (exitCode !== 0) {
-      throw new Error(`zstdcat exited with code ${exitCode}`)
-    }
-
-    return
-  }
-
-  const lines = createInterface({
-    input: createReadStream(path),
-    crlfDelay: Infinity,
-  })
-
-  for await (const line of lines) {
-    yield line
-  }
-}
-
-async function hashFile(path: string): Promise<string> {
-  const hash = createHash("sha256")
-  const stream = createReadStream(path)
-
-  for await (const chunk of stream) {
-    hash.update(chunk)
-  }
-
-  return hash.digest("hex")
 }
 
 type Entry = [string, number]

@@ -3570,10 +3570,10 @@ export function DocsView() {
         </ul>
         {gameDate ? (
           <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
-            Game dates come from the Lichess API. Lichess had not yet tagged
-            most of these puzzles, so their themes come from Lichess&apos;s own
-            open-source tagger, run here. It can&apos;t assign outcome tags such
-            as crushing, or zugzwang.
+            Game dates come from the Lichess API. Lichess had not tagged most of
+            these puzzles yet, so ChessBench tags them with Lichess&apos;s own
+            open-source tagger. It cannot add outcome themes such as crushing,
+            or zugzwang, so those themes are missing here.
           </p>
         ) : null}
       </DocsSection>

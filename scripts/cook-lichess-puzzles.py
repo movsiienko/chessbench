@@ -81,33 +81,29 @@ if args.mode == "tag":
     sys.exit(0)
 
 zstd = subprocess.Popen(["zstdcat", args.paths[0]], stdout=subprocess.PIPE, text=True)
-heap = []
-for row in csv.DictReader(zstd.stdout):
-    themes = set(row["Themes"].split())
-    if (
-        int(row["Popularity"]) < 80
-        or int(row["NbPlays"]) < 300
-        or int(row["RatingDeviation"]) > 110
-        or not themes & LENGTH_TAGS
-    ):
-        continue
-    key = hashlib.sha256(f"cook-validation-v1:{row['PuzzleId']}".encode()).hexdigest()
-    # Max-heap on the key keeps the 500 smallest.
-    item = ([-int(key[i : i + 8], 16) for i in range(0, 64, 8)], row)
-    if len(heap) < 500:
-        heapq.heappush(heap, item)
-    elif item[0] > heap[0][0]:
-        heapq.heapreplace(heap, item)
+tagged = (
+    row
+    for row in csv.DictReader(zstd.stdout)
+    if int(row["Popularity"]) >= 80
+    and int(row["NbPlays"]) >= 300
+    and int(row["RatingDeviation"]) <= 110
+    and set(row["Themes"].split()) & LENGTH_TAGS
+)
+sample = heapq.nsmallest(
+    500,
+    tagged,
+    key=lambda row: hashlib.sha256(f"cook-validation-v1:{row['PuzzleId']}".encode()).digest(),
+)
 
 tp, fp, fn = collections.Counter(), collections.Counter(), collections.Counter()
 exact = 0
-for _, row in heap:
+for row in sample:
     ours = cooked_tags(row)
     theirs = set(row["Themes"].split()) - LILA_TAGS - CP_TAGS - {"zugzwang"}
     exact += ours == theirs
     for tag in ours | theirs:
         counter = tp if tag in ours and tag in theirs else fp if tag in ours else fn
         counter[tag] += 1
-print(f"{exact}/{len(heap)} exact tag-set matches")
+print(f"{exact}/{len(sample)} exact tag-set matches")
 for tag in sorted(set(tp) | set(fp) | set(fn)):
     print(f"{tag:20} tp={tp[tag]:4} fp={fp[tag]:4} fn={fn[tag]:4}")

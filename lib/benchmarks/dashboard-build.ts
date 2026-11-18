@@ -229,7 +229,14 @@ export function buildDashboardData({
       ratingStep: RATING_STEP,
       moveTimeLimitSeconds: MOVE_TIME_LIMIT_MS / 1000,
       ratingBands: selection.ratingBands,
-      qualityFilters: selection.filters,
+      qualityFilters: {
+        minPopularity: selection.filters.minPopularity,
+        minPlays: selection.filters.minPlays,
+        minPlaysByBand: selection.filters.minPlaysByBand,
+        maxRatingDeviation: selection.filters.maxRatingDeviation,
+        excludedThemes: selection.filters.excludedThemes,
+        minGameCreatedAt: selection.filters.minGameCreatedAt,
+      },
     },
   }
 }

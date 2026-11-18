@@ -12,11 +12,8 @@
 // A puzzle already in the baseline dump cannot come from a game created after
 // it, so those ids are dropped before any API call. Every remaining
 // candidate's createdAt comes from the Lichess API; missing dates drop it.
-import { spawn } from "node:child_process"
-import { createHash } from "node:crypto"
 import {
   appendFileSync,
-  createReadStream,
   createWriteStream,
   existsSync,
   mkdirSync,
@@ -25,7 +22,6 @@ import {
   writeFileSync,
 } from "node:fs"
 import { join } from "node:path"
-import { createInterface } from "node:readline"
 import { setTimeout as sleep } from "node:timers/promises"
 import {
   buildPuzzleItem,
@@ -35,6 +31,12 @@ import {
 } from "@/lib/benchmarks/lichess-puzzle-builder"
 import { readHeader } from "@/lib/benchmarks/lichess-puzzle-sampler"
 import { z } from "zod"
+import {
+  gameIdOf,
+  readGameDates,
+  readLines,
+  verifiedProvenance,
+} from "./lichess-files"
 
 const sourcePath = requireOption("--source")
 const baselinePath = requireOption("--baseline")
@@ -44,10 +46,6 @@ const threshold = Date.parse(thresholdOption)
 const exportUrl =
   "https://lichess.org/api/games/export/_ids?moves=false&tags=false&clocks=false&evals=false&opening=false"
 const exportedGame = z.object({ id: z.string(), createdAt: z.number().int() })
-/** One game-dates.ndjson line; null when the export did not return the game. */
-const gameDate = exportedGame.extend({
-  createdAt: z.number().int().nullable(),
-})
 const batchSize = 300
 const pauseMs = 2_000
 const minBackoffMs = 60_000
@@ -64,15 +62,32 @@ const datesPath = join(cacheDir, "game-dates.ndjson")
 const source = await verifiedProvenance(sourcePath)
 const baseline = await verifiedProvenance(baselinePath)
 
+// Candidates depend on both dumps and the filters; never reuse them for others.
+const inputs = {
+  sourceSha256: source.sha256,
+  baselineSha256: baseline.sha256,
+  filters,
+}
+
 if (!existsSync(candidatesPath)) {
   await writeCandidates()
+}
+
+const { inputs: cachedInputs, ...candidateStats } = JSON.parse(
+  readFileSync(candidateStatsPath, "utf8")
+)
+
+if (JSON.stringify(cachedInputs) !== JSON.stringify(inputs)) {
+  throw new Error(
+    `${candidatesPath} was built from other dumps or filters; use a new --cache.`
+  )
 }
 
 const [header, ...candidates] = readFileSync(candidatesPath, "utf8")
   .trimEnd()
   .split("\n")
 const columnCount = readHeader(header)
-const dates = readDates()
+const dates = readGameDates(datesPath)
 const missing = [...new Set(candidates.map(gameIdOf))].filter(
   (id) => !dates.has(id)
 )
@@ -124,7 +139,7 @@ const gate = {
     requests: `at most ${batchSize} ids each, one at a time, ${pauseMs / 1000} s apart, at least ${minBackoffMs / 1000} s backoff on 429`,
   },
   funnel: {
-    ...JSON.parse(readFileSync(candidateStatsPath, "utf8")),
+    ...candidateStats,
     excludedGameNotReturned: excluded.gameNotReturned,
     excludedBeforeThreshold: excluded.beforeThreshold,
     qualifying: qualifying.length - 1,
@@ -134,18 +149,12 @@ const gate = {
 writeFileSync(join(cacheDir, "gate.json"), `${JSON.stringify(gate, null, 2)}\n`)
 console.log(JSON.stringify(gate.funnel, null, 2))
 
-function gameIdOf(line: string) {
-  const match = line.match(/,https:\/\/lichess\.org\/(?:game\/)?(\w{8})\b/)
-  if (!match) throw new Error(`No game id in ${line}`)
-  return match[1]
-}
-
 async function writeCandidates() {
   // ponytail: one in-memory Set of every baseline id (~6M short strings);
   // switch to a sorted-file merge if dumps outgrow the VM.
   const baselineIds = new Set<string>()
   let baselineHeader = true
-  for await (const line of readZstdLines(baselinePath)) {
+  for await (const line of readLines(baselinePath)) {
     if (baselineHeader) {
       readHeader(line)
       baselineHeader = false
@@ -174,7 +183,7 @@ async function writeCandidates() {
   const out = createWriteStream(partial)
   let count = 0
 
-  for await (const line of readZstdLines(sourcePath)) {
+  for await (const line of readLines(sourcePath)) {
     if (count === 0) {
       count = readHeader(line)
       out.write(`${line}\n`)
@@ -204,35 +213,10 @@ async function writeCandidates() {
     out.end(() => resolve())
   })
   renameSync(partial, candidatesPath)
-  writeFileSync(candidateStatsPath, `${JSON.stringify(stats, null, 2)}\n`)
-}
-
-/** The file's download sidecar, after checking its bytes and SHA-256. */
-async function verifiedProvenance(path: string) {
-  const provenance = JSON.parse(readFileSync(`${path}.provenance.json`, "utf8"))
-  const hash = createHash("sha256")
-  let bytes = 0
-  for await (const chunk of createReadStream(path)) {
-    hash.update(chunk)
-    bytes += chunk.length
-  }
-  if (bytes !== provenance.bytes || hash.digest("hex") !== provenance.sha256) {
-    throw new Error(`${path} does not match its provenance sidecar.`)
-  }
-  return provenance
-}
-
-/** game id -> createdAt ms, or null when the export did not return the game. */
-function readDates(): Map<string, number | null> {
-  const map = new Map<string, number | null>()
-  if (!existsSync(datesPath)) return map
-  for (const line of readFileSync(datesPath, "utf8").split("\n")) {
-    if (line) {
-      const { id, createdAt } = gameDate.parse(JSON.parse(line))
-      map.set(id, createdAt)
-    }
-  }
-  return map
+  writeFileSync(
+    candidateStatsPath,
+    `${JSON.stringify({ inputs, ...stats }, null, 2)}\n`
+  )
 }
 
 /** One request at a time; a batch is cached only once its stream completes. */
@@ -269,22 +253,6 @@ async function fetchDates(batch: string[]) {
     console.log(`Export returned ${status}; waiting ${wait / 1000}s`)
     await sleep(wait)
   }
-}
-
-async function* readZstdLines(path: string): AsyncGenerator<string> {
-  const child = spawn("zstdcat", [path], {
-    stdio: ["ignore", "pipe", "inherit"],
-  })
-  const closed = new Promise<number | null>((resolve) =>
-    child.once("close", resolve)
-  )
-  for await (const line of createInterface({
-    input: child.stdout,
-    crlfDelay: Infinity,
-  })) {
-    yield line
-  }
-  if ((await closed) !== 0) throw new Error(`zstdcat failed on ${path}`)
 }
 
 function requireOption(name: string): string {
