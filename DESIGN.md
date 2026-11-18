@@ -99,7 +99,7 @@ components:
     backgroundColor: "transparent"
     textColor: "{colors.muted-foreground}"
     rounded: "{rounded.md}"
-    padding: "0.25rem 0.625rem"
+    padding: "0.25rem 0"
     height: "2rem"
     typography: "{typography.title}"
 ---
@@ -119,7 +119,7 @@ The system is restrained by default. It uses shadcn/ui primitives, Geist typogra
 - Neutral-first color with amber used only when chess context or leaderboard emphasis earns it.
 - Flat surfaces with ring borders and tonal layering instead of heavy shadows.
 - Standard controls, standard affordances, and exact data typography.
-- Lichess-like board treatment: coordinates stay at the board edge, drawing and correction arrows stay on the board.
+- Lichess-like board treatment: coordinates stay at the board edge, drawings and last moves stay on the board.
 
 ## 2. Colors
 
@@ -227,7 +227,7 @@ ChessBench is flat by default. Depth comes from tonal contrast, one-pixel rings,
 
 ### Chess Board
 
-The board uses Chessground, not a hand-rolled grid. Coordinates belong on board edges in lichess-like style. User drawings, last moves, and correction arrows are board overlays, not external callouts.
+The board uses Chessground, not a hand-rolled grid. Coordinates belong on board edges in lichess-like style. User drawings and last moves are board overlays, not external callouts. Move results are marked on the move's own squares: a wrong move tints red and is taken back, the solving move tints green, and a move played by Show solution tints amber. A wrong move never reveals the answer; the puzzle move appears only through Show solution, played as a real move on the board.
 
 ### Model Attempts
 
@@ -246,8 +246,7 @@ Charts are neutral and monochrome unless model identity requires provider colors
 - **Do** align provider names inline with model names in model-attempt rows.
 - **Do** reserve amber for chess-specific context and current-leader emphasis.
 - **Do** use Geist Mono for FEN, UCI, token counts, elapsed time, and numeric traces.
-- **Do** keep move feedback in a reserved status line so playing a move does not shift layout.
-- **Do** show incorrect moves with board arrows when the correction is spatial.
+- **Do** signal move results on the board squares, with a muted one-line caption above the board saying the same in words beside Show solution and Reset. Its space is reserved, so a move never shifts layout.
 
 ### Don't:
 

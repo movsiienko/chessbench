@@ -1,11 +1,22 @@
-import { readableMove, resolveMove, type PlayedMove } from "./moves"
+import { resolveMove, type PlayedMove } from "./moves"
 
 type PuzzleFeedback =
   | { result: "correct" | "solved"; san: string }
   // `played` is the solver move the reply answered, announced with it so the
   // "correct" message is not cut off by the reply that follows.
   | { result: "reply"; san: string; played: string }
-  | { result: "miss"; san: string; expectedSan: string }
+  // `before` is the position the wrong move was played from, so it can be taken
+  // back. The expected move is deliberately not stored here: a miss must not
+  // give the answer away.
+  | {
+      result: "miss"
+      san: string
+      before: Pick<PuzzleLineState, "fen" | "lastMove">
+    }
+  // A wrong move was taken back; the solver tries again from the same ply.
+  | { result: "retry"; san: string }
+  // The solver asked for the move instead of finding it.
+  | { result: "shown"; san: string }
   // Bad puzzle data: the scripted reply is not legal, so the line stops here.
   | { result: "invalid" }
 
@@ -19,10 +30,12 @@ export type PuzzleLineState = {
   lastMove: { from: string; to: string } | null
   ply: number
   feedback: PuzzleFeedback | null
+  /** Show solution was used at least once, so the line is not a clean solve. */
+  shown: boolean
 }
 
 export function startPuzzleLine(fen: string): PuzzleLineState {
-  return { fen, lastMove: null, ply: 0, feedback: null }
+  return { fen, lastMove: null, ply: 0, feedback: null, shown: false }
 }
 
 // ponytail: in memory, so progress is lost on reload; move to sessionStorage
@@ -36,6 +49,13 @@ export function restorePuzzleLine(id: string, fen: string): PuzzleLineState {
 
 /** Remember a line in progress so leaving the puzzle does not lose it. */
 export function savePuzzleLine(id: string, state: PuzzleLineState) {
+  // Leaving during or after a take-back must bring back neither the wrong move
+  // nor its "try again" prompt.
+  state = takeBackMiss(state)
+  if (state.feedback?.result === "retry") {
+    state = { ...state, feedback: null }
+  }
+
   if (state.lastMove) {
     savedLines.set(id, state)
   } else {
@@ -43,7 +63,10 @@ export function savePuzzleLine(id: string, state: PuzzleLineState) {
   }
 }
 
-/** The board takes no input after a miss, once solved, or while the reply is due. */
+/**
+ * The board takes no input during the hold before a wrong move is taken back,
+ * once the line is over, or while the reply is due.
+ */
 export function isLineLocked(state: PuzzleLineState, line: string[]) {
   return (
     state.feedback?.result === "miss" ||
@@ -52,7 +75,10 @@ export function isLineLocked(state: PuzzleLineState, line: string[]) {
   )
 }
 
-/** The solver's move. A wrong one is shown on the board and locks it. */
+/**
+ * The solver's move. A wrong one is shown on the board and locks it until
+ * `takeBackMiss` undoes it.
+ */
 export function playSolverMove(
   state: PuzzleLineState,
   line: string[],
@@ -76,11 +102,7 @@ export function playSolverMove(
       feedback: {
         result: "miss",
         san: move.san,
-        // DESIGN.md forbids raw UCI in user-facing feedback when SAN is
-        // available, so the expected move is resolved against the position the
-        // user moved from.
-        expectedSan:
-          resolveMove(state.fen, expected)?.san ?? readableMove(expected),
+        before: { fen: state.fen, lastMove: state.lastMove },
       },
     }
   }
@@ -92,6 +114,47 @@ export function playSolverMove(
       result: state.ply + 1 >= line.length ? "solved" : "correct",
       san: move.san,
     },
+  }
+}
+
+/** Undoes a wrong move, leaving the board open for another try. Else a no-op. */
+export function takeBackMiss(state: PuzzleLineState): PuzzleLineState {
+  if (state.feedback?.result !== "miss") {
+    return state
+  }
+
+  const { before, san } = state.feedback
+  return { ...state, ...before, feedback: { result: "retry", san } }
+}
+
+/**
+ * Plays the expected solver move for the user, taking back a wrong move first.
+ * Returns the same state when no solver move is due (reply pending, line over,
+ * or bad puzzle data), so callers can compare by identity to disable the control.
+ */
+export function showSolution(
+  state: PuzzleLineState,
+  line: string[]
+): PuzzleLineState {
+  const base = takeBackMiss(state)
+  const expected = line[base.ply]
+  const move = expected && resolveMove(base.fen, expected)
+
+  if (!move || isLineLocked(base, line)) {
+    return state
+  }
+
+  const played = playSolverMove(base, line, move)
+
+  // A line entry that resolves but is not canonical UCI reads as a miss.
+  if (played.ply === base.ply) {
+    return state
+  }
+
+  return {
+    ...played,
+    shown: true,
+    feedback: { result: "shown", san: move.san },
   }
 }
 
@@ -122,12 +185,19 @@ export function playOpponentReply(
 
   const ply = state.ply + 1
   return {
+    ...state,
     fen: move.fen,
     lastMove: { from: move.from, to: move.to },
     ply,
     feedback:
       ply >= line.length
         ? { result: "solved", san: move.san }
-        : { result: "reply", san: move.san, played: state.feedback?.san ?? "" },
+        : {
+            result: "reply",
+            san: move.san,
+            // Empty after Show solution: the user did not find that move.
+            played:
+              state.feedback?.result === "correct" ? state.feedback.san : "",
+          },
   }
 }
