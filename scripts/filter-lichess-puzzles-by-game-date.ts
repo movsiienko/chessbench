@@ -19,6 +19,7 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  truncateSync,
   writeFileSync,
 } from "node:fs"
 import { join } from "node:path"
@@ -70,11 +71,12 @@ if (!(Date.parse(baseline.lastModified ?? "") < threshold)) {
   )
 }
 
-// An interrupted append can leave a partial last line; drop only that.
+// An interrupted append can leave a partial last line; cut only that, in
+// place, so the complete records are never rewritten.
 if (existsSync(datesPath)) {
-  const cached = readFileSync(datesPath, "utf8")
-  if (cached !== "" && !cached.endsWith("\n")) {
-    writeFileSync(datesPath, cached.slice(0, cached.lastIndexOf("\n") + 1))
+  const cached = readFileSync(datesPath)
+  if (cached.length > 0 && cached.at(-1) !== 0x0a) {
+    truncateSync(datesPath, cached.lastIndexOf(0x0a) + 1)
   }
 }
 

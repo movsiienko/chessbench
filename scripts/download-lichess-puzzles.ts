@@ -4,6 +4,7 @@ import { writeFile } from "node:fs/promises"
 import { dirname } from "node:path"
 import { Transform } from "node:stream"
 import { pipeline } from "node:stream/promises"
+import { verifiedProvenance } from "./lichess-files"
 
 const sourceUrl = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
 const destination =
@@ -14,14 +15,12 @@ const force = process.argv.includes("--force")
 
 const sidecar = `${destination}.provenance.json`
 
-// The sidecar is written before the dump is moved into place, so a dump
-// without one predates this script or was not downloaded by it.
+// An existing dump counts only if it matches its sidecar; a pair left
+// mismatched by an interrupted --force download fails here.
 if (existsSync(destination) && !force) {
-  if (!existsSync(sidecar)) {
-    throw new Error(
-      `${destination} has no provenance sidecar. Pass --force to download it again.`
-    )
-  }
+  await verifiedProvenance(destination).catch((error: Error) => {
+    throw new Error(`${error.message} Pass --force to download it again.`)
+  })
   console.log(`${destination} already exists. Pass --force to replace it.`)
   process.exit(0)
 }
