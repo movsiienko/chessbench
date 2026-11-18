@@ -1,5 +1,4 @@
 import { Chess, type Move, type Square } from "chess.js"
-import type { DrawShape as BoardArrow } from "@lichess-org/chessground/draw"
 import type * as cg from "@lichess-org/chessground/types"
 
 const SQUARE = /^[a-h][1-8]$/
@@ -202,22 +201,6 @@ export function legalDests(fen: string): cg.Dests {
   }
 
   return dests
-}
-
-export function moveArrow(uci: string): BoardArrow | null {
-  const { from, to } = uciToMoveObject(uci)
-
-  if (!SQUARE.test(from) || !SQUARE.test(to)) {
-    return null
-  }
-
-  // SAFETY: both squares matched the a1-h8 pattern above.
-  return {
-    orig: from as cg.Key,
-    dest: to as cg.Key,
-    brush: "red",
-    modifiers: { lineWidth: 12 },
-  }
 }
 
 type BoardPiece = NonNullable<ReturnType<Chess["board"]>[number][number]>
