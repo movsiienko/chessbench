@@ -54,6 +54,8 @@ export async function* readLines(
     // Stops reading, and zstdcat, if the caller stops early or a read fails.
     lines.close()
     child?.kill()
+    // Ends the file read too; a pipeline that already settled is unaffected.
+    hashed.destroy()
   }
 }
 

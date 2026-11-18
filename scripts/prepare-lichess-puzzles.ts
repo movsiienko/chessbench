@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs"
+import { existsSync, linkSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import {
@@ -143,17 +143,30 @@ const itemsJsonl = items.map((item) => `${JSON.stringify(item)}\n`).join("")
 
 // A committed set is never rewritten: identical items are left untouched, and
 // different ones are refused.
-if (existsSync(itemsPath)) {
+const refuseDifferentSet = () => {
   if (readFileSync(itemsPath, "utf8") !== itemsJsonl) {
     throw new Error(
       `${outDir} holds a different puzzle set. Pass --out=<new dir> to write this one.`
     )
   }
+}
+
+if (existsSync(itemsPath)) {
+  refuseDifferentSet()
 } else {
-  // Staged, so an interrupted write never leaves a partial items.jsonl.
+  // Staged per run, so an interrupted write never leaves a partial file, and
+  // published with link, which unlike rename fails if another run got there
+  // first; that run's items must then match.
   mkdirSync(outDir, { recursive: true })
-  await writeFile(`${itemsPath}.part`, itemsJsonl)
-  renameSync(`${itemsPath}.part`, itemsPath)
+  const staged = `${itemsPath}.${process.pid}.part`
+  await writeFile(staged, itemsJsonl)
+  try {
+    linkSync(staged, itemsPath)
+  } catch {
+    refuseDifferentSet()
+  } finally {
+    rmSync(staged, { force: true })
+  }
 }
 
 const v2Methodology = gate && {
