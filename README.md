@@ -25,25 +25,27 @@ Each item also carries granular benchmark strata:
 
 ## Dataset Commands
 
-To build a set from the dump Lichess serves today, into a new directory:
+To build v1's method from the dump Lichess serves today, download it to a new
+path and write the set to a new directory:
 
 ```bash
-bun run datasets:lichess:download
-bun run datasets:lichess:prepare -- --benchmark=lichess-puzzles-v1 --out=data/benchmarks/rebuild
+bun run datasets:lichess:download -- --out=data/raw/lichess/today.csv.zst
+bun run datasets:lichess:prepare -- --benchmark=lichess-puzzles-v1 \
+  --source=data/raw/lichess/today.csv.zst --out=data/benchmarks/rebuild
 ```
 
-The download writes `data/raw/lichess/lichess_db_puzzle.csv.zst` and a
-`.provenance.json` next to it (URL, retrieval times, `Last-Modified`, `ETag`,
-bytes, SHA-256), which the preparation step checks and copies into the
-manifest.
+The download writes the dump and a `.provenance.json` next to it (URL,
+retrieval times, `Last-Modified`, `ETag`, bytes, SHA-256), which the
+preparation step checks and copies into the manifest. If the path already
+holds a dump with a matching sidecar, the download reuses it instead.
 
 An exact rebuild of a committed set needs the dump whose SHA-256 its manifest
 records, together with that dump's `.provenance.json`; Lichess replaces the
-dump monthly, so keep both. Pass the retained dump with `--source`. Never run
-the download with `--force` over a retained dump: it replaces it with today's.
-Preparation refuses to write different items, or items from a different dump,
-into a committed set. v2 adds a date gate and re-tagging step; its README has
-the full sequence.
+dump monthly, so keep both, and never run the download with `--force` over
+them. For v1, pass the retained dump to preparation with `--source`. v2 is
+built from a date gate and a re-tagging step instead, and its preparation
+takes `--gate`; its README has the sequence. Preparation refuses to write
+different items, or items from a different dump, into a committed set.
 
 The preparation step validates trigger and solution moves with `chess.js`,
 filters unstable or low-signal rows, excludes `mateIn1` puzzles in v1 to avoid

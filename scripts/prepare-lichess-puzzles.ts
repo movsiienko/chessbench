@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, renameSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import {
@@ -141,15 +141,20 @@ const itemsPath = join(outDir, "items.jsonl")
 const manifestPath = join(outDir, "manifest.json")
 const itemsJsonl = items.map((item) => `${JSON.stringify(item)}\n`).join("")
 
-// A committed set is only ever rewritten with identical items.
-if (existsSync(itemsPath) && readFileSync(itemsPath, "utf8") !== itemsJsonl) {
-  throw new Error(
-    `${outDir} holds a different puzzle set. Pass --out=<new dir> to write this one.`
-  )
+// A committed set is never rewritten: identical items are left untouched, and
+// different ones are refused.
+if (existsSync(itemsPath)) {
+  if (readFileSync(itemsPath, "utf8") !== itemsJsonl) {
+    throw new Error(
+      `${outDir} holds a different puzzle set. Pass --out=<new dir> to write this one.`
+    )
+  }
+} else {
+  // Staged, so an interrupted write never leaves a partial items.jsonl.
+  mkdirSync(outDir, { recursive: true })
+  await writeFile(`${itemsPath}.part`, itemsJsonl)
+  renameSync(`${itemsPath}.part`, itemsPath)
 }
-
-mkdirSync(outDir, { recursive: true })
-await writeFile(itemsPath, itemsJsonl)
 
 const v2Methodology = gate && {
   baseline: {

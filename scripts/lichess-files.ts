@@ -17,29 +17,31 @@ export async function* readLines(
   sha256?: string
 ): AsyncGenerator<string> {
   const hash = createHash("sha256")
-  const hashed = createReadStream(path).pipe(
-    new Transform({
-      transform(chunk: Buffer, _encoding, callback) {
-        hash.update(chunk)
-        callback(null, chunk)
-      },
-    })
-  )
+  const hashed = new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      hash.update(chunk)
+      callback(null, chunk)
+    },
+  })
   const child = path.endsWith(".zst")
     ? spawn("zstdcat", [], { stdio: ["pipe", "pipe", "inherit"] })
     : undefined
   const closed = new Promise<number | null>((resolve) =>
     child ? child.once("close", resolve) : resolve(0)
   )
-  const fed = child ? pipeline(hashed, child.stdin) : Promise.resolve()
+  // The file stream is part of the pipeline, so a read error rejects `fed`.
+  const fed = child
+    ? pipeline(createReadStream(path), hashed, child.stdin)
+    : pipeline(createReadStream(path), hashed)
   // Handled here so a failure while suspended is not unhandled; awaited below.
   fed.catch(() => {})
+  const lines = createInterface({
+    input: child ? child.stdout : hashed,
+    crlfDelay: Infinity,
+  })
 
   try {
-    yield* createInterface({
-      input: child ? child.stdout : hashed,
-      crlfDelay: Infinity,
-    })
+    yield* lines
     await fed
     const exitCode = await closed
     if (exitCode !== 0) {
@@ -49,7 +51,8 @@ export async function* readLines(
       throw new Error(`${path} changed after it was verified.`)
     }
   } finally {
-    // Stops zstdcat if the caller stops reading early.
+    // Stops reading, and zstdcat, if the caller stops early or a read fails.
+    lines.close()
     child?.kill()
   }
 }
