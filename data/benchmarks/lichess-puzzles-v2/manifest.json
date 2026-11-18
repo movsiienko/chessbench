@@ -2,7 +2,7 @@
   "id": "lichess-puzzles-v2",
   "title": "Lichess Puzzles v2",
   "description": "A deterministic, quality-filtered chess puzzle benchmark of Lichess puzzles from games played on or after June 1, 2026 (UTC).",
-  "createdAt": "2026-11-18T10:13:47.026Z",
+  "createdAt": "2026-11-18T11:35:32.898Z",
   "source": {
     "name": "Lichess puzzle database",
     "pageUrl": "https://database.lichess.org/#puzzles",
@@ -20,13 +20,13 @@
   "baseline": {
     "bytes": 293504725,
     "sha256": "28f491a401184d88244cb2693917253c485f2936998f2df50e4d03872cd611f6",
+    "lastModified": "Wed, 01 Apr 2026 07:50:48 GMT",
+    "retrievalFinishedAt": "2026-11-06T12:51:22Z",
     "sourceUrl": "https://database.lichess.org/lichess_db_puzzle.csv.zst",
     "finalUrl": "https://web.archive.org/web/20260407174335id_/https://database.lichess.org/lichess_db_puzzle.csv.zst",
     "archive": "Internet Archive Wayback Machine capture 2026-04-07T17:43:35Z (Memento-Datetime); verified against the CDX record digest sha1:5UPBEYE3A2RAGLZ4LK2OW3LV3TYBBSEX; lastModified and etag are the original server's headers as archived (x-archive-orig-*)",
     "retrievalStartedAt": "2026-11-06T12:16:59Z",
-    "retrievalFinishedAt": "2026-11-06T12:51:22Z",
     "retrievalNote": "Fetched in two HTTP requests: the first was stopped at 77,115,392 bytes and the rest resumed with a byte-range request (206, content-range bytes 77115392-293504724/293504725). The start time is approximate (directory creation time).",
-    "lastModified": "Wed, 01 Apr 2026 07:50:48 GMT",
     "etag": "\"69ccce58-117e86d5\"",
     "contentLength": 293504725,
     "role": "Puzzle ids already in this April 2026 dump are excluded, since their games predate the date threshold. It is not the dump v1 was built from."
@@ -37,7 +37,7 @@
     "field": "createdAt (epoch milliseconds, UTC)",
     "requests": "at most 300 ids each, one at a time, 2 s apart, at least 60 s backoff on 429",
     "missingDates": "excluded",
-    "completedAt": "2026-11-18T10:13:47.026Z",
+    "completedAt": "2026-11-18T11:35:32.898Z",
     "funnel": {
       "baselineIds": 5882680,
       "sourceRows": 6193530,

@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process"
-import { createWriteStream, existsSync, mkdirSync, readFileSync } from "node:fs"
+import { createHash } from "node:crypto"
+import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import {
@@ -68,11 +69,22 @@ if (!existsSync(sourcePath)) {
   )
 }
 
+// v2 samples exactly this text, after checking it against the gate's output.
+let cooked: string | undefined
+
 if (gateDir) {
+  const qualifying = readFileSync(join(gateDir, "qualifying.csv"), "utf8")
+  if (
+    createHash("sha256").update(qualifying).digest("hex") !==
+    gate.qualifyingSha256
+  ) {
+    throw new Error("qualifying.csv is not the one gate.json describes.")
+  }
+  cooked = readFileSync(sourcePath, "utf8")
   // Tagging may rewrite Themes and nothing else in the gate's qualifying rows.
   const themes = columns.indexOf("Themes")
-  const rows = (file: string) =>
-    readFileSync(join(gateDir, file), "utf8")
+  const withoutThemes = (csv: string) =>
+    csv
       .trimEnd()
       .split("\n")
       .map((line) =>
@@ -83,7 +95,7 @@ if (gateDir) {
         )
       )
       .join("\n")
-  if (rows("qualifying.csv") !== rows("qualifying-cooked.csv")) {
+  if (withoutThemes(qualifying) !== withoutThemes(cooked)) {
     throw new Error("qualifying-cooked.csv is not a tagging of qualifying.csv.")
   }
 }
@@ -110,7 +122,7 @@ if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
 }
 
 const { items, sourceStats, ratingBands } = await sampleLichessPuzzles(
-  readLines(sourcePath),
+  cooked?.trimEnd().split("\n") ?? readLines(sourcePath, provenance.sha256),
   { seed, perBand, filters, benchmark: benchmarkId }
 )
 
@@ -125,20 +137,19 @@ if (gateDir) {
   }
 }
 
-mkdirSync(outDir, { recursive: true })
-
 const itemsPath = join(outDir, "items.jsonl")
 const manifestPath = join(outDir, "manifest.json")
-const itemsWriter = createWriteStream(itemsPath)
+const itemsJsonl = items.map((item) => `${JSON.stringify(item)}\n`).join("")
 
-for (const item of items) {
-  itemsWriter.write(`${JSON.stringify(item)}\n`)
+// A committed set is only ever rewritten with identical items.
+if (existsSync(itemsPath) && readFileSync(itemsPath, "utf8") !== itemsJsonl) {
+  throw new Error(
+    `${outDir} holds a different puzzle set. Pass --out=<new dir> to write this one.`
+  )
 }
 
-await new Promise<void>((resolve, reject) => {
-  itemsWriter.once("error", reject)
-  itemsWriter.end(() => resolve())
-})
+mkdirSync(outDir, { recursive: true })
+await writeFile(itemsPath, itemsJsonl)
 
 const v2Methodology = gate && {
   baseline: {

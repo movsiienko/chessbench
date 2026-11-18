@@ -38,7 +38,8 @@ console.log(`Downloading ${response.url}`)
 
 const hash = createHash("sha256")
 let bytes = 0
-const partial = `${destination}.part`
+// Per process, so concurrent downloads never share a staging file.
+const partial = `${destination}.${process.pid}.part`
 
 await pipeline(
   response.body,

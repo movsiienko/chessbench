@@ -12,6 +12,7 @@
 // A puzzle already in the baseline dump cannot come from a game created after
 // it, so those ids are dropped before any API call. Every remaining
 // candidate's createdAt comes from the Lichess API; missing dates drop it.
+import { createHash } from "node:crypto"
 import {
   appendFileSync,
   createWriteStream,
@@ -143,12 +144,15 @@ for (const line of candidates) {
   qualifying.push(line)
 }
 
-writeFileSync(join(cacheDir, "qualifying.csv"), `${qualifying.join("\n")}\n`)
+const qualifyingCsv = `${qualifying.join("\n")}\n`
+writeFileSync(join(cacheDir, "qualifying.csv"), qualifyingCsv)
 
 // Read by prepare-lichess-puzzles.ts for the v2 manifest.
 const gate = {
   completedAt: new Date().toISOString(),
   thresholdUtc: new Date(threshold).toISOString(),
+  // Binds the rest of this record to the qualifying.csv it describes.
+  qualifyingSha256: createHash("sha256").update(qualifyingCsv).digest("hex"),
   source,
   baseline,
   dateSource: {

@@ -9,44 +9,48 @@ import { z } from "zod"
 
 /**
  * Lines of a CSV, decompressing .zst through zstdcat. With `sha256`, throws
- * after the last line unless the bytes decompressed hash to it, so a file
- * replaced after verification cannot be read in its place.
+ * after the last line unless the bytes read hash to it, so a file replaced
+ * after verification cannot be read in its place.
  */
 export async function* readLines(
   path: string,
   sha256?: string
 ): AsyncGenerator<string> {
-  if (!path.endsWith(".zst")) {
-    yield* createInterface({
-      input: createReadStream(path),
-      crlfDelay: Infinity,
-    })
-    return
-  }
-
-  const child = spawn("zstdcat", [], { stdio: ["pipe", "pipe", "inherit"] })
-  const closed = new Promise<number | null>((resolve) =>
-    child.once("close", resolve)
-  )
   const hash = createHash("sha256")
-  const fed = pipeline(
-    createReadStream(path),
+  const hashed = createReadStream(path).pipe(
     new Transform({
       transform(chunk: Buffer, _encoding, callback) {
         hash.update(chunk)
         callback(null, chunk)
       },
-    }),
-    child.stdin
+    })
   )
-  yield* createInterface({ input: child.stdout, crlfDelay: Infinity })
-  await fed
-  const exitCode = await closed
-  if (exitCode !== 0) {
-    throw new Error(`zstdcat exited with code ${exitCode} on ${path}`)
-  }
-  if (sha256 && hash.digest("hex") !== sha256) {
-    throw new Error(`${path} changed after it was verified.`)
+  const child = path.endsWith(".zst")
+    ? spawn("zstdcat", [], { stdio: ["pipe", "pipe", "inherit"] })
+    : undefined
+  const closed = new Promise<number | null>((resolve) =>
+    child ? child.once("close", resolve) : resolve(0)
+  )
+  const fed = child ? pipeline(hashed, child.stdin) : Promise.resolve()
+  // Handled here so a failure while suspended is not unhandled; awaited below.
+  fed.catch(() => {})
+
+  try {
+    yield* createInterface({
+      input: child ? child.stdout : hashed,
+      crlfDelay: Infinity,
+    })
+    await fed
+    const exitCode = await closed
+    if (exitCode !== 0) {
+      throw new Error(`zstdcat exited with code ${exitCode} on ${path}`)
+    }
+    if (sha256 && hash.digest("hex") !== sha256) {
+      throw new Error(`${path} changed after it was verified.`)
+    }
+  } finally {
+    // Stops zstdcat if the caller stops reading early.
+    child?.kill()
   }
 }
 
