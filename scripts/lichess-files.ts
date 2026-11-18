@@ -55,7 +55,7 @@ const provenance = z
     bytes: z.number().int(),
     sha256: z.string(),
     lastModified: z.string().nullable(),
-    retrievalFinishedAt: z.string(),
+    retrievalFinishedAt: z.iso.datetime(),
   })
   .passthrough()
 

@@ -310,6 +310,28 @@ describe("sampleLichessPuzzles", () => {
       )
       assert.equal(manifest.source.downloadEtag, provenance.etag)
       assert.equal(manifest.createdAt, provenance.retrievalFinishedAt)
+
+      // A sidecar without a real retrieval time cannot date a manifest.
+      await writeFile(
+        `${sourcePath}.provenance.json`,
+        JSON.stringify({ ...provenance, retrievalFinishedAt: "not-a-date" })
+      )
+      const rejected = spawnSync(
+        process.execPath,
+        [
+          "scripts/prepare-lichess-puzzles.ts",
+          "--benchmark=lichess-puzzles-v1",
+          `--source=${sourcePath}`,
+          `--out=${join(directory, "rejected")}`,
+        ],
+        {
+          cwd: new URL("../../", import.meta.url),
+          encoding: "utf8",
+          timeout: 30_000,
+        }
+      )
+      assert.notEqual(rejected.status, 0)
+      assert.match(rejected.stderr, /retrievalFinishedAt/)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
