@@ -12,7 +12,7 @@ function item(
 ): LichessPuzzleBenchmarkItem {
   return {
     id,
-    benchmark: "lichess-puzzles-v1",
+    benchmark: "lichess-puzzles",
     position: {
       triggerFen: "8/8/8/8/8/8/8/8 w - - 0 1",
       triggerMove: "a1a2",
@@ -49,7 +49,7 @@ function row(
     attemptId: `${model}-${itemId}`,
     runId: "run",
     createdAt: "2026-06-06T08:00:00.000Z",
-    benchmark: "lichess-puzzles-v1",
+    benchmark: "lichess-puzzles",
     promptTemplateId: "san-single-move-v4",
     model,
     itemId,
@@ -85,8 +85,9 @@ const selection = {
   filters: {
     minPopularity: 80,
     minPlays: 300,
+    minPlaysByBand: { "2400-plus": 200 },
     maxRatingDeviation: 110,
-    excludedThemes: ["mateIn1"],
+    minGameCreatedAt: "2026-06-01T00:00:00.000Z",
   },
 }
 

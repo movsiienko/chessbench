@@ -5,7 +5,6 @@ import { escapeCsv } from "./csv"
 import {
   buildPuzzleItem,
   parsePuzzleRow,
-  V2_QUALITY_FILTERS,
   type ParsedPuzzleRow,
 } from "./lichess-puzzle-builder"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
@@ -24,9 +23,9 @@ function build(line: string) {
   return buildPuzzleItem(parseOk(line))
 }
 
-function readDataset(id: string, file: string) {
+function readDataset(file: string) {
   return readFileSync(
-    new URL(`../../data/benchmarks/${id}/${file}`, import.meta.url),
+    new URL(`../../data/benchmarks/lichess-puzzles/${file}`, import.meta.url),
     "utf8"
   )
 }
@@ -71,13 +70,23 @@ describe("parsePuzzleRow", () => {
     ])
   })
 
-  test("rejects mateIn1", () => {
-    assert.deepEqual(
-      parsePuzzleRow(
-        "00sJb,r3r1k1/pp3pbp/1qp1b1p1/2B5/2BP4/Q1n2N2/P4PPP/3R1K1R w - - 4 18,e2e4 e5e4,1000,80,95,1000,mateIn1 short,https://lichess.org/x,"
-      ),
-      { rejected: "mateIn1" }
-    )
+  test("keeps mate-in-one", () => {
+    const mateInOne = bishopEndgame.replace("endgame long", "endgame mateIn1")
+    assert.ok(!("rejected" in parsePuzzleRow(mateInOne)))
+  })
+
+  test("2400+ needs 200 plays, other bands 300", () => {
+    const strong = bishopEndgame
+      .replace(",962,", ",2450,")
+      .replace(",508,", ",250,")
+
+    assert.ok(!("rejected" in parsePuzzleRow(strong)))
+    assert.deepEqual(parsePuzzleRow(strong.replace(",250,", ",199,")), {
+      rejected: "quality",
+    })
+    assert.deepEqual(parsePuzzleRow(bishopEndgame.replace(",508,", ",250,")), {
+      rejected: "quality",
+    })
   })
 
   test("rejects rows failing the quality thresholds", () => {
@@ -152,57 +161,22 @@ describe("buildPuzzleItem", () => {
     )
   })
 
-  test("reproduces every tracked item byte for byte", () => {
-    const lines = readDataset("lichess-puzzles-v1", "items.jsonl")
-      .trim()
-      .split("\n")
-    assert.equal(lines.length, 500)
-
-    for (const line of lines) {
-      // SAFETY: items.jsonl is written by the prep script as one LichessPuzzleBenchmarkItem per line.
-      const item = JSON.parse(line) as LichessPuzzleBenchmarkItem
-      assert.equal(JSON.stringify(build(csvRowOf(item))), line)
-    }
-  })
-
-  test("v2 keeps 2400+ puzzles from 200 plays and keeps mate-in-one", () => {
-    const strong = bishopEndgame
-      .replace(",962,", ",2450,")
-      .replace(",508,", ",250,")
-    const mateInOne = bishopEndgame.replace("endgame long", "endgame mateIn1")
-
-    assert.deepEqual(parsePuzzleRow(strong), { rejected: "quality" })
-    assert.ok(!("rejected" in parsePuzzleRow(strong, 10, V2_QUALITY_FILTERS)))
-    assert.ok(
-      !("rejected" in parsePuzzleRow(mateInOne, 10, V2_QUALITY_FILTERS))
-    )
-    assert.deepEqual(
-      parsePuzzleRow(strong.replace(",250,", ",199,"), 10, V2_QUALITY_FILTERS),
-      { rejected: "quality" }
-    )
-  })
-
-  test("rebuilds every v2 item, 100 per band, all on or after the date threshold", () => {
-    const manifest = JSON.parse(
-      readDataset("lichess-puzzles-v2", "manifest.json")
-    )
+  test("rebuilds every tracked item byte for byte, 100 per band, all on or after the date threshold", () => {
+    const manifest = JSON.parse(readDataset("manifest.json"))
     const threshold = Date.parse(manifest.selection.filters.minGameCreatedAt)
-    const lines = readDataset("lichess-puzzles-v2", "items.jsonl")
-      .trim()
-      .split("\n")
+    const lines = readDataset("items.jsonl").trim().split("\n")
     const perBand = new Map<string, number>()
 
     for (const line of lines) {
       // SAFETY: items.jsonl is written by the prep script as one LichessPuzzleBenchmarkItem per line.
       const item = JSON.parse(line) as LichessPuzzleBenchmarkItem
-      const { gameCreatedAt, ...metadata } = item.metadata
+      const { gameCreatedAt } = item.metadata
       assert.ok(Date.parse(gameCreatedAt ?? "") >= threshold, item.id)
-      const parsed = parsePuzzleRow(csvRowOf(item), 10, V2_QUALITY_FILTERS)
-      assert.ok(!("rejected" in parsed), item.id)
-      assert.deepEqual(buildPuzzleItem(parsed, "lichess-puzzles-v2"), {
-        ...item,
-        metadata,
-      })
+      const built = build(csvRowOf(item))
+      assert.ok(built, item.id)
+      // prepare-lichess-puzzles.ts adds the game date last.
+      built.metadata.gameCreatedAt = gameCreatedAt
+      assert.equal(JSON.stringify(built), line)
       perBand.set(
         item.metadata.ratingBand,
         (perBand.get(item.metadata.ratingBand) ?? 0) + 1

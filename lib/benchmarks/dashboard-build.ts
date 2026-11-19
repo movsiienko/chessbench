@@ -66,12 +66,11 @@ export type DatasetSelection = {
   filters: {
     minPopularity: number
     minPlays: number
-    /** Bands with their own play-count floor (v2: 2400+). */
-    minPlaysByBand?: Record<string, number>
+    /** Bands with their own play-count floor (2400+). */
+    minPlaysByBand: Record<string, number>
     maxRatingDeviation: number
-    excludedThemes: string[]
-    /** v2: earliest source-game creation time (ISO, UTC). */
-    minGameCreatedAt?: string
+    /** Earliest source-game creation time (ISO, UTC). */
+    minGameCreatedAt: string
   }
 }
 
@@ -235,7 +234,6 @@ export function buildDashboardData({
         minPlays: selection.filters.minPlays,
         minPlaysByBand: selection.filters.minPlaysByBand,
         maxRatingDeviation: selection.filters.maxRatingDeviation,
-        excludedThemes: selection.filters.excludedThemes,
         minGameCreatedAt: selection.filters.minGameCreatedAt,
       },
     },

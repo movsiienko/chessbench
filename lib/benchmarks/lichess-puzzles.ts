@@ -1,13 +1,10 @@
 import { readFile } from "node:fs/promises"
 
-export type BenchmarkId = "lichess-puzzles-v1" | "lichess-puzzles-v2"
-
 /**
- * The puzzle set that runs, run plans and the dashboard use. Switch it back to
- * "lichess-puzzles-v1" to serve v1; the dashboard only shows attempts on the
- * active set.
+ * The puzzle set: data/benchmarks/<id>, and the benchmark of every attempt
+ * the dashboard shows.
  */
-export const BENCHMARK_ID: BenchmarkId = "lichess-puzzles-v2"
+export const BENCHMARK_ID = "lichess-puzzles"
 
 export type RatingBandId =
   | "under-1200"
@@ -37,7 +34,7 @@ export type PuzzleMoveCounts = {
 
 export type LichessPuzzleBenchmarkItem = {
   id: string
-  benchmark: BenchmarkId
+  benchmark: typeof BENCHMARK_ID
   position: {
     triggerFen: string
     triggerMove: string
@@ -64,7 +61,7 @@ export type LichessPuzzleBenchmarkItem = {
     themeGroups: ThemeGroupId[]
     themes: string[]
     openingTags: string[]
-    /** v2 only: when the source game was created on Lichess (ISO, UTC). */
+    /** When the source game was created on Lichess (ISO, UTC); set by prepare. */
     gameCreatedAt?: string
   }
 }

@@ -1,110 +1,85 @@
-import { spawnSync } from "node:child_process"
+// Step 3 of building the puzzle set: sample it from the date gate's tagged
+// output (filter-lichess-puzzles-by-game-date.ts, then cook-lichess-puzzles.py)
+// and write items.jsonl plus manifest.json. See the set's README.
+//
+//   bun scripts/prepare-lichess-puzzles.ts --gate=<date gate cache dir>
 import { createHash, randomUUID } from "node:crypto"
 import { existsSync, linkSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import {
   LICHESS_PUZZLE_COLUMNS as columns,
-  QUALITY_FILTERS,
-  V2_QUALITY_FILTERS,
+  QUALITY_FILTERS as filters,
+  SAMPLING_SEED as seed,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
-import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import { sampleLichessPuzzles } from "@/lib/benchmarks/lichess-puzzle-sampler"
-import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
 import {
-  gameIdOf,
-  readGameDates,
-  readLines,
-  verifiedProvenance,
-} from "./lichess-files"
+  BENCHMARK_ID,
+  type LichessPuzzleBenchmarkItem,
+} from "@/lib/benchmarks/lichess-puzzles"
+import { gameIdOf, readGameDates } from "./lichess-files"
 
-const benchmarkId = readOption("--benchmark")
-
-if (
-  benchmarkId !== "lichess-puzzles-v1" &&
-  benchmarkId !== "lichess-puzzles-v2"
-) {
-  throw new Error(
-    "Pass --benchmark=lichess-puzzles-v1 or --benchmark=lichess-puzzles-v2."
-  )
-}
-
-const v2 = benchmarkId === "lichess-puzzles-v2"
-// v2 builds from the output of filter-lichess-puzzles-by-game-date.ts and
-// cook-lichess-puzzles.py in this directory; see the v2 README.
 const gateDir = readOption("--gate")
 
-if (v2 !== Boolean(gateDir)) {
-  throw new Error("Pass --gate=<date gate cache dir> for v2, and only for v2.")
+if (!gateDir) {
+  throw new Error("Pass --gate=<date gate cache dir>.")
 }
 
-if (gateDir && readOption("--source")) {
-  throw new Error("v2 reads its source from --gate; drop --source.")
-}
-
-const sourcePath = gateDir
-  ? join(gateDir, "qualifying-cooked.csv")
-  : (readOption("--source") ?? "data/raw/lichess/lichess_db_puzzle.csv.zst")
-const outDir = readOption("--out") ?? join("data/benchmarks", benchmarkId)
+const sourcePath = join(gateDir, "qualifying-cooked.csv")
+const outDir = readOption("--out") ?? join("data/benchmarks", BENCHMARK_ID)
 const perBand = Number(readOption("--per-band") ?? 100)
-const seed = readOption("--seed") ?? benchmarkId
-const filters = v2 ? V2_QUALITY_FILTERS : QUALITY_FILTERS
-const gate = gateDir
-  ? JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
-  : undefined
-// v2 is defined by this cutoff; a gate run with another one is not v2.
-const v2Threshold = "2026-06-01T00:00:00.000Z"
+const gate = JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
+// The set is defined by this cutoff; a gate run with another one is not it.
+const threshold = "2026-06-01T00:00:00.000Z"
 
-if (gate && gate.thresholdUtc !== v2Threshold) {
+if (gate.thresholdUtc !== threshold) {
   throw new Error(
-    `The gate used ${gate.thresholdUtc}; v2 needs ${v2Threshold}.`
+    `The gate used ${gate.thresholdUtc}; the set needs ${threshold}.`
   )
 }
 
 if (!existsSync(sourcePath)) {
   throw new Error(
-    gateDir
-      ? `Missing ${sourcePath}. Tag qualifying.csv with scripts/cook-lichess-puzzles.py first.`
-      : `Missing ${sourcePath}. Run "bun run datasets:lichess:download" first.`
+    `Missing ${sourcePath}. Tag qualifying.csv with scripts/cook-lichess-puzzles.py first.`
   )
 }
 
-// v2 samples exactly this text, after checking it against the gate's output.
-let cooked: string | undefined
+const qualifying = readFileSync(join(gateDir, "qualifying.csv"), "utf8")
 
-if (gateDir) {
-  const qualifying = readFileSync(join(gateDir, "qualifying.csv"), "utf8")
-  if (
-    createHash("sha256").update(qualifying).digest("hex") !==
-    gate.qualifyingSha256
-  ) {
-    throw new Error("qualifying.csv is not the one gate.json describes.")
-  }
-  cooked = readFileSync(sourcePath, "utf8")
-  // Tagging may rewrite Themes and nothing else in the gate's qualifying rows.
-  const themes = columns.indexOf("Themes")
-  const withoutThemes = (csv: string) =>
-    csv
-      .trimEnd()
-      .split("\n")
-      .map((line) =>
-        JSON.stringify(
-          (parseCsvRecords(line)[0] ?? []).filter(
-            (_, index) => index !== themes
-          )
-        )
-      )
-      .join("\n")
-  if (withoutThemes(qualifying) !== withoutThemes(cooked)) {
-    throw new Error("qualifying-cooked.csv is not a tagging of qualifying.csv.")
-  }
+if (
+  createHash("sha256").update(qualifying).digest("hex") !==
+  gate.qualifyingSha256
+) {
+  throw new Error("qualifying.csv is not the one gate.json describes.")
 }
 
-// The dump's download record; v2's gate checked it against the dump it read.
-const provenance = gate?.source ?? (await verifiedProvenance(sourcePath))
+// Sampled exactly as checked: tagging may rewrite Themes and nothing else in
+// the gate's qualifying rows.
+const cooked = readFileSync(sourcePath, "utf8")
+const themesColumn = columns.indexOf("Themes")
+const withoutThemes = (csv: string) =>
+  csv
+    .trimEnd()
+    .split("\n")
+    .map((line) =>
+      JSON.stringify(
+        (parseCsvRecords(line)[0] ?? []).filter(
+          (_, index) => index !== themesColumn
+        )
+      )
+    )
+    .join("\n")
+
+if (withoutThemes(qualifying) !== withoutThemes(cooked)) {
+  throw new Error("qualifying-cooked.csv is not a tagging of qualifying.csv.")
+}
+
+// The dump's download record; the gate checked it against the dump it read.
+const provenance = gate.source
 const committedManifest = join(outDir, "manifest.json")
 
-// Committed sets are immutable: a newer dump goes to another --out.
+// A committed set is immutable: a newer dump goes to another --out.
 if (
   existsSync(committedManifest) &&
   JSON.parse(readFileSync(committedManifest, "utf8")).source?.sha256 !==
@@ -115,26 +90,18 @@ if (
   )
 }
 
-if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
-  throw new Error(
-    "zstdcat not found on PATH. Install zstd (brew install zstd)."
-  )
-}
-
 const { items, sourceStats, ratingBands } = await sampleLichessPuzzles(
-  cooked?.trimEnd().split("\n") ?? readLines(sourcePath, provenance.sha256),
-  { seed, perBand, filters, benchmark: benchmarkId }
+  cooked.trimEnd().split("\n"),
+  { seed, perBand }
 )
+const createdAt = readGameDates(join(gateDir, "game-dates.ndjson"))
 
-if (gateDir) {
-  const createdAt = readGameDates(join(gateDir, "game-dates.ndjson"))
-  for (const item of items) {
-    const ms = createdAt.get(gameIdOf(item.metadata.lichessGameUrl))
-    if (ms === undefined || ms === null || ms < Date.parse(v2Threshold)) {
-      throw new Error(`${item.id} has no game date on or after the threshold.`)
-    }
-    item.metadata.gameCreatedAt = new Date(ms).toISOString()
+for (const item of items) {
+  const ms = createdAt.get(gameIdOf(item.metadata.lichessGameUrl))
+  if (ms === undefined || ms === null || ms < Date.parse(threshold)) {
+    throw new Error(`${item.id} has no game date on or after the threshold.`)
   }
+  item.metadata.gameCreatedAt = new Date(ms).toISOString()
 }
 
 const itemsPath = join(outDir, "items.jsonl")
@@ -177,10 +144,29 @@ if (existsSync(itemsPath)) {
   }
 }
 
-const v2Methodology = gate && {
+const manifest = {
+  id: BENCHMARK_ID,
+  title: "Lichess Puzzles",
+  description:
+    "A deterministic, quality-filtered chess puzzle benchmark of Lichess puzzles from games played on or after June 1, 2026 (UTC).",
+  createdAt: gate.completedAt,
+  source: {
+    name: "Lichess puzzle database",
+    pageUrl: "https://database.lichess.org/#puzzles",
+    downloadUrl: provenance.sourceUrl,
+    finalUrl: provenance.finalUrl,
+    license: "Creative Commons CC0",
+    retrievalStartedAt: provenance.retrievalStartedAt,
+    retrievalFinishedAt: provenance.retrievalFinishedAt,
+    downloadLastModified: provenance.lastModified,
+    downloadEtag: provenance.etag,
+    downloadContentLength: provenance.contentLength,
+    bytes: provenance.bytes,
+    sha256: provenance.sha256,
+  },
   baseline: {
     ...gate.baseline,
-    role: "Puzzle ids already in this April 2026 dump are excluded, since their games predate the date threshold. It is not the dump v1 was built from.",
+    role: "Puzzle ids already in this April 2026 dump are excluded, since their games predate the date threshold.",
   },
   gameDateGate: {
     thresholdUtc: gate.thresholdUtc,
@@ -195,7 +181,7 @@ const v2Methodology = gate && {
     commit: "8e24b6d5e2b9618e41581a327926e4ac67c610a2",
     pythonChess: "1.3.0",
     script: "scripts/cook-lichess-puzzles.py",
-    why: "Lichess adds puzzles with empty themes and tags them later, so most recent puzzles in the dump carry only phase/source tags. Every v2 puzzle is re-tagged with the same tagger.",
+    why: "Lichess adds puzzles with empty themes and tags them later, so most recent puzzles in the dump carry only phase/source tags. Every puzzle in the set is re-tagged with the same tagger.",
     keptFromDump: [
       "opening",
       "middlegame",
@@ -217,7 +203,7 @@ const v2Methodology = gate && {
       '500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256("cook-validation-v1:" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `python3 -I scripts/cook-lichess-puzzles.py --tagger=<lichess-puzzler checkout> validate <April 2026 dump .csv.zst>`.',
   },
   mateInOne:
-    "Kept, unlike v1. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",
+    "Kept. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",
   contamination: {
     note: "Temporally held out by underlying game date: every puzzle comes from a game created on or after the threshold. That is not proof the puzzles are absent from any model's training data. June 1, 2026 precedes Mistral Large 4's latest training-data collection (September 2026), most providers publish no exact cutoff, models may receive later post-training, and the same positions can occur in earlier games.",
     sources: [
@@ -225,30 +211,6 @@ const v2Methodology = gate && {
       "https://platform.claude.com/docs/en/about-claude/models/overview",
     ],
   },
-}
-
-const manifest = {
-  id: benchmarkId,
-  title: v2 ? "Lichess Puzzles v2" : "Lichess Puzzles v1",
-  description: v2
-    ? "A deterministic, quality-filtered chess puzzle benchmark of Lichess puzzles from games played on or after June 1, 2026 (UTC)."
-    : "A deterministic, quality-filtered chess puzzle benchmark sampled from the Lichess puzzle database.",
-  createdAt: gate?.completedAt ?? provenance.retrievalFinishedAt,
-  source: {
-    name: "Lichess puzzle database",
-    pageUrl: "https://database.lichess.org/#puzzles",
-    downloadUrl: provenance.sourceUrl,
-    finalUrl: provenance.finalUrl,
-    license: "Creative Commons CC0",
-    retrievalStartedAt: provenance.retrievalStartedAt,
-    retrievalFinishedAt: provenance.retrievalFinishedAt,
-    downloadLastModified: provenance.lastModified,
-    downloadEtag: provenance.etag,
-    downloadContentLength: provenance.contentLength,
-    bytes: provenance.bytes,
-    sha256: provenance.sha256,
-  },
-  ...v2Methodology,
   format: {
     sourceColumns: columns,
     itemFile: "items.jsonl",
@@ -264,10 +226,9 @@ const manifest = {
     filters: {
       minPopularity: filters.minPopularity,
       minPlays: filters.minPlays,
-      ...(filters.minPlaysByBand && { minPlaysByBand: filters.minPlaysByBand }),
+      minPlaysByBand: filters.minPlaysByBand,
       maxRatingDeviation: filters.maxRatingDeviation,
-      excludedThemes: filters.excludeMateIn1 ? ["mateIn1"] : [],
-      ...(gate && { minGameCreatedAt: gate.thresholdUtc }),
+      minGameCreatedAt: threshold,
       legalLineValidation:
         "Every trigger and solution move is applied with chess.js.",
     },

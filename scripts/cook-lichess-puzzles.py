@@ -1,4 +1,4 @@
-"""Step 2 of building lichess-puzzles-v2: theme the puzzles with Lichess's own tagger.
+"""Step 2 of building the puzzle set: theme the puzzles with Lichess's own tagger.
 
 Lichess adds puzzles with empty themes and tags them later with cook.py from
 github.com/ornicar/lichess-puzzler, so most recent puzzles in the dump carry

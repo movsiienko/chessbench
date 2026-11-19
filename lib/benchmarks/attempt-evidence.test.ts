@@ -27,7 +27,10 @@ const publishedFiles = [
   "alibaba-qwen3-max-thinking-single-move-v3-thinking-low-20260606.csv",
 ]
 
-const items = await loadItems("data/benchmarks/lichess-puzzles-v1/items.jsonl")
+// The puzzles those runs played, kept beside them.
+const items = await loadItems(
+  "data/results/canonical/lichess-puzzles-v1/items.jsonl"
+)
 const records: LichessPuzzleAttemptRow[] = (
   await Promise.all(
     publishedFiles.map(async (file) =>
@@ -60,8 +63,9 @@ const data = buildDashboardData({
     filters: {
       minPopularity: 0,
       minPlays: 0,
+      minPlaysByBand: {},
       maxRatingDeviation: 0,
-      excludedThemes: [],
+      minGameCreatedAt: "2026-06-01T00:00:00.000Z",
     },
   },
 })

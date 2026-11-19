@@ -1,18 +1,17 @@
 import { Chess } from "chess.js"
 import { applyUciMove } from "@/lib/chess/moves"
 import { parseCsvRecords } from "./csv"
-import type {
-  BenchmarkId,
-  LichessPuzzleBenchmarkItem,
-  PuzzleLength,
-  RatingBandId,
-  ThemeGroupId,
+import {
+  BENCHMARK_ID,
+  type LichessPuzzleBenchmarkItem,
+  type PuzzleLength,
+  type RatingBandId,
+  type ThemeGroupId,
 } from "./lichess-puzzles"
 
-// Methodology of the lichess-puzzles datasets: the strata tables, filters and
-// the row -> item rules. Changing anything here changes a benchmark; v1's
-// items.jsonl is the reference and lichess-puzzle-builder.test.ts checks it
-// byte for byte.
+// Methodology of the puzzle set: the strata tables, filters, seed and the
+// row -> item rules. Changing anything here changes the benchmark; its
+// items.jsonl is the reference and lichess-puzzle-builder.test.ts rebuilds it.
 
 export const LICHESS_PUZZLE_COLUMNS = [
   "PuzzleId",
@@ -57,28 +56,26 @@ export type QualityFilters = {
   minPopularity: number
   minPlays: number
   /** Bands whose play-count floor differs from minPlays. */
-  minPlaysByBand?: Partial<Record<RatingBandId, number>>
+  minPlaysByBand: Partial<Record<RatingBandId, number>>
   maxRatingDeviation: number
-  excludeMateIn1: boolean
-}
-
-/** lichess-puzzles-v1. */
-export const QUALITY_FILTERS: QualityFilters = {
-  minPopularity: 80,
-  minPlays: 300,
-  maxRatingDeviation: 110,
-  excludeMateIn1: true,
 }
 
 /**
- * lichess-puzzles-v2: v1's filters, but 2400+ needs only 200 plays (too few
- * recent puzzles reach 300) and mate-in-one stays in.
+ * 2400+ needs only 200 plays: too few recent puzzles in that band reach 300.
+ * Mate-in-one is kept.
  */
-export const V2_QUALITY_FILTERS: QualityFilters = {
-  ...QUALITY_FILTERS,
+export const QUALITY_FILTERS: QualityFilters = {
+  minPopularity: 80,
+  minPlays: 300,
   minPlaysByBand: { "2400-plus": 200 },
-  excludeMateIn1: false,
+  maxRatingDeviation: 110,
 }
+
+/**
+ * The hash seed the committed set was drawn with, named when it was built.
+ * Kept as is: another seed draws different puzzles.
+ */
+export const SAMPLING_SEED = "lichess-puzzles-v2"
 
 const structuralThemes = new Set([
   "oneMove",
@@ -212,13 +209,12 @@ export type ParsedPuzzleRow = {
   themes: string[]
 }
 
-export type PuzzleRowRejection = "invalidColumns" | "quality" | "mateIn1"
+export type PuzzleRowRejection = "invalidColumns" | "quality"
 
 /** Cheap filters only; chess.js validation happens in buildPuzzleItem. */
 export function parsePuzzleRow(
   line: string,
-  columnCount: number = LICHESS_PUZZLE_COLUMNS.length,
-  filters: QualityFilters = QUALITY_FILTERS
+  columnCount: number = LICHESS_PUZZLE_COLUMNS.length
 ): ParsedPuzzleRow | { rejected: PuzzleRowRejection } {
   let values: string[]
 
@@ -252,25 +248,24 @@ export function parsePuzzleRow(
   if (
     !band ||
     !Object.values(quality).every(Number.isFinite) ||
-    quality.ratingDeviation > filters.maxRatingDeviation ||
-    quality.popularity < filters.minPopularity ||
-    quality.nbPlays < (filters.minPlaysByBand?.[band.id] ?? filters.minPlays)
+    quality.ratingDeviation > QUALITY_FILTERS.maxRatingDeviation ||
+    quality.popularity < QUALITY_FILTERS.minPopularity ||
+    quality.nbPlays <
+      (QUALITY_FILTERS.minPlaysByBand[band.id] ?? QUALITY_FILTERS.minPlays)
   ) {
     return { rejected: "quality" }
   }
 
-  const themes = splitTags(row.Themes)
-
-  return filters.excludeMateIn1 && themes.includes("mateIn1")
-    ? { rejected: "mateIn1" }
-    : { row, quality, band, themes }
+  return { row, quality, band, themes: splitTags(row.Themes) }
 }
 
 /** Null when the trigger move or any solution move is illegal. */
-export function buildPuzzleItem(
-  { row, quality, band, themes }: ParsedPuzzleRow,
-  benchmark: BenchmarkId = "lichess-puzzles-v1"
-): LichessPuzzleBenchmarkItem | null {
+export function buildPuzzleItem({
+  row,
+  quality,
+  band,
+  themes,
+}: ParsedPuzzleRow): LichessPuzzleBenchmarkItem | null {
   const moves = splitTags(row.Moves)
 
   if (moves.length < 2) {
@@ -298,7 +293,7 @@ export function buildPuzzleItem(
 
   return {
     id: `lichess:${row.PuzzleId}`,
-    benchmark,
+    benchmark: BENCHMARK_ID,
     position: {
       triggerFen: row.FEN,
       triggerMove,

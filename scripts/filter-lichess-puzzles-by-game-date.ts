@@ -1,6 +1,6 @@
-// Step 1 of building lichess-puzzles-v2: keep the puzzles that pass the v2
-// filters, are new since an older full dump, and come from a game created at
-// or after a UTC threshold. Resumable: every stage caches to --cache, and
+// Step 1 of building the puzzle set: keep the puzzles that pass its filters,
+// are new since an older full dump, and come from a game created at or after
+// a UTC threshold. Resumable: every stage caches to --cache, and
 // fetched game dates are appended to game-dates.ndjson.
 //
 //   bun scripts/filter-lichess-puzzles-by-game-date.ts \
@@ -28,8 +28,8 @@ import { setTimeout as sleep } from "node:timers/promises"
 import {
   buildPuzzleItem,
   parsePuzzleRow,
+  QUALITY_FILTERS as filters,
   RATING_BANDS,
-  V2_QUALITY_FILTERS as filters,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
 import { readHeader } from "@/lib/benchmarks/lichess-puzzle-sampler"
 import { z } from "zod"
@@ -138,7 +138,7 @@ for (const line of candidates) {
     excluded.beforeThreshold += 1
     continue
   }
-  const parsed = parsePuzzleRow(line, columnCount, filters)
+  const parsed = parsePuzzleRow(line, columnCount)
   if ("rejected" in parsed) throw new Error(`Candidate rejected: ${line}`)
   qualifyingByBand[parsed.band.id] += 1
   qualifying.push(line)
@@ -147,7 +147,7 @@ for (const line of candidates) {
 const qualifyingCsv = `${qualifying.join("\n")}\n`
 writeFileSync(join(cacheDir, "qualifying.csv"), qualifyingCsv)
 
-// Read by prepare-lichess-puzzles.ts for the v2 manifest.
+// Read by prepare-lichess-puzzles.ts for the manifest.
 const gate = {
   completedAt: new Date().toISOString(),
   thresholdUtc: new Date(threshold).toISOString(),
@@ -190,7 +190,6 @@ async function writeCandidates() {
     sourceRows: 0,
     rejectedInvalidColumns: 0,
     rejectedQuality: 0,
-    rejectedMateIn1: 0,
     passingFilters: 0,
     inBaseline: 0,
     rejectedIllegal: 0,
@@ -199,7 +198,6 @@ async function writeCandidates() {
   const rejectionStat = {
     invalidColumns: "rejectedInvalidColumns",
     quality: "rejectedQuality",
-    mateIn1: "rejectedMateIn1",
   } as const
   const partial = `${candidatesPath}.part`
   const out = createWriteStream(partial)
@@ -212,7 +210,7 @@ async function writeCandidates() {
       continue
     }
     stats.sourceRows += 1
-    const parsed = parsePuzzleRow(line, count, filters)
+    const parsed = parsePuzzleRow(line, count)
     if ("rejected" in parsed) {
       stats[rejectionStat[parsed.rejected]] += 1
       continue

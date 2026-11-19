@@ -1,13 +1,13 @@
-# Lichess Puzzles v2
+# Lichess Puzzles
 
 500 Lichess puzzles, 100 per rating band, from games played on or after
 2026-06-01T00:00:00Z (UTC). `manifest.json` records the exact provenance,
 filters and counts; this file explains them.
 
-## Why
+## Why game dates
 
-Every v2 puzzle comes from a game created after June 1, 2026, so the set is
-held out by game date. That is not proof the puzzles are absent from a model's
+Every puzzle comes from a game created after June 1, 2026, so the set is held
+out by game date. That is not proof the puzzles are absent from a model's
 training data:
 
 - Mistral Large 4's training data was collected through September 2026
@@ -24,25 +24,26 @@ training data:
   SHA-256 are in `manifest.source`.
 - **Baseline:** the April 2026 dump, from the Internet Archive capture of
   2026-04-07 (`manifest.baseline`). A puzzle already in it comes from a game
-  played before April, so it is dropped before any date lookup. It is not the
-  dump v1 was built from.
+  played before April, so it is dropped before any date lookup.
 - **Game dates:** `createdAt` (epoch ms, UTC) from Lichess's
   `POST /api/games/export/_ids`. A game the API did not return is dropped.
   Each item stores it as `metadata.gameCreatedAt`.
 
 ## Selection
 
-| | v1 | v2 |
-|---|---|---|
-| Popularity | ≥ 80 | ≥ 80 |
-| Plays | ≥ 300 | ≥ 300; ≥ 200 for 2400+ |
-| Rating deviation | ≤ 110 | ≤ 110 |
-| Mate-in-one | excluded | kept |
-| Game date | any | on or after 2026-06-01 UTC |
-| Seed | `lichess-puzzles-v1` | `lichess-puzzles-v2` |
+| Filter | Value |
+|---|---|
+| Popularity | ≥ 80 |
+| Plays | ≥ 300; ≥ 200 for 2400+ |
+| Rating deviation | ≤ 110 |
+| Mate-in-one | kept |
+| Game date | on or after 2026-06-01 UTC |
 
 Every move is replayed in chess.js. Each band keeps the 100 puzzles with the
-lowest `sha256("lichess-puzzles-v2:" + PuzzleId)`.
+lowest `sha256(seed + ":" + PuzzleId)`. The seed is `lichess-puzzles-v2`, the
+name it had when the set was drawn; `SAMPLING_SEED` in
+`lib/benchmarks/lichess-puzzle-builder.ts` keeps it, since another seed would
+draw different puzzles.
 
 - **2400+ plays:** only 51 puzzles in that band reach 300 plays, so it takes
   200. 84 of its 100 have 200 to 299 plays.
@@ -53,7 +54,7 @@ lowest `sha256("lichess-puzzles-v2:" + PuzzleId)`.
 ## Themes
 
 Lichess adds puzzles with empty themes and tags them later, so most of these
-puzzles had only phase tags in the dump. Every v2 puzzle is re-tagged with
+puzzles had only phase tags in the dump. Every puzzle is re-tagged with
 Lichess's own tagger, `cook.py` from
 [ornicar/lichess-puzzler](https://github.com/ornicar/lichess-puzzler) at commit
 `8e24b6d`, with python-chess 1.3.0. The phase and source tags (`opening`,
@@ -65,8 +66,8 @@ the dump.
     engine eval, which the dump doesn't publish.
   - `zugzwang` needs a separate Stockfish pass.
 
-  Puzzles with no motif therefore get a phase or length tag as `primaryTheme`
-  where v1 had `crushing` or `advantage`.
+  A puzzle with no motif therefore gets a phase or length tag as its
+  `primaryTheme`.
 - **Never produced by cook:** `discoveredCheck` and the named mates
   (`operaMate`, `pillsburysMate`, `killBoxMate` and others), which Lichess
   adds elsewhere.
@@ -79,9 +80,10 @@ the dump.
 Needs `zstd`, Bun, and a Python 3 venv with `chess==1.3.0`.
 
 An exact rebuild needs the two dumps whose SHA-256 the manifest records
-(`source` and `baseline`). Lichess serves only its latest dump, so keep a copy;
-the download below fetches today's. The final step refuses to overwrite this
-set from a different dump, so build experiments with `--out=<another dir>`.
+(`source` and `baseline`), each with its `.provenance.json`. Lichess serves
+only its latest dump, so keep a copy; the download below fetches today's.
+Preparation refuses to write different items into this directory, so build
+experiments with `--out=<another dir>`.
 
 ```bash
 # The current dump and the baseline, each with a .provenance.json sidecar.
@@ -99,7 +101,7 @@ git -C $TAGGER checkout 8e24b6d5e2b9618e41581a327926e4ac67c610a2
 python3 -I scripts/cook-lichess-puzzles.py --tagger=$TAGGER \
   tag $CACHE/gate/qualifying.csv $CACHE/gate/qualifying-cooked.csv
 
-bun run datasets:lichess:prepare -- --benchmark=lichess-puzzles-v2 --gate=$CACHE/gate
+bun run datasets:lichess:prepare -- --gate=$CACHE/gate
 ```
 
 `cook-lichess-puzzles.py validate <baseline.csv.zst>` reruns the tagger

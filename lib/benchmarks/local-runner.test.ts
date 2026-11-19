@@ -7,7 +7,7 @@ import { runLichessPuzzleAttempt, withCurrentStatus } from "./local-runner"
 function puzzle(): LichessPuzzleBenchmarkItem {
   return {
     id: "lichess:test",
-    benchmark: "lichess-puzzles-v1",
+    benchmark: "lichess-puzzles",
     position: {
       triggerFen: "8/p5pp/5p2/1p1k4/4P1PB/1P2K3/P1P3bP/8 b - - 0 30",
       triggerMove: "g2e4",

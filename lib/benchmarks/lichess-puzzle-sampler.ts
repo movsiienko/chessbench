@@ -4,12 +4,9 @@ import {
   buildPuzzleItem,
   LICHESS_PUZZLE_HEADERS,
   parsePuzzleRow,
-  QUALITY_FILTERS,
   RATING_BANDS,
-  type QualityFilters,
 } from "./lichess-puzzle-builder"
 import type {
-  BenchmarkId,
   LichessPuzzleBenchmarkItem,
   RatingBandId,
 } from "./lichess-puzzles"
@@ -22,19 +19,12 @@ type Candidate = {
 type SamplingOptions = {
   seed: string
   perBand: number
-  filters?: QualityFilters
-  benchmark?: BenchmarkId
 }
 
 /** Select the lowest seeded hashes per band, retaining only legally built items. */
 export async function sampleLichessPuzzles(
   lines: Iterable<string> | AsyncIterable<string>,
-  {
-    seed,
-    perBand,
-    filters = QUALITY_FILTERS,
-    benchmark = "lichess-puzzles-v1",
-  }: SamplingOptions
+  { seed, perBand }: SamplingOptions
 ) {
   if (!Number.isInteger(perBand) || perBand < 1) {
     throw new Error("perBand must be a positive integer.")
@@ -53,13 +43,11 @@ export async function sampleLichessPuzzles(
     rowsBuilt: 0,
     rowsWithInvalidColumns: 0,
     rowsRejectedByQuality: 0,
-    rowsRejectedAsMateInOne: 0,
     rowsRejectedAsIllegal: 0,
   }
   const rejectionStat = {
     invalidColumns: "rowsWithInvalidColumns",
     quality: "rowsRejectedByQuality",
-    mateIn1: "rowsRejectedAsMateInOne",
   } as const
 
   let columnCount = 0
@@ -71,7 +59,7 @@ export async function sampleLichessPuzzles(
     }
 
     sourceStats.rowsSeen += 1
-    const parsed = parsePuzzleRow(line, columnCount, filters)
+    const parsed = parsePuzzleRow(line, columnCount)
 
     if ("rejected" in parsed) {
       if (parsed.rejected !== "invalidColumns") {
@@ -101,7 +89,7 @@ export async function sampleLichessPuzzles(
 
     // Validate only competitive candidates, and never evict a legal item
     // until the replacement's complete line has passed chess.js validation.
-    const item = buildPuzzleItem(parsed, benchmark)
+    const item = buildPuzzleItem(parsed)
 
     if (item === null) {
       sourceStats.rowsRejectedAsIllegal += 1
