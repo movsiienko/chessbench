@@ -3501,8 +3501,8 @@ export function DocsView() {
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
           Each entry, a model at one reasoning level, has answered{" "}
           {SAMPLE_LABEL} of the {META.datasetSize.toLocaleString("en-US")}{" "}
-          {META.benchmarkId} puzzles so far, all with the same prompt, time
-          limit and scorer.
+          puzzles in <span className="font-mono">{META.benchmarkId}</span> so
+          far, all with the same prompt, time limit and scorer.
         </p>
       </section>
 
