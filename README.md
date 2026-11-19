@@ -24,7 +24,10 @@ Each item also carries granular benchmark strata:
 
 After downloading the Lichess dump, the set is built in three steps: keep the
 puzzles whose games were played on or after the cutoff (checked against the
-Lichess API), tag them with Lichess's tagger, then sample:
+Lichess API), tag them with Lichess's tagger, then sample. The baseline is the
+April 2026 dump from the Internet Archive, and `$TAGGER` a checkout of
+ornicar/lichess-puzzler at the pinned commit; the set's README says how to get
+both.
 
 ```bash
 bun run datasets:lichess:download -- --out=$CACHE/dump.csv.zst

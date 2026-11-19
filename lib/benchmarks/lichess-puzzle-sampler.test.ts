@@ -284,14 +284,14 @@ describe("sampleLichessPuzzles", () => {
         join(gateDir, "game-dates.ndjson"),
         `${JSON.stringify({ id: "m4QTuikA", createdAt: Date.parse(gameCreatedAt) })}\n`
       )
-      const prepare = (out: string) =>
+      const prepare = (out: string, perBand = 2) =>
         spawnSync(
           process.execPath,
           [
             "scripts/prepare-lichess-puzzles.ts",
             `--gate=${gateDir}`,
             `--out=${out}`,
-            "--per-band=2",
+            `--per-band=${perBand}`,
           ],
           {
             cwd: new URL("../../", import.meta.url),
@@ -329,6 +329,24 @@ describe("sampleLichessPuzzles", () => {
       assert.equal(manifest.source.sha256, source.sha256)
       assert.equal(manifest.source.downloadLastModified, source.lastModified)
       assert.equal(manifest.source.downloadEtag, source.etag)
+
+      // An exact rebuild leaves the set alone; different items are refused.
+      const again = prepare(outDir)
+      assert.equal(again.status, 0, again.stderr)
+      assert.match(again.stdout, /left unchanged/)
+      const fewer = prepare(outDir, 1)
+      assert.notEqual(fewer.status, 0)
+      assert.match(fewer.stderr, /holds a different puzzle set/)
+
+      // A gate run with another cutoff is not this set.
+      await writeFile(
+        join(gateDir, "gate.json"),
+        JSON.stringify({ ...gate, thresholdUtc: "2026-05-01T00:00:00.000Z" })
+      )
+      const earlier = prepare(join(directory, "earlier"))
+      assert.notEqual(earlier.status, 0)
+      assert.match(earlier.stderr, /the set needs 2026-06-01/)
+      await writeFile(join(gateDir, "gate.json"), JSON.stringify(gate))
 
       // Tagging may change Themes only; any other edit is refused.
       await writeFile(

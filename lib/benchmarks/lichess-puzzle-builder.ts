@@ -71,6 +71,9 @@ export const QUALITY_FILTERS: QualityFilters = {
   maxRatingDeviation: 110,
 }
 
+/** Every puzzle's game was created on or after this time (UTC). */
+export const MIN_GAME_CREATED_AT = "2026-06-01T00:00:00.000Z"
+
 /**
  * The hash seed the committed set was drawn with, named when it was built.
  * Kept as is: another seed draws different puzzles.

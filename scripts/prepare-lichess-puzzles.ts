@@ -4,12 +4,20 @@
 //
 //   bun scripts/prepare-lichess-puzzles.ts --gate=<date gate cache dir>
 import { createHash, randomUUID } from "node:crypto"
-import { existsSync, linkSync, mkdirSync, readFileSync, rmSync } from "node:fs"
+import {
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+} from "node:fs"
 import { writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import {
   LICHESS_PUZZLE_COLUMNS as columns,
+  MIN_GAME_CREATED_AT as threshold,
   QUALITY_FILTERS as filters,
   SAMPLING_SEED as seed,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
@@ -30,8 +38,6 @@ const sourcePath = join(gateDir, "qualifying-cooked.csv")
 const outDir = readOption("--out") ?? join("data/benchmarks", BENCHMARK_ID)
 const perBand = Number(readOption("--per-band") ?? 100)
 const gate = JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
-// The set is defined by this cutoff; a gate run with another one is not it.
-const threshold = "2026-06-01T00:00:00.000Z"
 
 if (gate.thresholdUtc !== threshold) {
   throw new Error(
@@ -120,6 +126,11 @@ const refuseDifferentSet = () => {
 
 if (existsSync(itemsPath)) {
   refuseDifferentSet()
+  if (existsSync(manifestPath)) {
+    // An exact rebuild: the committed set, manifest included, stays as is.
+    console.log(`${outDir} already holds this set; left unchanged.`)
+    process.exit(0)
+  }
 } else {
   // Staged in a file this run alone creates ("wx"), so an interrupted write
   // never leaves a partial items.jsonl, and published with link, which unlike
@@ -318,7 +329,10 @@ const manifest = {
   },
 }
 
-await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+// Staged and renamed, so an interrupted write never leaves a partial manifest.
+const stagedManifest = `${manifestPath}.${randomUUID()}.part`
+await writeFile(stagedManifest, `${JSON.stringify(manifest, null, 2)}\n`)
+renameSync(stagedManifest, manifestPath)
 
 console.log(`Wrote ${items.length} benchmark items to ${itemsPath}`)
 console.log(`Wrote manifest to ${manifestPath}`)

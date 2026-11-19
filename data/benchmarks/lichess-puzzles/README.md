@@ -83,7 +83,8 @@ An exact rebuild needs the two dumps whose SHA-256 the manifest records
 (`source` and `baseline`), each with its `.provenance.json`. Lichess serves
 only its latest dump, so keep a copy; the download below fetches today's.
 Preparation refuses to write different items into this directory, so build
-experiments with `--out=<another dir>`.
+experiments with `--out=<another dir>`. An exact rebuild leaves both files
+untouched; to regenerate only the manifest, delete it and rerun.
 
 ```bash
 # The current dump and the baseline, each with a .provenance.json sidecar.
