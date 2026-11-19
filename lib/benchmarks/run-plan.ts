@@ -3,13 +3,12 @@ import { and, count, eq, inArray, ne } from "drizzle-orm"
 import { db } from "../db/client"
 import { attempts } from "../db/schema"
 import {
+  BENCHMARK_ID,
   loadItems,
   PROTOCOL_ID,
   selectDefaultLichessPuzzleItems,
 } from "./lichess-puzzles"
 import type { ReasoningLevel } from "./models"
-
-const benchmarkId = "lichess-puzzles-v1"
 
 export type ItemSelection =
   | { ids: string[] }
@@ -29,7 +28,7 @@ export async function planRun({
   reasoning: ReasoningLevel
 }) {
   const all = await loadItems(
-    join(process.cwd(), "data/benchmarks", benchmarkId, "items.jsonl")
+    join(process.cwd(), "data/benchmarks", BENCHMARK_ID, "items.jsonl")
   )
   let itemIds: string[]
 
@@ -57,7 +56,7 @@ export async function planRun({
       .from(attempts)
       .where(
         and(
-          eq(attempts.benchmark, benchmarkId),
+          eq(attempts.benchmark, BENCHMARK_ID),
           eq(attempts.protocol, PROTOCOL_ID),
           eq(attempts.model, model),
           eq(attempts.reasoningLevel, reasoning),

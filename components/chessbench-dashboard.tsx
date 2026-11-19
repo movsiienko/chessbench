@@ -709,7 +709,8 @@ export function LeaderboardView() {
     <div className="space-y-8">
       <section className="grid gap-2.5 border-b pb-4">
         <div className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-          {META.benchmarkId} · {META.lastUpdated}
+          {META.benchmarkId}
+          {META.lastUpdated ? ` · ${META.lastUpdated}` : null}
         </div>
         <h1 className="max-w-sm text-4xl leading-none font-semibold tracking-normal sm:text-5xl">
           Model chess benchmark.
@@ -852,7 +853,7 @@ export function LeaderboardView() {
               variant="outline"
               onClick={() =>
                 downloadFile(
-                  `chessbench-${META.benchmarkId}-leaderboard-${META.lastUpdated}.csv`,
+                  `chessbench-${META.benchmarkId}-leaderboard${META.lastUpdated ? `-${META.lastUpdated}` : ""}.csv`,
                   leaderboardCsv(),
                   "text/csv;charset=utf-8"
                 )
@@ -3463,18 +3464,28 @@ export function DocsView() {
   const { META, MIN_SAMPLE, SAMPLE_LABEL } = useDashboard()
   const timeLimit = `${META.moveTimeLimitSeconds} s`
   const filters = META.qualityFilters
+  const bandPlays = Object.entries(filters.minPlaysByBand).map(
+    ([id, plays]) =>
+      `≥ ${plays} plays for ${META.ratingBands.find((band) => band.id === id)?.label ?? id}`
+  )
+  const gameDate = new Date(filters.minGameCreatedAt).toLocaleDateString(
+    "en-US",
+    { dateStyle: "long", timeZone: "UTC" }
+  )
   const puzzleFilters = [
     `Popularity ≥ ${filters.minPopularity}`,
-    `≥ ${filters.minPlays} plays`,
+    ...bandPlays,
+    `≥ ${filters.minPlays} plays for ${bandPlays.length > 0 ? "other bands" : "every band"}`,
     `Rating deviation ≤ ${filters.maxRatingDeviation}`,
-    "No mate-in-one",
+    `Game played on or after ${gameDate} (UTC)`,
     "Every move replayed in chess.js",
   ]
 
   const limits = [
     // A new protocol starts with no results, and "up to 0 percentage points" would read as no uncertainty.
     `${MIN_SAMPLE > 0 ? `With so few puzzles per entry, one puzzle moves accuracy by up to ${Number(puzzleWeight(MIN_SAMPLE).toFixed(1))} percentage points. ` : ""}Theme buckets are thinner, and an empty one is shown as absent, not scored.`,
-    "Only the Lichess solution counts. Mate-in-one is excluded because a second, equally valid mate would score as a miss.",
+    "Only the Lichess solution counts, so a second, equally valid mate scores as a miss. Mate-in-one puzzles are included, where that is most likely.",
+    `Every puzzle comes from a game played on or after ${gameDate} (UTC), so the set is held out by game date. That is not proof a model never saw it: Mistral Large 4's training data was collected through September 2026, most labs publish no exact cutoff, and the same position can occur in earlier games.`,
     `Taking longer than ${timeLimit} on a move counts as a failure, not as an infrastructure error.`,
     "Each entry gets one attempt per puzzle.",
     "Elo and cost are derived from that small sample and rounded to the precision it supports.",
@@ -3490,8 +3501,8 @@ export function DocsView() {
         <p className="max-w-2xl text-base leading-7 text-muted-foreground">
           Each entry, a model at one reasoning level, has answered{" "}
           {SAMPLE_LABEL} of the {META.datasetSize.toLocaleString("en-US")}{" "}
-          {META.benchmarkId} puzzles so far, all with the same prompt, time
-          limit and scorer.
+          puzzles in <span className="font-mono">{META.benchmarkId}</span> so
+          far, all with the same prompt, time limit and scorer.
         </p>
       </section>
 
@@ -3509,7 +3520,7 @@ export function DocsView() {
           <span className="font-mono">{timeLimit}</span>
         </MetaCell>
         <MetaCell label="Updated">
-          <span className="font-mono">{META.lastUpdated}</span>
+          <span className="font-mono">{META.lastUpdated ?? "—"}</span>
         </MetaCell>
       </div>
 
@@ -3588,9 +3599,9 @@ export function DocsView() {
           >
             Lichess puzzle database
           </a>{" "}
-          (CC0) with a fixed seed, so a rebuild from the same source file
-          returns the same {META.datasetSize.toLocaleString("en-US")}. A puzzle
-          has to pass every filter:
+          (CC0) with a fixed seed, so a rebuild from the same inputs returns the
+          same {META.datasetSize.toLocaleString("en-US")}. A puzzle has to pass
+          every filter:
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {puzzleFilters.map((filter) => (
@@ -3599,6 +3610,12 @@ export function DocsView() {
             </li>
           ))}
         </ul>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+          Game dates come from the Lichess API. Lichess had not tagged most of
+          these puzzles yet, so ChessBench tags them with Lichess&apos;s own
+          open-source tagger. It cannot add outcome themes such as crushing, or
+          zugzwang, so those themes are missing here.
+        </p>
       </DocsSection>
 
       <DocsSection title="Metrics">

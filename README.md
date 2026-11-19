@@ -2,44 +2,57 @@
 
 Chessbench is a benchmark workspace for evaluating model chess puzzle solving.
 
-## Datasets
+## Dataset
 
-The first benchmark dataset is `lichess-puzzles-v1`, built from the public
-Lichess puzzle database.
+The puzzle set is `lichess-puzzles` in `data/benchmarks/lichess-puzzles/`: an
+`items.jsonl`, a `manifest.json` with its exact provenance, filters and counts,
+and a README on how it was built.
 
-- Tracked benchmark items:
-  `data/benchmarks/lichess-puzzles-v1/items.jsonl`
-- Benchmark manifest:
-  `data/benchmarks/lichess-puzzles-v1/manifest.json`
-- Raw source download, ignored by git:
-  `data/raw/lichess/lichess_db_puzzle.csv.zst`
-
-The benchmark contains 500 puzzles, sampled deterministically as 100 puzzles
-from each rating band: `<1200`, `1200-1599`, `1600-1999`, `2000-2399`, and
-`2400+`.
+It holds 500 Lichess puzzles from games played on or after 2026-06-01 (UTC),
+sampled deterministically as 100 puzzles from each rating band: `<1200`,
+`1200-1599`, `1600-1999`, `2000-2399`, and `2400+`. Mate-in-one puzzles are
+included, and themes come from Lichess's open-source tagger.
 
 Each item also carries granular benchmark strata:
 
 - exact Lichess rating plus a 100-point `ratingBucket`
 - solution move counts in plies, player moves, and opponent replies
-- full Lichess `themes`, a derived `primaryTheme`, and broad `themeGroups`
+- `themes`, a derived `primaryTheme`, and broad `themeGroups`
+- `gameCreatedAt`, when the source game was played
 
 ## Dataset Commands
 
+After downloading the Lichess dump, the set is built in three steps: keep the
+puzzles whose games were played on or after the cutoff (checked against the
+Lichess API), tag them with Lichess's tagger, then sample. The baseline is the
+April 2026 dump from the Internet Archive, and `$TAGGER` a checkout of
+ornicar/lichess-puzzler at the pinned commit; the set's README says how to get
+both.
+
 ```bash
-bun run datasets:lichess:download
-bun run datasets:lichess:prepare
+bun run datasets:lichess:download -- --out=$CACHE/dump.csv.zst
+bun scripts/filter-lichess-puzzles-by-game-date.ts --source=$CACHE/dump.csv.zst \
+  --baseline=$CACHE/baseline.csv.zst --cache=$CACHE/gate --threshold=2026-06-01T00:00:00Z
+python3 -I scripts/cook-lichess-puzzles.py --tagger=$TAGGER \
+  tag $CACHE/gate/qualifying.csv $CACHE/gate/qualifying-cooked.csv
+bun run datasets:lichess:prepare -- --gate=$CACHE/gate
 ```
 
-The preparation step validates trigger and solution moves with `chess.js`,
-filters unstable or low-signal rows, excludes `mateIn1` puzzles to avoid
-alternate checkmate ambiguity, and writes the benchmark JSONL plus manifest.
+The download writes the dump and a `.provenance.json` next to it (URL,
+retrieval times, `Last-Modified`, `ETag`, bytes, SHA-256), which the date gate
+checks and the manifest records. If the path already holds a dump with a
+matching sidecar, the download reuses it instead.
+
+Lichess replaces the dump monthly, so an exact rebuild needs a retained copy of
+the dumps whose SHA-256 the manifest records, each with its `.provenance.json`;
+never run the download with `--force` over them. Preparation refuses to write
+different items, or items from a different dump, into the committed set; build
+experiments with `--out=<another dir>`. The set's README has the details.
 
 `sampleLichessPuzzles` in `lib/benchmarks/lichess-puzzle-sampler.ts` owns
 filtering, seeded membership, legality validation, and output order over a
-stream of CSV lines. The CLI handles source decompression and file output.
-Tests cover selection across input orders, illegal candidate replacement,
-all 500 tracked items, and the preparation command's output and manifest.
+stream of CSV lines. Tests cover selection across input orders, illegal
+candidate replacement, and a byte-for-byte rebuild of all 500 tracked items.
 
 ## Scoring
 

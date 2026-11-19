@@ -27,8 +27,8 @@ const nextConfig = {
   // the item set and its manifest through the shared layout.
   outputFileTracingIncludes: {
     "/**": [
-      "./data/benchmarks/lichess-puzzles-v1/items.jsonl",
-      "./data/benchmarks/lichess-puzzles-v1/manifest.json",
+      "./data/benchmarks/lichess-puzzles/items.jsonl",
+      "./data/benchmarks/lichess-puzzles/manifest.json",
     ],
   },
 }

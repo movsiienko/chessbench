@@ -7,9 +7,9 @@ import { benchmarkRun } from "./benchmark-workflow"
 import { loadDashboardData } from "./dashboard-load"
 import { db } from "../db/client"
 import { attempts, runs } from "../db/schema"
-import { loadItems, PROTOCOL_ID } from "./lichess-puzzles"
+import { BENCHMARK_ID, loadItems, PROTOCOL_ID } from "./lichess-puzzles"
 
-const items = await loadItems("data/benchmarks/lichess-puzzles-v1/items.jsonl")
+const items = await loadItems(`data/benchmarks/${BENCHMARK_ID}/items.jsonl`)
 const item = items.find(
   (candidate) => candidate.expected.playerUciMoves.length > 1
 )!
@@ -227,7 +227,7 @@ describe("benchmark run", () => {
       .returning({ id: runs.id })
     await db.insert(attempts).values({
       runId: dead!.id,
-      benchmark: "lichess-puzzles-v1",
+      benchmark: BENCHMARK_ID,
       protocol: PROTOCOL_ID,
       model: "anthropic/claude-opus-4.8",
       reasoningLevel: "low",

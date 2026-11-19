@@ -1,86 +1,226 @@
-import { spawn, spawnSync } from "node:child_process"
-import { createHash } from "node:crypto"
+// Step 3 of building the puzzle set: sample it from the date gate's tagged
+// output (filter-lichess-puzzles-by-game-date.ts, then cook-lichess-puzzles.py)
+// and write items.jsonl plus manifest.json. See the set's README.
+//
+//   bun scripts/prepare-lichess-puzzles.ts --gate=<date gate cache dir>
+import { createHash, randomUUID } from "node:crypto"
 import {
-  createReadStream,
-  createWriteStream,
   existsSync,
+  linkSync,
   mkdirSync,
-  statSync,
+  readFileSync,
+  renameSync,
+  rmSync,
 } from "node:fs"
 import { writeFile } from "node:fs/promises"
-import { basename, join } from "node:path"
-import { createInterface } from "node:readline"
+import { join } from "node:path"
+import { parseCsvRecords } from "@/lib/benchmarks/csv"
 import {
   LICHESS_PUZZLE_COLUMNS as columns,
-  QUALITY_FILTERS,
+  MIN_GAME_CREATED_AT as threshold,
+  QUALITY_FILTERS as filters,
+  SAMPLING_SEED as seed,
 } from "@/lib/benchmarks/lichess-puzzle-builder"
 import { sampleLichessPuzzles } from "@/lib/benchmarks/lichess-puzzle-sampler"
-import type { LichessPuzzleBenchmarkItem } from "@/lib/benchmarks/lichess-puzzles"
+import {
+  BENCHMARK_ID,
+  type LichessPuzzleBenchmarkItem,
+} from "@/lib/benchmarks/lichess-puzzles"
+import { gameIdOf, readGameDates } from "./lichess-files"
 
-const sourcePath =
-  readOption("--source") ?? "data/raw/lichess/lichess_db_puzzle.csv.zst"
-const outDir = readOption("--out") ?? "data/benchmarks/lichess-puzzles-v1"
+const gateDir = readOption("--gate")
+
+if (!gateDir) {
+  throw new Error("Pass --gate=<date gate cache dir>.")
+}
+
+const sourcePath = join(gateDir, "qualifying-cooked.csv")
+const outDir = readOption("--out") ?? join("data/benchmarks", BENCHMARK_ID)
 const perBand = Number(readOption("--per-band") ?? 100)
-const seed = readOption("--seed") ?? "lichess-puzzles-v1"
-const { minPopularity, minPlays, maxRatingDeviation } = QUALITY_FILTERS
-const benchmarkId = "lichess-puzzles-v1"
-const sourceUrl = "https://database.lichess.org/lichess_db_puzzle.csv.zst"
-const sourcePageUrl = "https://database.lichess.org/#puzzles"
-const sourcePageLastUpdated = "2026-05-02"
-const sourceDownloadLastModified = "2026-05-01T09:33:23Z"
-const sourceDownloadContentLength = 296291296
+const gate = JSON.parse(readFileSync(join(gateDir, "gate.json"), "utf8"))
 
-if (!existsSync(sourcePath)) {
+if (gate.thresholdUtc !== threshold) {
   throw new Error(
-    `Missing ${sourcePath}. Run "bun run datasets:lichess:download" first.`
+    `The gate used ${gate.thresholdUtc}; the set needs ${threshold}.`
   )
 }
 
-if (sourcePath.endsWith(".zst") && spawnSync("zstdcat", ["--version"]).error) {
+if (!existsSync(sourcePath)) {
   throw new Error(
-    "zstdcat not found on PATH. Install zstd (brew install zstd)."
+    `Missing ${sourcePath}. Tag qualifying.csv with scripts/cook-lichess-puzzles.py first.`
+  )
+}
+
+const qualifying = readFileSync(join(gateDir, "qualifying.csv"), "utf8")
+
+if (
+  createHash("sha256").update(qualifying).digest("hex") !==
+  gate.qualifyingSha256
+) {
+  throw new Error("qualifying.csv is not the one gate.json describes.")
+}
+
+// Sampled exactly as checked: tagging may rewrite Themes and nothing else in
+// the gate's qualifying rows.
+const cooked = readFileSync(sourcePath, "utf8")
+const themesColumn = columns.indexOf("Themes")
+const withoutThemes = (csv: string) =>
+  csv
+    .trimEnd()
+    .split("\n")
+    .map((line) =>
+      JSON.stringify(
+        (parseCsvRecords(line)[0] ?? []).filter(
+          (_, index) => index !== themesColumn
+        )
+      )
+    )
+    .join("\n")
+
+if (withoutThemes(qualifying) !== withoutThemes(cooked)) {
+  throw new Error("qualifying-cooked.csv is not a tagging of qualifying.csv.")
+}
+
+// The dump's download record; the gate checked it against the dump it read.
+const provenance = gate.source
+const committedManifest = join(outDir, "manifest.json")
+
+// A committed set is immutable: a newer dump goes to another --out.
+if (
+  existsSync(committedManifest) &&
+  JSON.parse(readFileSync(committedManifest, "utf8")).source?.sha256 !==
+    provenance.sha256
+) {
+  throw new Error(
+    `${outDir} was built from a different dump. Pass --out=<new dir> to build from this one.`
   )
 }
 
 const { items, sourceStats, ratingBands } = await sampleLichessPuzzles(
-  readLines(sourcePath),
+  cooked.trimEnd().split("\n"),
   { seed, perBand }
 )
+const createdAt = readGameDates(join(gateDir, "game-dates.ndjson"))
 
-mkdirSync(outDir, { recursive: true })
+for (const item of items) {
+  const ms = createdAt.get(gameIdOf(item.metadata.lichessGameUrl))
+  if (ms === undefined || ms === null || ms < Date.parse(threshold)) {
+    throw new Error(`${item.id} has no game date on or after the threshold.`)
+  }
+  item.metadata.gameCreatedAt = new Date(ms).toISOString()
+}
 
 const itemsPath = join(outDir, "items.jsonl")
 const manifestPath = join(outDir, "manifest.json")
-const itemsWriter = createWriteStream(itemsPath)
+const itemsJsonl = items.map((item) => `${JSON.stringify(item)}\n`).join("")
 
-for (const item of items) {
-  itemsWriter.write(`${JSON.stringify(item)}\n`)
+// A committed set is never rewritten: identical items are left untouched, and
+// different ones are refused.
+const refuseDifferentSet = () => {
+  if (readFileSync(itemsPath, "utf8") !== itemsJsonl) {
+    throw new Error(
+      `${outDir} holds a different puzzle set. Pass --out=<new dir> to write this one.`
+    )
+  }
 }
 
-await new Promise<void>((resolve, reject) => {
-  itemsWriter.once("error", reject)
-  itemsWriter.end(() => resolve())
-})
+if (existsSync(itemsPath)) {
+  refuseDifferentSet()
+  if (existsSync(manifestPath)) {
+    // An exact rebuild: the committed set, manifest included, stays as is.
+    console.log(`${outDir} already holds this set; left unchanged.`)
+    process.exit(0)
+  }
+} else {
+  // Staged in a file this run alone creates ("wx"), so an interrupted write
+  // never leaves a partial items.jsonl, and published with link, which unlike
+  // rename fails if another run got there first; that run's items must then
+  // match.
+  mkdirSync(outDir, { recursive: true })
+  const staged = `${itemsPath}.${randomUUID()}.part`
+  try {
+    await writeFile(staged, itemsJsonl, { flag: "wx" })
+    try {
+      linkSync(staged, itemsPath)
+    } catch (error) {
+      if (
+        !(error instanceof Error && "code" in error && error.code === "EEXIST")
+      ) {
+        throw error
+      }
+      refuseDifferentSet()
+    }
+  } finally {
+    rmSync(staged, { force: true })
+  }
+}
 
 const manifest = {
-  id: benchmarkId,
-  title: "Lichess Puzzles v1",
+  id: BENCHMARK_ID,
+  title: "Lichess Puzzles",
   description:
-    "A deterministic, quality-filtered chess puzzle benchmark sampled from the Lichess puzzle database.",
-  createdAt: `${sourcePageLastUpdated}T00:00:00.000Z`,
+    "A deterministic, quality-filtered chess puzzle benchmark of Lichess puzzles from games played on or after June 1, 2026 (UTC).",
+  createdAt: gate.completedAt,
   source: {
     name: "Lichess puzzle database",
-    pageUrl: sourcePageUrl,
-    downloadUrl: sourceUrl,
-    localRawPath: sourcePath,
-    localRawFileName: basename(sourcePath),
-    localRawBytes: statSync(sourcePath).size,
-    localRawSha256: await hashFile(sourcePath),
+    pageUrl: "https://database.lichess.org/#puzzles",
+    downloadUrl: provenance.sourceUrl,
+    finalUrl: provenance.finalUrl,
     license: "Creative Commons CC0",
-    pageLastUpdated: sourcePageLastUpdated,
-    downloadLastModified: sourceDownloadLastModified,
-    downloadContentLength: sourceDownloadContentLength,
-    downloadEtag: '"69f47363-11a90be0"',
+    retrievalStartedAt: provenance.retrievalStartedAt,
+    retrievalFinishedAt: provenance.retrievalFinishedAt,
+    downloadLastModified: provenance.lastModified,
+    downloadEtag: provenance.etag,
+    downloadContentLength: provenance.contentLength,
+    bytes: provenance.bytes,
+    sha256: provenance.sha256,
+  },
+  baseline: {
+    ...gate.baseline,
+    role: "Puzzle ids already in this April 2026 dump are excluded, since their games predate the date threshold.",
+  },
+  gameDateGate: {
+    thresholdUtc: gate.thresholdUtc,
+    ...gate.dateSource,
+    missingDates: "excluded",
+    completedAt: gate.completedAt,
+    funnel: gate.funnel,
+  },
+  tagging: {
+    tool: "cook.py from Lichess's puzzle tagger",
+    repository: "https://github.com/ornicar/lichess-puzzler",
+    commit: "8e24b6d5e2b9618e41581a327926e4ac67c610a2",
+    pythonChess: "1.3.0",
+    script: "scripts/cook-lichess-puzzles.py",
+    why: "Lichess adds puzzles with empty themes and tags them later, so most recent puzzles in the dump carry only phase/source tags. Every puzzle in the set is re-tagged with the same tagger.",
+    keptFromDump: [
+      "opening",
+      "middlegame",
+      "endgame",
+      "master",
+      "masterVsMaster",
+      "superGM",
+    ],
+    omitted: {
+      "crushing, advantage, equality":
+        "cook derives them from the puzzle generator's engine eval, which the dump does not publish",
+      zugzwang: "needs a separate Stockfish pass",
+    },
+    neverProducedByCook: [
+      "discoveredCheck",
+      "named mates such as operaMate, pillsburysMate, killBoxMate, morphysMate, epauletteMate, swallowstailMate, triangleMate",
+    ],
+    validation:
+      '500 April 2026 puzzles Lichess had tagged (popularity >= 80, plays >= 300, RD <= 110; lowest sha256("cook-validation-v1:" + PuzzleId)): every tag cook produces matched with 100% precision and recall; 467/500 tag sets match exactly, and every mismatch is a tag cook never produces. Reproduce with `python3 -I scripts/cook-lichess-puzzles.py --tagger=<lichess-puzzler checkout> validate <April 2026 dump .csv.zst>`.',
+  },
+  mateInOne:
+    "Kept. The scorer accepts only the Lichess solution, so a different mating move scores as a miss.",
+  contamination: {
+    note: "Temporally held out by underlying game date: every puzzle comes from a game created on or after the threshold. That is not proof the puzzles are absent from any model's training data. June 1, 2026 precedes Mistral Large 4's latest training-data collection (September 2026), most providers publish no exact cutoff, models may receive later post-training, and the same positions can occur in earlier games.",
+    sources: [
+      "https://legal.mistral.ai/documents/Mistral%20Large%204%20-%20Public%20Summary%20of%20Training%20Content.pdf",
+      "https://platform.claude.com/docs/en/about-claude/models/overview",
+    ],
   },
   format: {
     sourceColumns: columns,
@@ -95,10 +235,11 @@ const manifest = {
     targetPerRatingBand: perBand,
     totalItems: items.length,
     filters: {
-      minPopularity,
-      minPlays,
-      maxRatingDeviation,
-      excludedThemes: ["mateIn1"],
+      minPopularity: filters.minPopularity,
+      minPlays: filters.minPlays,
+      minPlaysByBand: filters.minPlaysByBand,
+      maxRatingDeviation: filters.maxRatingDeviation,
+      minGameCreatedAt: threshold,
       legalLineValidation:
         "Every trigger and solution move is applied with chess.js.",
     },
@@ -177,10 +318,21 @@ const manifest = {
       byCountDesc
     ),
     lengths: countBy(items, (item) => [item.metadata.length]),
+    mateInOneByBand: countBy(
+      items.filter((item) => item.metadata.themes.includes("mateIn1")),
+      (item) => [item.metadata.ratingBand]
+    ),
+    belowDefaultMinPlaysByBand: countBy(
+      items.filter((item) => item.metadata.nbPlays < filters.minPlays),
+      (item) => [item.metadata.ratingBand]
+    ),
   },
 }
 
-await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+// Staged and renamed, so an interrupted write never leaves a partial manifest.
+const stagedManifest = `${manifestPath}.${randomUUID()}.part`
+await writeFile(stagedManifest, `${JSON.stringify(manifest, null, 2)}\n`)
+renameSync(stagedManifest, manifestPath)
 
 console.log(`Wrote ${items.length} benchmark items to ${itemsPath}`)
 console.log(`Wrote manifest to ${manifestPath}`)
@@ -189,57 +341,6 @@ function readOption(name: string): string | undefined {
   return process.argv
     .find((argument) => argument.startsWith(`${name}=`))
     ?.slice(name.length + 1)
-}
-
-async function* readLines(path: string): AsyncGenerator<string> {
-  if (path.endsWith(".zst")) {
-    const child = spawn("zstdcat", [path], {
-      stdio: ["ignore", "pipe", "inherit"],
-    })
-
-    if (!child.stdout) {
-      throw new Error("Failed to read zstdcat stdout.")
-    }
-
-    const lines = createInterface({
-      input: child.stdout,
-      crlfDelay: Infinity,
-    })
-
-    for await (const line of lines) {
-      yield line
-    }
-
-    const exitCode = await new Promise<number | null>((resolve) => {
-      child.once("close", resolve)
-    })
-
-    if (exitCode !== 0) {
-      throw new Error(`zstdcat exited with code ${exitCode}`)
-    }
-
-    return
-  }
-
-  const lines = createInterface({
-    input: createReadStream(path),
-    crlfDelay: Infinity,
-  })
-
-  for await (const line of lines) {
-    yield line
-  }
-}
-
-async function hashFile(path: string): Promise<string> {
-  const hash = createHash("sha256")
-  const stream = createReadStream(path)
-
-  for await (const chunk of stream) {
-    hash.update(chunk)
-  }
-
-  return hash.digest("hex")
 }
 
 type Entry = [string, number]

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import { parseCsvRecords } from "./csv"
 import {
   buildPuzzleItem,
-  LICHESS_PUZZLE_COLUMNS,
+  LICHESS_PUZZLE_HEADERS,
   parsePuzzleRow,
   RATING_BANDS,
 } from "./lichess-puzzle-builder"
@@ -43,30 +43,23 @@ export async function sampleLichessPuzzles(
     rowsBuilt: 0,
     rowsWithInvalidColumns: 0,
     rowsRejectedByQuality: 0,
-    rowsRejectedAsMateInOne: 0,
     rowsRejectedAsIllegal: 0,
   }
   const rejectionStat = {
     invalidColumns: "rowsWithInvalidColumns",
     quality: "rowsRejectedByQuality",
-    mateIn1: "rowsRejectedAsMateInOne",
   } as const
 
-  let headerVerified = false
+  let columnCount = 0
 
   for await (const line of lines) {
-    if (!headerVerified) {
-      if (
-        parseCsvRecords(line)[0]?.join(",") !== LICHESS_PUZZLE_COLUMNS.join(",")
-      ) {
-        throw new Error(`Unexpected CSV header: ${line}`)
-      }
-      headerVerified = true
+    if (columnCount === 0) {
+      columnCount = readHeader(line)
       continue
     }
 
     sourceStats.rowsSeen += 1
-    const parsed = parsePuzzleRow(line)
+    const parsed = parsePuzzleRow(line, columnCount)
 
     if ("rejected" in parsed) {
       if (parsed.rejected !== "invalidColumns") {
@@ -107,7 +100,7 @@ export async function sampleLichessPuzzles(
     candidates[slot] = { hashKey, item }
   }
 
-  if (!headerVerified) {
+  if (columnCount === 0) {
     throw new Error("Missing Lichess puzzle CSV header.")
   }
 
@@ -131,6 +124,22 @@ export async function sampleLichessPuzzles(
       selected: selectedByBand.get(band.id)?.length ?? 0,
     })),
   }
+}
+
+/** Column count of an accepted Lichess puzzle CSV header. */
+export function readHeader(line: string): number {
+  const columns = parseCsvRecords(line)[0] ?? []
+
+  // Field by field, so a quoted "GameUrl,OpeningTags" cannot pass as two.
+  if (
+    !LICHESS_PUZZLE_HEADERS.some(
+      (layout) => JSON.stringify(layout) === JSON.stringify(columns)
+    )
+  ) {
+    throw new Error(`Unexpected CSV header: ${line}`)
+  }
+
+  return columns.length
 }
 
 function candidateSlot(

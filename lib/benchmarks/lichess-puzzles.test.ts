@@ -12,7 +12,7 @@ function item(
 ): LichessPuzzleBenchmarkItem {
   return {
     id,
-    benchmark: "lichess-puzzles-v1",
+    benchmark: "lichess-puzzles",
     position: {
       triggerFen: "8/8/8/8/8/8/8/8 w - - 0 1",
       triggerMove: "a2a3",

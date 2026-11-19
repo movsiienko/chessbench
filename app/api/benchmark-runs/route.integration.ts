@@ -5,12 +5,13 @@ import { beforeAll, beforeEach, describe, expect, test } from "vitest"
 import { benchmarkRun } from "@/lib/benchmarks/benchmark-workflow"
 import { loadDashboardData } from "@/lib/benchmarks/dashboard-load"
 import {
+  BENCHMARK_ID,
   loadItems,
   selectDefaultLichessPuzzleItems,
 } from "@/lib/benchmarks/lichess-puzzles"
 import { POST } from "./route"
 
-const items = await loadItems("data/benchmarks/lichess-puzzles-v1/items.jsonl")
+const items = await loadItems(`data/benchmarks/${BENCHMARK_ID}/items.jsonl`)
 const sample = selectDefaultLichessPuzzleItems(items, 2)
 
 /** A model that always answers with an illegal move: one call per attempt. */

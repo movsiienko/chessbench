@@ -1,12 +1,12 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, test } from "node:test"
 import { escapeCsv } from "./csv"
-import { LICHESS_PUZZLE_COLUMNS } from "./lichess-puzzle-builder"
+import { LICHESS_PUZZLE_COLUMNS, SAMPLING_SEED } from "./lichess-puzzle-builder"
 import { sampleLichessPuzzles } from "./lichess-puzzle-sampler"
 import type { LichessPuzzleBenchmarkItem } from "./lichess-puzzles"
 
@@ -141,7 +141,6 @@ describe("sampleLichessPuzzles", () => {
         uncompetitiveIllegal,
         "wrong,column,count",
         csvRow("low-quality", 1000).replace(",87,93,508,", ",87,79,508,"),
-        csvRow("mate-in-one", 1000).replace("bishopEndgame", "mateIn1"),
       ],
       { seed, perBand: 2 }
     )
@@ -151,13 +150,12 @@ describe("sampleLichessPuzzles", () => {
       [`lichess:${ranked[2].id}`, `lichess:${ranked[3].id}`]
     )
     assert.deepEqual(sample.sourceStats, {
-      rowsSeen: 7,
-      rowsParsed: 6,
+      rowsSeen: 6,
+      rowsParsed: 5,
       rowsPassingFilters: 4,
       rowsBuilt: 2,
       rowsWithInvalidColumns: 1,
       rowsRejectedByQuality: 1,
-      rowsRejectedAsMateInOne: 1,
       rowsRejectedAsIllegal: 1,
     })
     assert.equal(sample.ratingBands[0].eligible, 4)
@@ -177,7 +175,7 @@ describe("sampleLichessPuzzles", () => {
   test("reproduces all 500 tracked items and their order byte for byte", async () => {
     const original = await readFile(
       new URL(
-        "../../data/benchmarks/lichess-puzzles-v1/items.jsonl",
+        "../../data/benchmarks/lichess-puzzles/items.jsonl",
         import.meta.url
       ),
       "utf8"
@@ -205,12 +203,17 @@ describe("sampleLichessPuzzles", () => {
         .join(",")
     })
     const sample = await sampleLichessPuzzles([header, ...source], {
-      seed: "lichess-puzzles-v1",
+      seed: SAMPLING_SEED,
       perBand: 100,
     })
+    // The sampler leaves gameCreatedAt to the prepare script, which adds it last.
+    const withoutDates = lines.map((line) => {
+      const { gameCreatedAt: _date, ...metadata } = JSON.parse(line).metadata
+      return JSON.stringify({ ...JSON.parse(line), metadata })
+    })
     assert.equal(
-      sample.items.map((item) => JSON.stringify(item)).join("\n") + "\n",
-      original
+      sample.items.map((item) => JSON.stringify(item)).join("\n"),
+      withoutDates.join("\n")
     )
     assert.ok(sample.ratingBands.every((band) => band.selected === 100))
   })
@@ -230,6 +233,14 @@ describe("sampleLichessPuzzles", () => {
       sampleLichessPuzzles(["wrong,header"], { seed, perBand: 1 }),
       /Unexpected CSV header/
     )
+    // One quoted field must not pass for the last two columns.
+    await assert.rejects(
+      sampleLichessPuzzles(
+        [header.replace("GameUrl,OpeningTags", '"GameUrl,OpeningTags"')],
+        { seed, perBand: 1 }
+      ),
+      /Unexpected CSV header/
+    )
     async function* interruptedLines() {
       yield header
       yield csvRow("valid", 1000)
@@ -241,51 +252,110 @@ describe("sampleLichessPuzzles", () => {
     )
   })
 
-  test("the preparation CLI writes the sampled items and matching manifest", async () => {
+  test("the preparation CLI samples the gate's tagged puzzles and writes a matching manifest", async () => {
     const directory = await mkdtemp(join(tmpdir(), "chessbench-sampling-"))
     try {
-      const sourcePath = join(directory, "source.csv")
+      const gateDir = join(directory, "gate")
       const outDir = join(directory, "dataset")
       const rows = sourceRows.map((row) => csvRow(row.id, row.rating))
       const csv = [header, ...rows].join("\n") + "\n"
-      await writeFile(sourcePath, csv)
-      const result = spawnSync(
-        process.execPath,
-        [
-          "scripts/prepare-lichess-puzzles.ts",
-          `--source=${sourcePath}`,
-          `--out=${outDir}`,
-          "--per-band=2",
-          `--seed=${seed}`,
-        ],
-        {
-          cwd: new URL("../../", import.meta.url),
-          encoding: "utf8",
-          timeout: 30_000,
-        }
+      const gameCreatedAt = "2026-06-02T00:00:00.000Z"
+      const source = {
+        sourceUrl: "https://database.lichess.org/lichess_db_puzzle.csv.zst",
+        lastModified: "Sun, 01 Nov 2026 07:57:40 GMT",
+        etag: '"test-etag"',
+        bytes: 1234,
+        sha256: "f".repeat(64),
+      }
+      const gate = {
+        completedAt: "2026-11-18T10:00:00.000Z",
+        thresholdUtc: "2026-06-01T00:00:00.000Z",
+        qualifyingSha256: createHash("sha256").update(csv).digest("hex"),
+        source,
+        baseline: {},
+        dateSource: {},
+        funnel: {},
+      }
+      await mkdir(gateDir)
+      await writeFile(join(gateDir, "gate.json"), JSON.stringify(gate))
+      await writeFile(join(gateDir, "qualifying.csv"), csv)
+      await writeFile(join(gateDir, "qualifying-cooked.csv"), csv)
+      await writeFile(
+        join(gateDir, "game-dates.ndjson"),
+        `${JSON.stringify({ id: "m4QTuikA", createdAt: Date.parse(gameCreatedAt) })}\n`
       )
+      const prepare = (out: string, perBand = 2) =>
+        spawnSync(
+          process.execPath,
+          [
+            "scripts/prepare-lichess-puzzles.ts",
+            `--gate=${gateDir}`,
+            `--out=${out}`,
+            `--per-band=${perBand}`,
+          ],
+          {
+            cwd: new URL("../../", import.meta.url),
+            encoding: "utf8",
+            timeout: 30_000,
+          }
+        )
+
+      const result = prepare(outDir)
       assert.equal(result.status, 0, result.stderr || result.error?.message)
       const sample = await sampleLichessPuzzles([header, ...rows], {
-        seed,
+        seed: SAMPLING_SEED,
         perBand: 2,
       })
       assert.equal(
         await readFile(join(outDir, "items.jsonl"), "utf8"),
-        sample.items.map((item) => JSON.stringify(item)).join("\n") + "\n"
+        sample.items
+          .map((item) =>
+            JSON.stringify({
+              ...item,
+              metadata: { ...item.metadata, gameCreatedAt },
+            })
+          )
+          .join("\n") + "\n"
       )
       const manifest = JSON.parse(
         await readFile(join(outDir, "manifest.json"), "utf8")
       )
-      assert.equal(manifest.selection.seed, seed)
-      assert.equal(manifest.selection.targetPerRatingBand, 2)
+      assert.equal(manifest.id, "lichess-puzzles")
+      assert.equal(manifest.createdAt, gate.completedAt)
+      assert.equal(manifest.selection.seed, SAMPLING_SEED)
       assert.equal(manifest.selection.totalItems, 10)
       assert.deepEqual(manifest.selection.ratingBands, sample.ratingBands)
       assert.deepEqual(manifest.sourceStats, sample.sourceStats)
-      assert.equal(manifest.source.localRawBytes, Buffer.byteLength(csv))
-      assert.equal(
-        manifest.source.localRawSha256,
-        createHash("sha256").update(csv).digest("hex")
+      assert.equal(manifest.source.sha256, source.sha256)
+      assert.equal(manifest.source.downloadLastModified, source.lastModified)
+      assert.equal(manifest.source.downloadEtag, source.etag)
+
+      // An exact rebuild leaves the set alone; different items are refused.
+      const again = prepare(outDir)
+      assert.equal(again.status, 0, again.stderr)
+      assert.match(again.stdout, /left unchanged/)
+      const fewer = prepare(outDir, 1)
+      assert.notEqual(fewer.status, 0)
+      assert.match(fewer.stderr, /holds a different puzzle set/)
+
+      // A gate run with another cutoff is not this set.
+      await writeFile(
+        join(gateDir, "gate.json"),
+        JSON.stringify({ ...gate, thresholdUtc: "2026-05-01T00:00:00.000Z" })
       )
+      const earlier = prepare(join(directory, "earlier"))
+      assert.notEqual(earlier.status, 0)
+      assert.match(earlier.stderr, /the set needs 2026-06-01/)
+      await writeFile(join(gateDir, "gate.json"), JSON.stringify(gate))
+
+      // Tagging may change Themes only; any other edit is refused.
+      await writeFile(
+        join(gateDir, "qualifying-cooked.csv"),
+        csv.replace(",1000,", ",1001,")
+      )
+      const tampered = prepare(join(directory, "tampered"))
+      assert.notEqual(tampered.status, 0)
+      assert.match(tampered.stderr, /not a tagging of qualifying\.csv/)
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

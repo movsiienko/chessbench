@@ -1,5 +1,6 @@
 import { buildAttemptEvidence, type AttemptSummary } from "./attempt-evidence"
 import {
+  BENCHMARK_ID,
   MOVE_TIME_LIMIT_MS,
   type LichessPuzzleBenchmarkItem,
 } from "./lichess-puzzles"
@@ -61,11 +62,15 @@ export type DashboardBuildInput = {
 }
 
 export type DatasetSelection = {
-  ratingBands: { label: string; selected: number }[]
+  ratingBands: { id: string; label: string; selected: number }[]
   filters: {
     minPopularity: number
     minPlays: number
+    /** Bands with their own play-count floor (2400+). */
+    minPlaysByBand: Record<string, number>
     maxRatingDeviation: number
+    /** Earliest source-game creation time (ISO, UTC). */
+    minGameCreatedAt: string
   }
 }
 
@@ -214,8 +219,9 @@ export function buildDashboardData({
         )
       ),
       datasetSize,
-      lastUpdated: latestDate(allRows).slice(0, 10),
-      benchmarkId: "lichess-puzzles-v1",
+      // No evaluations yet: no date, rather than the Unix epoch.
+      lastUpdated: allRows.length > 0 ? latestDate(allRows).slice(0, 10) : null,
+      benchmarkId: BENCHMARK_ID,
       rowsByModel: Object.fromEntries(
         models.map((model) => [model.id, rowsFor(model).length])
       ),
@@ -226,7 +232,9 @@ export function buildDashboardData({
       qualityFilters: {
         minPopularity: selection.filters.minPopularity,
         minPlays: selection.filters.minPlays,
+        minPlaysByBand: selection.filters.minPlaysByBand,
         maxRatingDeviation: selection.filters.maxRatingDeviation,
+        minGameCreatedAt: selection.filters.minGameCreatedAt,
       },
     },
   }

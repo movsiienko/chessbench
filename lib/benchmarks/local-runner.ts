@@ -86,7 +86,8 @@ export type LichessPuzzleAttemptTurn = {
 export type LichessPuzzleAttemptRow = {
   runId: string
   createdAt: string
-  benchmark: "lichess-puzzles-v1"
+  // Stored rows keep the puzzle set they ran on, so earlier ids appear too.
+  benchmark: string
   // Stored rows keep the template they ran under, so earlier ids appear too.
   promptTemplateId: string
   model: string

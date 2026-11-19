@@ -1,5 +1,11 @@
 import { readFile } from "node:fs/promises"
 
+/**
+ * The puzzle set: data/benchmarks/<id>, and the benchmark of every attempt
+ * the dashboard shows.
+ */
+export const BENCHMARK_ID = "lichess-puzzles"
+
 export type RatingBandId =
   | "under-1200"
   | "1200-1599"
@@ -7,7 +13,7 @@ export type RatingBandId =
   | "2000-2399"
   | "2400-plus"
 
-export type PuzzleLength = "short" | "long" | "veryLong" | "unknown"
+export type PuzzleLength = "oneMove" | "short" | "long" | "veryLong" | "unknown"
 
 export type ThemeGroupId =
   | "attack"
@@ -28,7 +34,7 @@ export type PuzzleMoveCounts = {
 
 export type LichessPuzzleBenchmarkItem = {
   id: string
-  benchmark: "lichess-puzzles-v1"
+  benchmark: typeof BENCHMARK_ID
   position: {
     triggerFen: string
     triggerMove: string
@@ -55,6 +61,8 @@ export type LichessPuzzleBenchmarkItem = {
     themeGroups: ThemeGroupId[]
     themes: string[]
     openingTags: string[]
+    /** When the source game was created on Lichess (ISO, UTC); set by prepare. */
+    gameCreatedAt?: string
   }
 }
 

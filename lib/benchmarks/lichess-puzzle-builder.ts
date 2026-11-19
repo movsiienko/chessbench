@@ -1,16 +1,17 @@
 import { Chess } from "chess.js"
 import { applyUciMove } from "@/lib/chess/moves"
 import { parseCsvRecords } from "./csv"
-import type {
-  LichessPuzzleBenchmarkItem,
-  PuzzleLength,
-  RatingBandId,
-  ThemeGroupId,
+import {
+  BENCHMARK_ID,
+  type LichessPuzzleBenchmarkItem,
+  type PuzzleLength,
+  type RatingBandId,
+  type ThemeGroupId,
 } from "./lichess-puzzles"
 
-// Methodology of lichess-puzzles-v1: the strata tables and the row -> item
-// rules. Changing anything here changes the benchmark; items.jsonl is the
-// reference and lichess-puzzle-builder.test.ts checks it byte for byte.
+// Methodology of the puzzle set: the strata tables, filters, seed and the
+// row -> item rules. Changing anything here changes the benchmark; its
+// items.jsonl is the reference and lichess-puzzle-builder.test.ts rebuilds it.
 
 export const LICHESS_PUZZLE_COLUMNS = [
   "PuzzleId",
@@ -24,6 +25,12 @@ export const LICHESS_PUZZLE_COLUMNS = [
   "GameUrl",
   "OpeningTags",
 ] as const
+
+/** Accepted source headers; dumps since 2026-11 append an unused DailyDate. */
+export const LICHESS_PUZZLE_HEADERS: string[][] = [
+  [...LICHESS_PUZZLE_COLUMNS],
+  [...LICHESS_PUZZLE_COLUMNS, "DailyDate"],
+]
 
 export type LichessPuzzleCsvRow = Record<
   (typeof LICHESS_PUZZLE_COLUMNS)[number],
@@ -45,13 +52,36 @@ export const RATING_BANDS: RatingBand[] = [
   { id: "2400-plus", label: "2400+", min: 2400, max: Number.POSITIVE_INFINITY },
 ]
 
-export const QUALITY_FILTERS = {
+export type QualityFilters = {
+  minPopularity: number
+  minPlays: number
+  /** Bands whose play-count floor differs from minPlays. */
+  minPlaysByBand: Partial<Record<RatingBandId, number>>
+  maxRatingDeviation: number
+}
+
+/**
+ * 2400+ needs only 200 plays: too few recent puzzles in that band reach 300.
+ * Mate-in-one is kept.
+ */
+export const QUALITY_FILTERS: QualityFilters = {
   minPopularity: 80,
   minPlays: 300,
+  minPlaysByBand: { "2400-plus": 200 },
   maxRatingDeviation: 110,
 }
 
+/** Every puzzle's game was created on or after this time (UTC). */
+export const MIN_GAME_CREATED_AT = "2026-06-01T00:00:00.000Z"
+
+/**
+ * The hash seed the committed set was drawn with, named when it was built.
+ * Kept as is: another seed draws different puzzles.
+ */
+export const SAMPLING_SEED = "lichess-puzzles-v2"
+
 const structuralThemes = new Set([
+  "oneMove",
   "short",
   "long",
   "veryLong",
@@ -182,11 +212,12 @@ export type ParsedPuzzleRow = {
   themes: string[]
 }
 
-export type PuzzleRowRejection = "invalidColumns" | "quality" | "mateIn1"
+export type PuzzleRowRejection = "invalidColumns" | "quality"
 
 /** Cheap filters only; chess.js validation happens in buildPuzzleItem. */
 export function parsePuzzleRow(
-  line: string
+  line: string,
+  columnCount: number = LICHESS_PUZZLE_COLUMNS.length
 ): ParsedPuzzleRow | { rejected: PuzzleRowRejection } {
   let values: string[]
 
@@ -196,11 +227,11 @@ export function parsePuzzleRow(
     return { rejected: "invalidColumns" }
   }
 
-  if (values.length !== LICHESS_PUZZLE_COLUMNS.length) {
+  if (values.length !== columnCount) {
     return { rejected: "invalidColumns" }
   }
 
-  // SAFETY: values.length === LICHESS_PUZZLE_COLUMNS.length was checked above, and the columns list every LichessPuzzleCsvRow key.
+  // SAFETY: the header check guarantees the LICHESS_PUZZLE_COLUMNS come first, and they list every LichessPuzzleCsvRow key.
   const row = Object.fromEntries(
     LICHESS_PUZZLE_COLUMNS.map((column, index) => [column, values[index]])
   ) as LichessPuzzleCsvRow
@@ -212,29 +243,23 @@ export function parsePuzzleRow(
     nbPlays: Number(row.NbPlays),
   }
 
-  if (
-    !Object.values(quality).every(Number.isFinite) ||
-    quality.ratingDeviation > QUALITY_FILTERS.maxRatingDeviation ||
-    quality.popularity < QUALITY_FILTERS.minPopularity ||
-    quality.nbPlays < QUALITY_FILTERS.minPlays
-  ) {
-    return { rejected: "quality" }
-  }
-
   const band = RATING_BANDS.find(
     (candidate) =>
       quality.rating >= candidate.min && quality.rating <= candidate.max
   )
 
-  if (!band) {
+  if (
+    !band ||
+    !Object.values(quality).every(Number.isFinite) ||
+    quality.ratingDeviation > QUALITY_FILTERS.maxRatingDeviation ||
+    quality.popularity < QUALITY_FILTERS.minPopularity ||
+    quality.nbPlays <
+      (QUALITY_FILTERS.minPlaysByBand[band.id] ?? QUALITY_FILTERS.minPlays)
+  ) {
     return { rejected: "quality" }
   }
 
-  const themes = splitTags(row.Themes)
-
-  return themes.includes("mateIn1")
-    ? { rejected: "mateIn1" }
-    : { row, quality, band, themes }
+  return { row, quality, band, themes: splitTags(row.Themes) }
 }
 
 /** Null when the trigger move or any solution move is illegal. */
@@ -271,7 +296,7 @@ export function buildPuzzleItem({
 
   return {
     id: `lichess:${row.PuzzleId}`,
-    benchmark: "lichess-puzzles-v1",
+    benchmark: BENCHMARK_ID,
     position: {
       triggerFen: row.FEN,
       triggerMove,
@@ -321,6 +346,10 @@ function findPuzzleLength(themes: string[]): PuzzleLength {
 
   if (themes.includes("short")) {
     return "short"
+  }
+
+  if (themes.includes("oneMove")) {
+    return "oneMove"
   }
 
   return "unknown"

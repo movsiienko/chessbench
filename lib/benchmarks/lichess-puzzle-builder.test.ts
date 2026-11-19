@@ -23,6 +23,35 @@ function build(line: string) {
   return buildPuzzleItem(parseOk(line))
 }
 
+function readDataset(file: string) {
+  return readFileSync(
+    new URL(`../../data/benchmarks/lichess-puzzles/${file}`, import.meta.url),
+    "utf8"
+  )
+}
+
+/** The source CSV row an item was built from. */
+function csvRowOf({
+  position,
+  expected,
+  metadata,
+}: LichessPuzzleBenchmarkItem) {
+  return [
+    metadata.lichessPuzzleId,
+    position.triggerFen,
+    [position.triggerMove, ...expected.uciLine].join(" "),
+    metadata.rating,
+    metadata.ratingDeviation,
+    metadata.popularity,
+    metadata.nbPlays,
+    metadata.themes.join(" "),
+    metadata.lichessGameUrl,
+    metadata.openingTags.join(" "),
+  ]
+    .map(escapeCsv)
+    .join(",")
+}
+
 describe("parsePuzzleRow", () => {
   test("classifies the row", () => {
     const parsed = parseOk(bishopEndgame)
@@ -41,13 +70,23 @@ describe("parsePuzzleRow", () => {
     ])
   })
 
-  test("rejects mateIn1", () => {
-    assert.deepEqual(
-      parsePuzzleRow(
-        "00sJb,r3r1k1/pp3pbp/1qp1b1p1/2B5/2BP4/Q1n2N2/P4PPP/3R1K1R w - - 4 18,e2e4 e5e4,1000,80,95,1000,mateIn1 short,https://lichess.org/x,"
-      ),
-      { rejected: "mateIn1" }
-    )
+  test("keeps mate-in-one", () => {
+    const mateInOne = bishopEndgame.replace("endgame long", "endgame mateIn1")
+    assert.ok(!("rejected" in parsePuzzleRow(mateInOne)))
+  })
+
+  test("2400+ needs 200 plays, other bands 300", () => {
+    const strong = bishopEndgame
+      .replace(",962,", ",2450,")
+      .replace(",508,", ",250,")
+
+    assert.ok(!("rejected" in parsePuzzleRow(strong)))
+    assert.deepEqual(parsePuzzleRow(strong.replace(",250,", ",199,")), {
+      rejected: "quality",
+    })
+    assert.deepEqual(parsePuzzleRow(bishopEndgame.replace(",508,", ",250,")), {
+      rejected: "quality",
+    })
   })
 
   test("rejects rows failing the quality thresholds", () => {
@@ -122,39 +161,32 @@ describe("buildPuzzleItem", () => {
     )
   })
 
-  test("reproduces every tracked item byte for byte", () => {
-    const lines = readFileSync(
-      new URL(
-        "../../data/benchmarks/lichess-puzzles-v1/items.jsonl",
-        import.meta.url
-      ),
-      "utf8"
-    )
-      .trim()
-      .split("\n")
-    assert.equal(lines.length, 500)
+  test("rebuilds every tracked item byte for byte, 100 per band, all on or after the date threshold", () => {
+    const manifest = JSON.parse(readDataset("manifest.json"))
+    const threshold = Date.parse(manifest.selection.filters.minGameCreatedAt)
+    const lines = readDataset("items.jsonl").trim().split("\n")
+    const perBand = new Map<string, number>()
 
     for (const line of lines) {
       // SAFETY: items.jsonl is written by the prep script as one LichessPuzzleBenchmarkItem per line.
-      const { position, metadata } = JSON.parse(
-        line
-      ) as LichessPuzzleBenchmarkItem
-      const csvRow = [
-        metadata.lichessPuzzleId,
-        position.triggerFen,
-        [position.triggerMove, ...JSON.parse(line).expected.uciLine].join(" "),
-        metadata.rating,
-        metadata.ratingDeviation,
-        metadata.popularity,
-        metadata.nbPlays,
-        metadata.themes.join(" "),
-        metadata.lichessGameUrl,
-        metadata.openingTags.join(" "),
-      ]
-        .map(escapeCsv)
-        .join(",")
-
-      assert.equal(JSON.stringify(build(csvRow)), line)
+      const item = JSON.parse(line) as LichessPuzzleBenchmarkItem
+      const { gameCreatedAt } = item.metadata
+      assert.ok(Date.parse(gameCreatedAt ?? "") >= threshold, item.id)
+      const built = build(csvRowOf(item))
+      assert.ok(built, item.id)
+      // prepare-lichess-puzzles.ts adds the game date last.
+      built.metadata.gameCreatedAt = gameCreatedAt
+      assert.equal(JSON.stringify(built), line)
+      perBand.set(
+        item.metadata.ratingBand,
+        (perBand.get(item.metadata.ratingBand) ?? 0) + 1
+      )
     }
+    assert.deepEqual([...perBand.values()], [100, 100, 100, 100, 100])
+    assert.equal(
+      new Set(lines.map((line) => JSON.parse(line).id)).size,
+      500,
+      "duplicate item ids"
+    )
   })
 })
